@@ -6,6 +6,11 @@ Plugins para conectar con webs en WordPress via MCP
 
 Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que usa el escenario de Make "Blogs clientes: Notion → WordPress" para publicar los posts de blog de los clientes (idioma y traducción WPML, categoría, SEO de Rank Math, imagen destacada, imagen dentro del contenido y aviso por email).
 
+### Parámetros de categoría
+
+- `category_slug`: slug de la categoría en el idioma del post.
+- `category_name` (opcional, desde la v2.4.0): si la categoría no existe, se crea con este nombre. Con WPML se asigna al idioma del post y, en las traducciones, se enlaza con la categoría del original.
+
 ### Instalación en una web
 
 1. Descarga `eg-publicacion.zip` de la última [release](https://github.com/enricgomez/mcp_wpplugin/releases/latest).

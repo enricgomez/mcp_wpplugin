@@ -192,6 +192,13 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		}
 	}
 
+	// Categoría del original (antes de cambiar de idioma), para enlazar la traducción de la categoría.
+	$source_cat_ttid = 0;
+	if ( $source_id ) {
+		$tt_ids          = wp_get_object_terms( $source_id, 'category', array( 'fields' => 'tt_ids' ) );
+		$source_cat_ttid = ( ! is_wp_error( $tt_ids ) && $tt_ids ) ? (int) $tt_ids[0] : 0;
+	}
+
 	if ( $has_wpml && $lang ) {
 		do_action( 'wpml_switch_language', $lang );
 	}
@@ -266,8 +273,12 @@ function eg_pub_handle( WP_REST_Request $r ) {
 	// --- Categoría por slug (en el idioma del post) ------------------------
 	if ( ! empty( $p['category_slug'] ) ) {
 		$term = get_term_by( 'slug', sanitize_title( $p['category_slug'] ), 'category' );
-		if ( ! $term ) {
-			return eg_pub_error( 'eg_category', 'El post se ha guardado (ID ' . $post_id . '), pero no existe la categoría "' . $p['category_slug'] . '" en este idioma.' );
+		if ( ! $term && ! empty( $p['category_name'] ) ) {
+			$term = eg_pub_create_category( sanitize_title( $p['category_slug'] ), sanitize_text_field( $p['category_name'] ), $has_wpml ? $lang : '', $source_cat_ttid );
+		}
+		if ( ! $term || is_wp_error( $term ) ) {
+			$why = is_wp_error( $term ) ? ' (' . $term->get_error_message() . ')' : '';
+			return eg_pub_error( 'eg_category', 'El post se ha guardado (ID ' . $post_id . '), pero no existe la categoría "' . $p['category_slug'] . '" en este idioma' . $why . '.' );
 		}
 		wp_set_post_terms( $post_id, array( (int) $term->term_id ), 'category', false );
 	}
@@ -364,6 +375,43 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		'image_note' => $image_note,
 		'message'    => '' === $image_note ? '' : 'Post guardado, pero falló: ' . $image_note,
 	), 200 );
+}
+
+/**
+ * Crea una categoría que no existe. Con WPML la asigna al idioma del post y,
+ * si es una traducción, la enlaza con la categoría del post original.
+ */
+function eg_pub_create_category( $slug, $name, $lang, $source_ttid ) {
+	$res = wp_insert_term( $name, 'category', array( 'slug' => $slug ) );
+	if ( is_wp_error( $res ) ) {
+		if ( 'term_exists' !== $res->get_error_code() ) {
+			return $res;
+		}
+		$term_id = (int) $res->get_error_data( 'term_exists' );
+	} else {
+		$term_id = (int) $res['term_id'];
+	}
+	$term = get_term( $term_id, 'category' );
+	if ( ! $term || is_wp_error( $term ) ) {
+		return $term;
+	}
+	if ( $lang ) {
+		$trid     = false;
+		$src_lang = null;
+		if ( $source_ttid ) {
+			$trid = apply_filters( 'wpml_element_trid', null, $source_ttid, 'tax_category' );
+			$src  = apply_filters( 'wpml_element_language_details', null, array( 'element_id' => $source_ttid, 'element_type' => 'category' ) );
+			$src_lang = $src ? $src->language_code : null;
+		}
+		do_action( 'wpml_set_element_language_details', array(
+			'element_id'           => (int) $term->term_taxonomy_id,
+			'element_type'         => 'tax_category',
+			'trid'                 => $trid ? $trid : false,
+			'language_code'        => $lang,
+			'source_language_code' => $src_lang,
+		) );
+	}
+	return $term;
 }
 
 function eg_pub_sideload_image( $post_id, $url, $b64, $args ) {

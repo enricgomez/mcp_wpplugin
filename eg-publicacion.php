@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EG Publicación
  * Description:       Endpoint /wp-json/eg/v1/publish que usa el escenario de Make de enricgomez Studio para crear o actualizar posts con idioma y traducción (WPML), categoría, SEO de Rank Math e imagen destacada. La clave de acceso está en Ajustes → EG Publicación. Se actualiza solo desde GitHub.
- * Version:           2.3.0
+ * Version:           2.4.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            enricgomez Studio
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const EG_PUB_VERSION = '2.3.0';
+const EG_PUB_VERSION = '2.4.0';
 const EG_PUB_REPO    = 'enricgomez/mcp_wpplugin';
 define( 'EG_PUB_BASENAME', plugin_basename( __FILE__ ) );
 

@@ -3,7 +3,7 @@
  * Actualizaciones desde las releases de GitHub (enricgomez/mcp_wpplugin).
  *
  * Cada release lleva adjunto eg-publicacion.zip (lo genera la GitHub Action al
- * crear un tag vX.Y.Z). Si el repositorio es privado, definir en wp-config.php:
+ * subir a main una versión nueva). Si el repositorio es privado, definir en wp-config.php:
  *   define( 'EG_PUB_GITHUB_TOKEN', 'github_pat_...' );  // permiso de solo lectura de Contents
  */
 

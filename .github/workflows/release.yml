@@ -1,10 +1,16 @@
 name: Release
 
-# Al subir un tag vX.Y.Z se crea la release con eg-publicacion.zip,
-# que es lo que descargan las webs para actualizarse.
+# Al subir a main un cambio de versión en eg-publicacion.php se crea la
+# release vX.Y.Z con eg-publicacion.zip, que es lo que descargan las webs
+# para actualizarse. Si la release de esa versión ya existe, no hace nada.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths:
+      - 'eg-publicacion.php'
+      - 'includes/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,21 +21,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Comprobar que la versión del plugin coincide con el tag
+      - name: Leer la versión del plugin
+        id: version
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
           HEADER=$(grep -m1 -E '^\s*\*\s*Version:' eg-publicacion.php | awk '{print $NF}')
           CONST=$(grep -m1 "EG_PUB_VERSION" eg-publicacion.php | sed -E "s/.*'([^']+)'.*/\1/")
-          echo "tag=$TAG cabecera=$HEADER constante=$CONST"
-          [ "$TAG" = "$HEADER" ] && [ "$TAG" = "$CONST" ]
+          echo "cabecera=$HEADER constante=$CONST"
+          if [ "$HEADER" != "$CONST" ]; then
+            echo "::error::La versión de la cabecera ($HEADER) y EG_PUB_VERSION ($CONST) no coinciden."
+            exit 1
+          fi
+          echo "tag=v$HEADER" >> "$GITHUB_OUTPUT"
+
+      - name: Comprobar si la release ya existe
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "La release ${{ steps.version.outputs.tag }} ya existe: no se publica nada."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Crear el zip
+        if: steps.exists.outputs.skip != 'true'
         run: |
           mkdir -p build/eg-publicacion
           cp -r eg-publicacion.php includes build/eg-publicacion/
           cd build && zip -r ../eg-publicacion.zip eg-publicacion
 
       - name: Publicar la release
+        if: steps.exists.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" eg-publicacion.zip --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" eg-publicacion.zip \
+            --target "$GITHUB_SHA" --title "${{ steps.version.outputs.tag }}" --generate-notes

@@ -16,8 +16,8 @@ Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que u
 ### Publicar una versión nueva
 
 1. Cambia la versión en `eg-publicacion.php` (cabecera `Version:` y constante `EG_PUB_VERSION`).
-2. Haz commit y crea el tag: `git tag v2.3.1 && git push origin main --tags`.
-3. La GitHub Action crea la release con el zip. Cada web la detecta en unas horas y se actualiza sola (o al momento con "Buscar actualizaciones" en la fila del plugin).
+2. Haz commit y súbelo a `main`.
+3. La GitHub Action crea la release `vX.Y.Z` con el zip (si esa versión ya tenía release, no hace nada). Cada web la detecta en unas horas y se actualiza sola (o al momento con "Buscar actualizaciones" en la fila del plugin).
 
 Si el repositorio es privado, cada web necesita en `wp-config.php`:
 

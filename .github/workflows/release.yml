@@ -1,0 +1,35 @@
+name: Release
+
+# Al subir un tag vX.Y.Z se crea la release con eg-publicacion.zip,
+# que es lo que descargan las webs para actualizarse.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar que la versión del plugin coincide con el tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          HEADER=$(grep -m1 -E '^\s*\*\s*Version:' eg-publicacion.php | awk '{print $NF}')
+          CONST=$(grep -m1 "EG_PUB_VERSION" eg-publicacion.php | sed -E "s/.*'([^']+)'.*/\1/")
+          echo "tag=$TAG cabecera=$HEADER constante=$CONST"
+          [ "$TAG" = "$HEADER" ] && [ "$TAG" = "$CONST" ]
+
+      - name: Crear el zip
+        run: |
+          mkdir -p build/eg-publicacion
+          cp -r eg-publicacion.php includes build/eg-publicacion/
+          cd build && zip -r ../eg-publicacion.zip eg-publicacion
+
+      - name: Publicar la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" eg-publicacion.zip --title "$GITHUB_REF_NAME" --generate-notes

@@ -57,10 +57,10 @@ function eg_pub_find_landing( $external_id ) {
 }
 
 /**
- * Recorre el JSON de Elementor: sustituye marcadores en los textos, cambia las imágenes
- * (por ID de adjunto de la maestra) y da un ID nuevo a cada elemento.
+ * Recorre el JSON de Elementor: cambia el texto de los widgets indicados, sustituye marcadores,
+ * cambia las imágenes (por ID de adjunto de la maestra) y da un ID nuevo a cada elemento.
  */
-function eg_pub_landing_walk( $node, $map, $imgs = array() ) {
+function eg_pub_landing_walk( $node, $map, $imgs = array(), $widgets = array() ) {
 	if ( is_string( $node ) ) {
 		return strtr( $node, $map );
 	}
@@ -75,8 +75,14 @@ function eg_pub_landing_walk( $node, $map, $imgs = array() ) {
 		$node['alt']  = (string) get_post_meta( $new, '_wp_attachment_image_alt', true );
 		return $node;
 	}
+	// Texto nuevo para un widget concreto de la maestra (por su ID de elemento).
+	if ( isset( $node['id'], $node['elType'], $widgets[ $node['id'] ] ) ) {
+		$field = 'text-editor' === ( $node['widgetType'] ?? '' ) ? 'editor' : 'title';
+		$node['settings']           = isset( $node['settings'] ) && is_array( $node['settings'] ) ? $node['settings'] : array();
+		$node['settings'][ $field ] = $widgets[ $node['id'] ];
+	}
 	foreach ( $node as $k => $v ) {
-		$node[ $k ] = eg_pub_landing_walk( $v, $map, $imgs );
+		$node[ $k ] = eg_pub_landing_walk( $v, $map, $imgs, $widgets );
 	}
 	if ( isset( $node['id'], $node['elType'] ) ) {
 		$node['id'] = substr( md5( uniqid( '', true ) . wp_rand() ), 0, 7 );
@@ -103,10 +109,42 @@ function eg_pub_landing_scan( $node, &$found, $widget = '' ) {
 	}
 	if ( isset( $node['elType'] ) ) {
 		$widget = isset( $node['widgetType'] ) ? $node['widgetType'] : $node['elType'];
+		$text   = $node['settings']['editor'] ?? ( $node['settings']['title'] ?? '' );
+		if ( 'widget' === $node['elType'] && is_string( $text ) && '' !== trim( $text ) ) {
+			$found['widgets'][] = array(
+				'id'     => (string) $node['id'],
+				'widget' => $widget,
+				'text'   => wp_html_excerpt( wp_strip_all_tags( $text ), 160, '…' ),
+			);
+		}
 	}
 	foreach ( $node as $v ) {
 		eg_pub_landing_scan( $v, $found, $widget );
 	}
+}
+
+/**
+ * Adjunto a partir de un ID de la biblioteca, una URL (se descarga) o {"id"|"url": …, "alt": "…"}.
+ */
+function eg_pub_landing_attachment( $img, $filename ) {
+	$alt = '';
+	if ( is_array( $img ) ) {
+		$alt = isset( $img['alt'] ) ? (string) $img['alt'] : '';
+		$img = isset( $img['id'] ) ? $img['id'] : ( $img['url'] ?? '' );
+	}
+	if ( is_numeric( $img ) ) {
+		if ( 'attachment' !== get_post_type( (int) $img ) ) {
+			return new WP_Error( 'eg_img', 'no existe el adjunto ' . $img );
+		}
+		if ( '' !== $alt ) {
+			update_post_meta( (int) $img, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+		}
+		return (int) $img;
+	}
+	if ( '' === trim( (string) $img ) ) {
+		return new WP_Error( 'eg_img', 'falta la imagen' );
+	}
+	return eg_pub_sideload_image( 0, (string) $img, '', array( 'filename' => $filename, 'alt' => $alt ) );
 }
 
 function eg_pub_landing_handle( WP_REST_Request $r ) {
@@ -128,12 +166,13 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	}
 
 	if ( ! empty( $p['dry_run'] ) ) {
-		$found = array( 'markers' => array(), 'images' => array() );
+		$found = array( 'markers' => array(), 'images' => array(), 'widgets' => array() );
 		eg_pub_landing_scan( $data, $found );
 		return new WP_REST_Response( array(
 			'ok'      => true,
 			'markers' => array_values( array_unique( $found['markers'] ) ),
 			'images'  => array_values( $found['images'] ),
+			'widgets' => $found['widgets'],
 		), 200 );
 	}
 
@@ -141,22 +180,7 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	$imgs  = array();
 	$notes = array();
 	foreach ( (array) ( $p['images'] ?? array() ) as $old => $new ) {
-		$alt = '';
-		if ( is_array( $new ) ) {
-			$alt = isset( $new['alt'] ) ? (string) $new['alt'] : '';
-			$new = isset( $new['id'] ) ? $new['id'] : ( $new['url'] ?? '' );
-		}
-		if ( is_numeric( $new ) ) {
-			$att = get_post( (int) $new ) && 'attachment' === get_post_type( (int) $new ) ? (int) $new : new WP_Error( 'eg_img', 'no existe el adjunto ' . $new );
-			if ( ! is_wp_error( $att ) && '' !== $alt ) {
-				update_post_meta( $att, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
-			}
-		} else {
-			$att = eg_pub_sideload_image( 0, (string) $new, '', array(
-				'filename' => sanitize_title( $p['slug'] ?? $title ) . '-' . ( count( $imgs ) + 1 ),
-				'alt'      => $alt,
-			) );
-		}
+		$att = eg_pub_landing_attachment( $new, sanitize_title( $p['slug'] ?? $title ) . '-' . ( count( $imgs ) + 1 ) );
 		if ( is_wp_error( $att ) ) {
 			$notes[] = 'imagen ' . $old . ': ' . $att->get_error_message();
 		} else {
@@ -169,7 +193,30 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	foreach ( (array) ( $p['replacements'] ?? array() ) as $key => $value ) {
 		$map[ '{{' . sanitize_key( $key ) . '}}' ] = wp_kses_post( (string) $value );
 	}
-	$data    = eg_pub_landing_walk( $data, $map, $imgs );
+
+	// Imágenes dentro del texto: {"img_cocinas": <ID> | "https://..." | {"id"|"url": …, "alt": "…", "align": "left"}}
+	// sustituye {{img_cocinas}} por una foto integrada (al lado del texto en escritorio, a todo el ancho en el móvil).
+	$inline_ids = array();
+	foreach ( (array) ( $p['inline_images'] ?? array() ) as $key => $img ) {
+		$align = is_array( $img ) && 'left' === ( $img['align'] ?? '' ) ? ' eg-landing-img--left' : '';
+		$att   = eg_pub_landing_attachment( $img, sanitize_title( $p['slug'] ?? $title ) . '-' . sanitize_key( $key ) );
+		if ( is_wp_error( $att ) ) {
+			$notes[] = 'imagen ' . $key . ': ' . $att->get_error_message();
+			$map[ '{{' . sanitize_key( $key ) . '}}' ] = '';
+			continue;
+		}
+		$inline_ids[ sanitize_key( $key ) ] = $att;
+		$map[ '{{' . sanitize_key( $key ) . '}}' ] = '<figure class="eg-landing-img' . $align . '">'
+			. wp_get_attachment_image( $att, 'large', false, array( 'loading' => 'lazy', 'sizes' => '(max-width: 767px) 100vw, 440px' ) )
+			. '</figure>';
+	}
+
+	// Texto completo de widgets concretos: {"<ID elemento>": "<h2>…</h2><p>…</p>"} (los IDs salen con dry_run).
+	$widgets = array();
+	foreach ( (array) ( $p['widgets'] ?? array() ) as $el_id => $html ) {
+		$widgets[ sanitize_key( $el_id ) ] = wp_kses_post( (string) $html );
+	}
+	$data    = eg_pub_landing_walk( $data, $map, $imgs, $widgets );
 	$left    = array();
 	$encoded = wp_json_encode( $data );
 	if ( preg_match_all( '/\{\{([a-z0-9_\-]+)\}\}/', $encoded, $m ) ) {
@@ -192,7 +239,7 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	$postarr = array(
 		'post_type'    => 'page',
 		'post_title'   => $title,
-		'post_content' => strtr( (string) $template->post_content, $map ),
+		'post_content' => '', // El contenido real está en _elementor_data.
 		'post_status'  => $status,
 		'post_parent'  => isset( $p['parent_id'] ) ? (int) $p['parent_id'] : 0,
 	);
@@ -253,6 +300,17 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 		}
 	}
 
+	// --- Imagen destacada: ID, URL o el nombre de una de inline_images ------------
+	if ( ! empty( $p['featured_image'] ) ) {
+		$feat = $p['featured_image'];
+		$feat = is_string( $feat ) && isset( $inline_ids[ sanitize_key( $feat ) ] ) ? $inline_ids[ sanitize_key( $feat ) ] : eg_pub_landing_attachment( $feat, sanitize_title( $p['slug'] ?? $title ) );
+		if ( is_wp_error( $feat ) ) {
+			$notes[] = 'imagen destacada: ' . $feat->get_error_message();
+		} else {
+			set_post_thumbnail( $post_id, (int) $feat );
+		}
+	}
+
 	clean_post_cache( $post_id );
 	return new WP_REST_Response( array(
 		'ok'           => true,
@@ -302,3 +360,27 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	}
 	return new WP_REST_Response( array( 'ok' => true, 'id' => (int) $id, 'from' => $path, 'to' => $to, 'code' => $code ), 200 );
 }
+
+/* ======================================================================
+ * Estilo de las fotos integradas en el texto de las landings.
+ * ==================================================================== */
+add_filter( 'body_class', function ( $classes ) {
+	if ( is_page() && get_post_meta( get_queried_object_id(), EG_PUB_META_LANDING, true ) ) {
+		$classes[] = 'eg-landing';
+	}
+	return $classes;
+} );
+
+add_action( 'wp_head', function () {
+	if ( ! is_page() || ! get_post_meta( get_queried_object_id(), EG_PUB_META_LANDING, true ) ) {
+		return;
+	}
+	echo '<style id="eg-landing-css">'
+		. '.eg-landing-img{float:right;width:42%;max-width:440px;margin:.4em 0 1.2em 2em}'
+		. '.eg-landing-img--left{float:left;margin:.4em 2em 1.2em 0}'
+		. '.eg-landing-img img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px}'
+		. '.eg-landing .elementor-widget-text-editor h2{clear:both}'
+		. '.eg-landing .elementor-widget-text-editor:after{content:"";display:table;clear:both}'
+		. '@media (max-width:767px){.eg-landing-img,.eg-landing-img--left{float:none;width:100%;max-width:none;margin:1em 0 1.2em}}'
+		. '</style>' . "\n";
+} );

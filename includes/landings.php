@@ -248,8 +248,9 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	}
 	$existing = eg_pub_find_landing( $external_id );
 	if ( $existing ) {
-		$postarr['ID'] = $existing;
-		$post_id       = wp_update_post( wp_slash( $postarr ), true );
+		$postarr['ID']            = $existing;
+		$postarr['page_template'] = ''; // La plantilla se copia abajo; así WordPress no valida la que ya tenía.
+		$post_id                  = wp_update_post( wp_slash( $postarr ), true );
 	} else {
 		$postarr['post_author'] = get_current_user_id();
 		$post_id                = wp_insert_post( wp_slash( $postarr ), true );

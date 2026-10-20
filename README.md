@@ -19,7 +19,10 @@ Desactivado por defecto. Se activa por web en Ajustes → EG Publicación → «
   - Obligatorios: `landing_id` (identificador propio, para poder actualizarla), `template_id` (ID de la página maestra) y `title`.
   - Opcionales: `replacements` (objeto: `{"municipio":"Blanes"}` sustituye `{{municipio}}` en todos los textos), `slug`, `parent_id`, `lang` y `translation_of` (el `landing_id` del original, para enlazarla en WPML), `seo_title`, `seo_description`, `focus_keyword` (también admiten marcadores).
   - `images`: cambia las imágenes de la maestra. Clave = ID de adjunto en la maestra; valor = ID de un adjunto de la biblioteca, una URL (se descarga) o `{"url"|"id": …, "alt": "…"}`. Sirve para imágenes, fondos y galerías.
-  - `dry_run: true` (solo con `template_id`): no crea nada y devuelve los marcadores y las imágenes (ID, URL y widget) de la maestra.
+  - `widgets`: texto completo de widgets concretos de la maestra por su ID de elemento (`{"4de652f": "Carpintería en {{municipio}}"}`). Cambia el título de un widget de título o el HTML de un editor de texto, así cualquier landing existente sirve de maestra sin tocarla.
+  - `inline_images`: fotos integradas en el texto. `{"img_cocinas": <ID> | "https://…" | {"id"|"url": …, "alt": "…", "align": "left"}}` sustituye `{{img_cocinas}}` por la foto con srcset, a un lado del texto en escritorio y a todo el ancho en el móvil (el CSS lo añade el plugin solo en estas páginas).
+  - `featured_image`: imagen destacada (ID, URL o el nombre de una de `inline_images`).
+  - `dry_run: true` (solo con `template_id`): no crea nada y devuelve los marcadores, las imágenes (ID, URL y widget) y los widgets de texto (ID y extracto) de la maestra.
   - La respuesta incluye `missing_keys` si quedan marcadores sin valor e `image_note` si falla alguna imagen.
 - `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 

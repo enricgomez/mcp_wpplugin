@@ -11,6 +11,16 @@ Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que u
 - `category_slug`: slug de la categoría en el idioma del post.
 - `category_name` (opcional, desde la v2.4.0): si la categoría no existe, se crea con este nombre. Con WPML se asigna al idioma del post y, en las traducciones, se enlaza con la categoría del original.
 
+### Landings de Elementor y redirecciones (opcional, desde la v2.5.0)
+
+Desactivado por defecto. Se activa por web en Ajustes → EG Publicación → «Landings de Elementor». Usa la misma clave `X-EG-Key`.
+
+- `POST /wp-json/eg/v1/landing`: clona una página maestra de Elementor y crea (o actualiza) una página, en borrador salvo que se pida `status: publish`.
+  - Obligatorios: `landing_id` (identificador propio, para poder actualizarla), `template_id` (ID de la página maestra) y `title`.
+  - Opcionales: `replacements` (objeto: `{"municipio":"Blanes"}` sustituye `{{municipio}}` en todos los textos), `slug`, `parent_id`, `lang` y `translation_of` (el `landing_id` del original, para enlazarla en WPML), `seo_title`, `seo_description`, `focus_keyword` (también admiten marcadores).
+  - La respuesta incluye `missing_keys` si quedan marcadores sin valor.
+- `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
+
 ### Instalación en una web
 
 1. Descarga `eg-publicacion.zip` de la última [release](https://github.com/enricgomez/mcp_wpplugin/releases/latest).

@@ -48,6 +48,9 @@ function eg_pub_settings_page() {
 		if ( isset( $_POST['eg_pub_author'] ) ) {
 			update_option( EG_PUB_OPTION_USER, max( 0, (int) $_POST['eg_pub_author'] ), false );
 		}
+		if ( isset( $_POST['eg_pub_author'] ) ) {
+			update_option( EG_PUB_OPTION_LANDINGS, ! empty( $_POST['eg_pub_landings'] ), false );
+		}
 		if ( isset( $_POST['eg_pub_mail'] ) ) {
 			$mails = array_filter( array_map( 'sanitize_email', array_map( 'trim', explode( ',', wp_unslash( $_POST['eg_pub_mail'] ) ) ) ) );
 			update_option( EG_PUB_OPTION_MAIL, implode( ', ', $mails ), false );
@@ -106,6 +109,17 @@ function eg_pub_settings_page() {
 						<input type="text" name="eg_pub_mail" class="regular-text" value="<?php echo esc_attr( $mail ); ?>">
 						<p class="description">Un email por post (con los enlaces de todos los idiomas) cuando un post programado desde Make pasa a publicado. Varias direcciones separadas por comas. Vacío = sin avisos.</p>
 						<label><input type="checkbox" name="eg_pub_test" value="1"> Enviar un email de prueba al guardar</label>
+					</td>
+				</tr>
+				<tr>
+					<th>Landings de Elementor (opcional)</th>
+					<td>
+						<label><input type="checkbox" name="eg_pub_landings" value="1" <?php checked( eg_pub_landings_enabled() ); ?>> Activar los endpoints de landings y redirecciones en esta web</label>
+						<?php if ( eg_pub_landings_enabled() ) : ?>
+							<p class="description"><code><?php echo esc_html( rest_url( 'eg/v1/landing' ) ); ?></code> y <code><?php echo esc_html( rest_url( 'eg/v1/redirect' ) ); ?></code>, con la misma clave.</p>
+						<?php else : ?>
+							<p class="description">Desactivado: la web solo acepta la publicación de posts.</p>
+						<?php endif; ?>
 					</td>
 				</tr>
 				<tr>

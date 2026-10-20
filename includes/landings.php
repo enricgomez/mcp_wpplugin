@@ -85,9 +85,136 @@ function eg_pub_landing_walk( $node, $map, $imgs = array(), $widgets = array() )
 		$node[ $k ] = eg_pub_landing_walk( $v, $map, $imgs, $widgets );
 	}
 	if ( isset( $node['id'], $node['elType'] ) ) {
-		$node['id'] = substr( md5( uniqid( '', true ) . wp_rand() ), 0, 7 );
+		$node['id'] = eg_pub_landing_el_id();
 	}
 	return $node;
+}
+
+function eg_pub_landing_el_id() {
+	return substr( md5( uniqid( '', true ) . wp_rand() ), 0, 7 );
+}
+
+/**
+ * Reparte cada widget de texto que lleve <h2> o fotos en widgets de Elementor: un título por cada <h2>,
+ * un texto por cada bloque y, donde hay una foto, una sección interior de dos columnas (foto y texto).
+ * Si el texto está en un contenedor (flexbox), las dos columnas son contenedores hijos.
+ * Dentro de una sección interior no se puede anidar otra: allí la foto va encima del texto.
+ */
+function eg_pub_landing_split( $elements, $inner = false, $in_container = false ) {
+	$out = array();
+	foreach ( $elements as $el ) {
+		if ( ! is_array( $el ) ) {
+			$out[] = $el;
+			continue;
+		}
+		$html = $el['settings']['editor'] ?? '';
+		if ( 'text-editor' === ( $el['widgetType'] ?? '' ) && is_string( $html ) && preg_match( '/<h2[\s>]|<!--eg-img:/i', $html ) ) {
+			$out = array_merge( $out, eg_pub_landing_split_html( $html, $el['settings'], $inner, $in_container ) );
+			continue;
+		}
+		if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
+			$el['elements'] = eg_pub_landing_split( $el['elements'], $inner || ! empty( $el['isInner'] ), 'container' === ( $el['elType'] ?? '' ) );
+		}
+		$out[] = $el;
+	}
+	return $out;
+}
+
+function eg_pub_landing_split_html( $html, $text_settings, $inner, $in_container = false ) {
+	unset( $text_settings['_element_id'] ); // El ID CSS no se puede repetir en la página.
+	$text_widget = function ( $content ) use ( $text_settings ) {
+		$text_settings['editor'] = $content;
+		return array( 'id' => eg_pub_landing_el_id(), 'elType' => 'widget', 'widgetType' => 'text-editor', 'settings' => $text_settings, 'elements' => array() );
+	};
+	$image_widget = function ( $att ) {
+		return array(
+			'id'         => eg_pub_landing_el_id(),
+			'elType'     => 'widget',
+			'widgetType' => 'image',
+			'settings'   => array(
+				'image'        => array( 'id' => (int) $att, 'url' => (string) wp_get_attachment_url( $att ), 'alt' => (string) get_post_meta( $att, '_wp_attachment_image_alt', true ), 'source' => 'library' ),
+				'image_size'   => 'large',
+				'_css_classes' => 'eg-landing-photo',
+			),
+			'elements'   => array(),
+		);
+	};
+	$column = function ( $children ) {
+		return array( 'id' => eg_pub_landing_el_id(), 'elType' => 'column', 'isInner' => true, 'settings' => array( '_column_size' => 50, '_inline_size' => null, 'content_position' => 'center' ), 'elements' => $children );
+	};
+
+	$out   = array();
+	$parts = preg_split( '#(<h2[^>]*>.*?</h2>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY );
+	foreach ( $parts as $part ) {
+		if ( preg_match( '#^<h2[^>]*>(.*)</h2>$#is', trim( $part ), $h ) ) {
+			// Sin los colores y la tipografía globales por defecto del widget: se ve igual que el <h2> que había en el texto.
+			$out[] = array(
+				'id'         => eg_pub_landing_el_id(),
+				'elType'     => 'widget',
+				'widgetType' => 'heading',
+				'settings'   => array( 'title' => trim( $h[1] ), 'header_size' => 'h2', '__globals__' => array( 'title_color' => '', 'typography_typography' => '' ) ),
+				'elements'   => array(),
+			);
+			continue;
+		}
+		$img  = preg_match( '#<!--eg-img:(\d+):(left|right)-->#', $part, $m ) ? $m : null;
+		$text = trim( preg_replace( '#<!--eg-img:\d+:(left|right)-->#', '', $part ) );
+		$text = trim( preg_replace( '#^(<p>\s*</p>\s*)+|(\s*<p>\s*</p>)+$#i', '', $text ) );
+		if ( ! $img ) {
+			if ( '' !== $text ) {
+				$out[] = $text_widget( $text );
+			}
+			continue;
+		}
+		if ( '' === $text || $inner ) {
+			$out[] = $image_widget( $img[1] );
+			if ( '' !== $text ) {
+				$out[] = $text_widget( $text );
+			}
+			continue;
+		}
+		$left = 'left' === $img[2];
+		if ( $in_container ) {
+			// Contenedores (flexbox): fila de dos contenedores al 50 % que pasa a columna en el móvil, con la foto arriba.
+			$half  = function ( $child ) {
+				return array(
+					'id'       => eg_pub_landing_el_id(),
+					'elType'   => 'container',
+					'isInner'  => true,
+					'settings' => array( 'content_width' => 'full', 'width' => array( 'unit' => '%', 'size' => 50 ), 'width_mobile' => array( 'unit' => '%', 'size' => 100 ), 'padding' => array( 'unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true ) ),
+					'elements' => array( $child ),
+				);
+			};
+			$photo = $half( $image_widget( $img[1] ) );
+			$copy  = $half( $text_widget( $text ) );
+			$out[] = array(
+				'id'       => eg_pub_landing_el_id(),
+				'elType'   => 'container',
+				'isInner'  => true,
+				'settings' => array(
+					'content_width'         => 'full',
+					'flex_direction'        => 'row',
+					'flex_direction_mobile' => $left ? 'column' : 'column-reverse',
+					'flex_align_items'      => 'center',
+					'flex_gap'              => array( 'unit' => 'px', 'size' => 40, 'column' => '40', 'row' => '20', 'isLinked' => false ),
+					'padding'               => array( 'unit' => 'px', 'top' => '0', 'right' => '0', 'bottom' => '0', 'left' => '0', 'isLinked' => true ),
+				),
+				'elements' => $left ? array( $photo, $copy ) : array( $copy, $photo ),
+			);
+			continue;
+		}
+		$photo = $column( array( $image_widget( $img[1] ) ) );
+		$copy  = $column( array( $text_widget( $text ) ) );
+		$out[] = array(
+			'id'       => eg_pub_landing_el_id(),
+			'elType'   => 'section',
+			'isInner'  => true,
+			// En el móvil las columnas se apilan con la foto siempre arriba.
+			'settings' => $left ? array( 'gap' => 'extended' ) : array( 'gap' => 'extended', 'reverse_order_mobile' => 'reverse-mobile' ),
+			'elements' => $left ? array( $photo, $copy ) : array( $copy, $photo ),
+		);
+	}
+	return $out;
 }
 
 /**
@@ -196,9 +323,12 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 
 	// Imágenes dentro del texto: {"img_cocinas": <ID> | "https://..." | {"id"|"url": …, "alt": "…", "align": "left"}}
 	// sustituye {{img_cocinas}} por una foto integrada (al lado del texto en escritorio, a todo el ancho en el móvil).
+	// Con "layout": "widgets" el texto se reparte en widgets de Elementor (título, texto e imagen en dos columnas).
+	$as_widgets = isset( $p['layout'] ) && 'widgets' === $p['layout'];
 	$inline_ids = array();
 	foreach ( (array) ( $p['inline_images'] ?? array() ) as $key => $img ) {
-		$align = is_array( $img ) && 'left' === ( $img['align'] ?? '' ) ? ' eg-landing-img--left' : '';
+		$left  = is_array( $img ) && 'left' === ( $img['align'] ?? '' );
+		$align = $left ? ' eg-landing-img--left' : '';
 		$att   = eg_pub_landing_attachment( $img, sanitize_title( $p['slug'] ?? $title ) . '-' . sanitize_key( $key ) );
 		if ( is_wp_error( $att ) ) {
 			$notes[] = 'imagen ' . $key . ': ' . $att->get_error_message();
@@ -206,6 +336,10 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 			continue;
 		}
 		$inline_ids[ sanitize_key( $key ) ] = $att;
+		if ( $as_widgets ) {
+			$map[ '{{' . sanitize_key( $key ) . '}}' ] = '<!--eg-img:' . $att . ':' . ( $left ? 'left' : 'right' ) . '-->';
+			continue;
+		}
 		$map[ '{{' . sanitize_key( $key ) . '}}' ] = '<figure class="eg-landing-img' . $align . '">'
 			. wp_get_attachment_image( $att, 'large', false, array( 'loading' => 'lazy', 'sizes' => '(max-width: 767px) 100vw, 440px' ) )
 			. '</figure>';
@@ -217,6 +351,9 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 		$widgets[ sanitize_key( $el_id ) ] = wp_kses_post( (string) $html );
 	}
 	$data    = eg_pub_landing_walk( $data, $map, $imgs, $widgets );
+	if ( $as_widgets ) {
+		$data = eg_pub_landing_split( $data );
+	}
 	$left    = array();
 	$encoded = wp_json_encode( $data );
 	if ( preg_match_all( '/\{\{([a-z0-9_\-]+)\}\}/', $encoded, $m ) ) {
@@ -380,6 +517,7 @@ add_action( 'wp_head', function () {
 		. '.eg-landing-img{float:right;width:42%;max-width:440px;margin:.4em 0 1.2em 2em}'
 		. '.eg-landing-img--left{float:left;margin:.4em 2em 1.2em 0}'
 		. '.eg-landing-img img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px}'
+		. '.eg-landing-photo img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px}'
 		. '.eg-landing .elementor-widget-text-editor h2{clear:both}'
 		. '.eg-landing .elementor-widget-text-editor:after{content:"";display:table;clear:both}'
 		. '@media (max-width:767px){.eg-landing-img,.eg-landing-img--left{float:none;width:100%;max-width:none;margin:1em 0 1.2em}}'

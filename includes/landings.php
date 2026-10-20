@@ -4,6 +4,7 @@
  *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}.
  *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
  *   POST /wp-json/eg/v1/menu      añade páginas a un menú (y quita las que se indiquen).
+ *   POST /wp-json/eg/v1/text      busca y sustituye textos en toda la web (includes/textos.php).
  * Usan la misma clave X-EG-Key que /publish.
  */
 

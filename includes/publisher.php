@@ -49,7 +49,11 @@ function eg_pub_settings_page() {
 			update_option( EG_PUB_OPTION_USER, max( 0, (int) $_POST['eg_pub_author'] ), false );
 		}
 		if ( isset( $_POST['eg_pub_author'] ) ) {
-			update_option( EG_PUB_OPTION_LANDINGS, ! empty( $_POST['eg_pub_landings'] ), false );
+			eg_pub_save_modules( isset( $_POST['eg_pub_modules'] ) ? (array) wp_unslash( $_POST['eg_pub_modules'] ) : array() );
+			if ( (bool) get_option( EG_PUB_OPTION_HOLD, false ) !== ! empty( $_POST['eg_pub_hold'] ) ) {
+				update_option( EG_PUB_OPTION_HOLD, ! empty( $_POST['eg_pub_hold'] ), false );
+				delete_site_transient( 'update_plugins' ); // Que WordPress vuelva a mirar si ofrece la versión nueva.
+			}
 		}
 		if ( isset( $_POST['eg_pub_mail'] ) ) {
 			$mails = array_filter( array_map( 'sanitize_email', array_map( 'trim', explode( ',', wp_unslash( $_POST['eg_pub_mail'] ) ) ) ) );
@@ -112,14 +116,30 @@ function eg_pub_settings_page() {
 					</td>
 				</tr>
 				<tr>
-					<th>Landings de Elementor (opcional)</th>
+					<th>Módulos opcionales</th>
 					<td>
-						<label><input type="checkbox" name="eg_pub_landings" value="1" <?php checked( eg_pub_landings_enabled() ); ?>> Activar los endpoints de landings y redirecciones en esta web</label>
-						<?php if ( eg_pub_landings_enabled() ) : ?>
-							<p class="description"><code><?php echo esc_html( rest_url( 'eg/v1/landing' ) ); ?></code> y <code><?php echo esc_html( rest_url( 'eg/v1/redirect' ) ); ?></code>, con la misma clave.</p>
-						<?php else : ?>
-							<p class="description">Desactivado: la web solo acepta la publicación de posts.</p>
-						<?php endif; ?>
+						<?php foreach ( eg_pub_modules() as $slug => $module ) : ?>
+							<label style="display:block;margin-bottom:6px">
+								<input type="checkbox" name="eg_pub_modules[]" value="<?php echo esc_attr( $slug ); ?>" <?php checked( eg_pub_module_enabled( $slug ) ); ?>>
+								<strong><?php echo esc_html( $module['label'] ); ?></strong><?php echo ! empty( $module['client'] ) ? ' <em>(' . esc_html( $module['client'] ) . ')</em>' : ''; ?>:
+								<?php echo esc_html( $module['description'] ); ?>
+								<?php foreach ( (array) ( $module['routes'] ?? array() ) as $route ) : ?>
+									<code>/<?php echo esc_html( $route ); ?></code>
+								<?php endforeach; ?>
+							</label>
+						<?php endforeach; ?>
+						<p class="description">Usan la misma clave. Un módulo apagado no responde ni aparece como ability. La publicación de posts está siempre activa.</p>
+					</td>
+				</tr>
+				<tr>
+					<th>Actualizaciones</th>
+					<td>
+						<label><input type="checkbox" name="eg_pub_hold" value="1" <?php checked( eg_pub_update_held() ); ?> <?php disabled( defined( 'EG_PUB_HOLD_VERSION' ) ); ?>> Mantener esta web en la versión <?php echo esc_html( EG_PUB_VERSION ); ?> (no actualizar sola)</label>
+						<?php $eg_pub_latest = eg_pub_gh_release(); ?>
+						<p class="description">
+							<?php echo $eg_pub_latest ? 'Última versión publicada: ' . esc_html( $eg_pub_latest['version'] ) . '. ' : ''; ?>
+							<?php echo defined( 'EG_PUB_HOLD_VERSION' ) ? 'Fijado en wp-config.php con EG_PUB_HOLD_VERSION.' : 'Desmárcalo para volver a recibir las versiones nuevas.'; ?>
+						</p>
 					</td>
 				</tr>
 				<tr>

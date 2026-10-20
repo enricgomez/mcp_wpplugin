@@ -11,9 +11,36 @@ Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que u
 - `category_slug`: slug de la categoría en el idioma del post.
 - `category_name` (opcional, desde la v2.4.0): si la categoría no existe, se crea con este nombre. Con WPML se asigna al idioma del post y, en las traducciones, se enlaza con la categoría del original.
 
-### Landings de Elementor y redirecciones (opcional, desde la v2.5.0)
+### Módulos opcionales (desde la v2.6.0)
 
-Desactivado por defecto. Se activa por web en Ajustes → EG Publicación → «Landings de Elementor». Usa la misma clave `X-EG-Key`.
+Todo lo que no es publicar posts va en módulos que se encienden por web en Ajustes → EG Publicación → «Módulos opcionales». Un módulo apagado no registra sus endpoints (responden 404) ni sus abilities. Usan la misma clave `X-EG-Key`.
+
+| Módulo | Endpoints | Capacidad del autor |
+| --- | --- | --- |
+| Landings | `/landing` | `publish_pages` |
+| Textos | `/text` | `manage_options` |
+| Plantillas | `/template`, `/append` | `edit_pages` |
+| Menús | `/menu` | `edit_theme_options` |
+| Redirecciones | `/redirect` | `manage_options` |
+
+Las webs que venían de la 2.5.x con el interruptor único de landings encendido siguen con todos los módulos generales encendidos hasta que se guarden los ajustes.
+
+**Módulos de un cliente.** Lo que solo sirve a una web va en `includes/clientes/<cliente>.php`, dentro del mismo plugin: se carga en todas las webs, se añade a la lista con el filtro `eg_pub_modules` (con `'client' => 'nombre'`) y registra sus endpoints solo si `eg_pub_module_enabled( 'slug' )`. Nunca se enciende solo, ni siquiera en las webs que venían de la 2.5.x.
+
+### Mantener una web en una versión (desde la v2.6.0)
+
+En Ajustes → EG Publicación → «Actualizaciones», la casilla «Mantener esta web en la versión X» hace que la web deje de ofrecer y de instalar sola las versiones nuevas. También se puede fijar en `wp-config.php` con `define( 'EG_PUB_HOLD_VERSION', true );`.
+
+### Abilities y MCP (desde la v2.6.0, con WordPress 6.9 o superior)
+
+Las mismas funciones se registran como Abilities de WordPress (categoría `eg-publicacion`), así que un cliente MCP como Claude las puede usar con el [MCP Adapter](https://github.com/WordPress/mcp-adapter) oficial, entrando con un usuario de WordPress y su contraseña de aplicación. Los endpoints de Make no cambian. Cada ability comprueba la capacidad del usuario que la usa, igual que el endpoint.
+
+- Siempre: `eg-publicacion/status` (solo lectura: versión, módulos, idiomas y plugins de la web) y `eg-publicacion/publish-post` (publica como el autor configurado).
+- Por módulo: `create-landing`, `search-text` (solo lectura), `replace-text`, `save-template`, `append-template`, `edit-menu` y `create-redirect`.
+
+Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funciona igual.
+
+### Endpoints de los módulos
 
 - `POST /wp-json/eg/v1/landing`: clona una página maestra de Elementor y crea (o actualiza) una página, en borrador salvo que se pida `status: publish`.
   - Obligatorios: `landing_id` (identificador propio, para poder actualizarla), `template_id` (ID de la página maestra) y `title`.

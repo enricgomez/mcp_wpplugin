@@ -1,6 +1,6 @@
 <?php
 /**
- * Buscar y sustituir textos en toda la web (parte del módulo opcional de landings):
+ * Buscar y sustituir textos en toda la web (módulo opcional «Textos»):
  *   POST /wp-json/eg/v1/text
  * Sin "replace" lista dónde aparece cada cadena de "search" (títulos, contenido, extracto, JSON de Elementor,
  * plantillas de cabecera/pie, menús, metas de Rank Math y algunas opciones). Con "replace" sustituye, solo en
@@ -17,16 +17,13 @@ const EG_PUB_TEXT_OPTIONS = array( 'blogname', 'blogdescription', 'rank-math-opt
 const EG_PUB_TEXT_SKIP_KEYS = array( 'url', 'id', 'elType', 'widgetType', '_element_id', '_css_classes', 'css_classes', 'link', 'custom_css', 'html_tag' );
 
 add_action( 'rest_api_init', function () {
-	if ( ! eg_pub_landings_enabled() ) {
+	if ( ! eg_pub_module_enabled( 'textos' ) ) {
 		return;
 	}
 	register_rest_route( 'eg/v1', '/text', array(
 		'methods'             => 'POST',
 		'callback'            => 'eg_pub_text_handle',
-		'permission_callback' => function ( WP_REST_Request $r ) {
-			$ok = eg_pub_permission( $r );
-			return ( true === $ok && ! current_user_can( 'manage_options' ) ) ? false : $ok;
-		},
+		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
 	) );
 } );
 

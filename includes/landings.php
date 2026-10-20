@@ -1,6 +1,6 @@
 <?php
 /**
- * Módulo opcional de landings (desactivado por defecto, se activa en Ajustes → EG Publicación):
+ * Módulos opcionales (desactivados por defecto, cada uno se activa en Ajustes → EG Publicación; ver includes/modulos.php):
  *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}.
  *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
  *   POST /wp-json/eg/v1/menu      añade páginas a un menú (y quita las que se indiquen).
@@ -16,38 +16,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 const EG_PUB_OPTION_LANDINGS = 'eg_pub_landings_enabled';
 const EG_PUB_META_LANDING    = '_eg_landing_id';
 
+/** Hay algún módulo opcional activo (antes de la 2.6.0 había un único interruptor para todos). */
 function eg_pub_landings_enabled() {
-	return (bool) get_option( EG_PUB_OPTION_LANDINGS, false );
+	return (bool) eg_pub_active_modules();
 }
 
 add_action( 'rest_api_init', function () {
-	if ( ! eg_pub_landings_enabled() ) {
-		return;
+	$routes = array(
+		'landing'  => array( 'landings', 'eg_pub_landing_handle', 'publish_pages' ),
+		'menu'     => array( 'menus', 'eg_pub_menu_handle', 'edit_theme_options' ),
+		'redirect' => array( 'redirecciones', 'eg_pub_redirect_handle', 'manage_options' ),
+	);
+	foreach ( $routes as $route => list( $module, $callback, $cap ) ) {
+		if ( eg_pub_module_enabled( $module ) ) {
+			register_rest_route( 'eg/v1', '/' . $route, array(
+				'methods'             => 'POST',
+				'callback'            => $callback,
+				'permission_callback' => eg_pub_module_permission( $cap ),
+			) );
+		}
 	}
-	register_rest_route( 'eg/v1', '/landing', array(
-		'methods'             => 'POST',
-		'callback'            => 'eg_pub_landing_handle',
-		'permission_callback' => function ( WP_REST_Request $r ) {
-			$ok = eg_pub_permission( $r );
-			return ( true === $ok && ! current_user_can( 'publish_pages' ) ) ? false : $ok;
-		},
-	) );
-	register_rest_route( 'eg/v1', '/menu', array(
-		'methods'             => 'POST',
-		'callback'            => 'eg_pub_menu_handle',
-		'permission_callback' => function ( WP_REST_Request $r ) {
-			$ok = eg_pub_permission( $r );
-			return ( true === $ok && ! current_user_can( 'edit_theme_options' ) ) ? false : $ok;
-		},
-	) );
-	register_rest_route( 'eg/v1', '/redirect', array(
-		'methods'             => 'POST',
-		'callback'            => 'eg_pub_redirect_handle',
-		'permission_callback' => function ( WP_REST_Request $r ) {
-			$ok = eg_pub_permission( $r );
-			return ( true === $ok && ! current_user_can( 'manage_options' ) ) ? false : $ok;
-		},
-	) );
 } );
 
 function eg_pub_find_landing( $external_id ) {

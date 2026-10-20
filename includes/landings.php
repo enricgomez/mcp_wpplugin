@@ -5,6 +5,7 @@
  *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
  *   POST /wp-json/eg/v1/menu      añade páginas a un menú (y quita las que se indiquen).
  *   POST /wp-json/eg/v1/text      busca y sustituye textos en toda la web (includes/textos.php).
+ *   POST /wp-json/eg/v1/template  y /append: plantillas de Elementor reutilizables al pie de páginas (includes/plantillas.php).
  * Usan la misma clave X-EG-Key que /publish.
  */
 

@@ -25,6 +25,7 @@ Desactivado por defecto. Se activa por web en Ajustes → EG Publicación → «
   - `featured_image`: imagen destacada (ID, URL o el nombre de una de `inline_images`).
   - `dry_run: true` (solo con `template_id`): no crea nada y devuelve los marcadores, las imágenes (ID, URL y widget) y los widgets de texto (ID y extracto) de la maestra.
   - La respuesta incluye `missing_keys` si quedan marcadores sin valor e `image_note` si falla alguna imagen.
+- `POST /wp-json/eg/v1/menu` (desde la v2.5.2): añade páginas a un menú. Parámetros `menu` (nombre o ID), `lang` (con WPML usa la traducción del menú en ese idioma), `items` (`[{"landing_id"|"page_id": …, "title": "…"}]`; si la página ya está en el menú solo cambia el texto) y `remove_titles` (quita los elementos cuyo texto contenga alguna de esas cadenas). Con `dry_run` lista los menús y los elementos del menú.
 - `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 
 ### Instalación en una web

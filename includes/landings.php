@@ -3,6 +3,7 @@
  * Módulo opcional de landings (desactivado por defecto, se activa en Ajustes → EG Publicación):
  *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}.
  *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
+ *   POST /wp-json/eg/v1/menu      añade páginas a un menú (y quita las que se indiquen).
  * Usan la misma clave X-EG-Key que /publish.
  */
 
@@ -27,6 +28,14 @@ add_action( 'rest_api_init', function () {
 		'permission_callback' => function ( WP_REST_Request $r ) {
 			$ok = eg_pub_permission( $r );
 			return ( true === $ok && ! current_user_can( 'publish_pages' ) ) ? false : $ok;
+		},
+	) );
+	register_rest_route( 'eg/v1', '/menu', array(
+		'methods'             => 'POST',
+		'callback'            => 'eg_pub_menu_handle',
+		'permission_callback' => function ( WP_REST_Request $r ) {
+			$ok = eg_pub_permission( $r );
+			return ( true === $ok && ! current_user_can( 'edit_theme_options' ) ) ? false : $ok;
 		},
 	) );
 	register_rest_route( 'eg/v1', '/redirect', array(
@@ -460,6 +469,94 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 		'missing_keys' => $left,
 		'image_note'   => implode( ' | ', $notes ),
 		'message'      => trim( ( $left ? 'Quedan marcadores sin valor: ' . implode( ', ', $left ) . '. ' : '' ) . ( $notes ? 'Imágenes que fallaron: ' . implode( ' | ', $notes ) : '' ) ),
+	), 200 );
+}
+
+/**
+ * Añade páginas a un menú de WordPress (por nombre o ID; con WPML, la traducción del menú en "lang").
+ * Si la página ya está en el menú solo cambia su texto. "remove_titles" quita los elementos cuyo texto
+ * contenga alguna de esas cadenas. Con "dry_run" lista los menús y los elementos del menú indicado.
+ */
+function eg_pub_menu_handle( WP_REST_Request $r ) {
+	$p    = $r->get_params();
+	$lang = isset( $p['lang'] ) ? sanitize_key( $p['lang'] ) : '';
+
+	$menus = array();
+	foreach ( wp_get_nav_menus() as $m ) {
+		$info    = apply_filters( 'wpml_element_language_details', null, array( 'element_id' => $m->term_taxonomy_id, 'element_type' => 'tax_nav_menu' ) );
+		$menus[] = array( 'id' => (int) $m->term_id, 'name' => $m->name, 'lang' => $info ? $info->language_code : '' );
+	}
+	$menu = isset( $p['menu'] ) ? wp_get_nav_menu_object( is_numeric( $p['menu'] ) ? (int) $p['menu'] : (string) $p['menu'] ) : false;
+	if ( $menu && $lang ) {
+		$tr   = apply_filters( 'wpml_object_id', $menu->term_id, 'nav_menu', false, $lang );
+		$menu = $tr ? wp_get_nav_menu_object( (int) $tr ) : $menu;
+	}
+	$items_of = function ( $menu_id ) {
+		$out = array();
+		foreach ( (array) wp_get_nav_menu_items( $menu_id, array( 'post_status' => 'any' ) ) as $it ) {
+			$out[] = array( 'id' => (int) $it->ID, 'title' => $it->title, 'object_id' => (int) $it->object_id, 'url' => $it->url );
+		}
+		return $out;
+	};
+	if ( ! empty( $p['dry_run'] ) ) {
+		return new WP_REST_Response( array( 'ok' => true, 'menus' => $menus, 'menu' => $menu ? (int) $menu->term_id : 0, 'items' => $menu ? $items_of( $menu->term_id ) : array() ), 200 );
+	}
+	if ( ! $menu ) {
+		return eg_pub_error( 'eg_menu', 'No existe el menú indicado. Menús: ' . wp_json_encode( $menus ), 404 );
+	}
+	if ( $lang ) {
+		do_action( 'wpml_switch_language', $lang );
+	}
+
+	$existing = $items_of( $menu->term_id );
+	$removed  = array();
+	foreach ( (array) ( $p['remove_titles'] ?? array() ) as $needle ) {
+		$needle = (string) $needle;
+		foreach ( $existing as $k => $it ) {
+			if ( '' !== $needle && false !== stripos( $it['title'], $needle ) ) {
+				wp_delete_post( $it['id'], true );
+				$removed[] = $it['title'];
+				unset( $existing[ $k ] );
+			}
+		}
+	}
+
+	$added  = array();
+	$notes  = array();
+	foreach ( (array) ( $p['items'] ?? array() ) as $item ) {
+		$page_id = ! empty( $item['landing_id'] ) ? eg_pub_find_landing( $item['landing_id'] ) : (int) ( $item['page_id'] ?? 0 );
+		if ( ! $page_id || 'page' !== get_post_type( $page_id ) ) {
+			$notes[] = 'no encuentro la página ' . ( $item['landing_id'] ?? ( $item['page_id'] ?? '' ) );
+			continue;
+		}
+		$title   = isset( $item['title'] ) ? wp_strip_all_tags( $item['title'] ) : get_the_title( $page_id );
+		$item_id = 0;
+		foreach ( $existing as $it ) {
+			if ( $it['object_id'] === $page_id ) {
+				$item_id = $it['id'];
+			}
+		}
+		$res = wp_update_nav_menu_item( $menu->term_id, $item_id, array(
+			'menu-item-object-id' => $page_id,
+			'menu-item-object'    => 'page',
+			'menu-item-type'      => 'post_type',
+			'menu-item-title'     => $title,
+			'menu-item-status'    => 'publish',
+			'menu-item-position'  => $item_id ? (int) get_post_field( 'menu_order', $item_id ) : 0,
+		) );
+		if ( is_wp_error( $res ) ) {
+			$notes[] = $title . ': ' . $res->get_error_message();
+		} else {
+			$added[] = $title;
+		}
+	}
+	return new WP_REST_Response( array(
+		'ok'      => true,
+		'menu'    => (int) $menu->term_id,
+		'added'   => $added,
+		'removed' => $removed,
+		'message' => implode( ' | ', $notes ),
+		'items'   => $items_of( $menu->term_id ),
 	), 200 );
 }
 

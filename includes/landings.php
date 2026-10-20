@@ -523,7 +523,9 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 
 	$added  = array();
 	$notes  = array();
+	$pos    = 0;
 	foreach ( (array) ( $p['items'] ?? array() ) as $item ) {
+		++$pos; // Las páginas quedan en el orden de "items" (con WPML el menú puede no listar sus elementos durante la petición).
 		$page_id = ! empty( $item['landing_id'] ) ? eg_pub_find_landing( $item['landing_id'] ) : (int) ( $item['page_id'] ?? 0 );
 		if ( ! $page_id || 'page' !== get_post_type( $page_id ) ) {
 			$notes[] = 'no encuentro la página ' . ( $item['landing_id'] ?? ( $item['page_id'] ?? '' ) );
@@ -542,7 +544,7 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 			'menu-item-type'      => 'post_type',
 			'menu-item-title'     => $title,
 			'menu-item-status'    => 'publish',
-			'menu-item-position'  => $item_id ? (int) get_post_field( 'menu_order', $item_id ) : 0,
+			'menu-item-position'  => $pos,
 		) );
 		if ( is_wp_error( $res ) ) {
 			$notes[] = $title . ': ' . $res->get_error_message();

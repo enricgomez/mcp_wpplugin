@@ -57,22 +57,56 @@ function eg_pub_find_landing( $external_id ) {
 }
 
 /**
- * Recorre el JSON de Elementor: sustituye marcadores en los textos y da un ID nuevo a cada elemento.
+ * Recorre el JSON de Elementor: sustituye marcadores en los textos, cambia las imágenes
+ * (por ID de adjunto de la maestra) y da un ID nuevo a cada elemento.
  */
-function eg_pub_landing_walk( $node, $map ) {
+function eg_pub_landing_walk( $node, $map, $imgs = array() ) {
 	if ( is_string( $node ) ) {
 		return strtr( $node, $map );
 	}
 	if ( ! is_array( $node ) ) {
 		return $node;
 	}
+	// Control de imagen de Elementor: {"url": "...", "id": 123}.
+	if ( isset( $node['id'], $node['url'] ) && ! isset( $node['elType'] ) && isset( $imgs[ (int) $node['id'] ] ) ) {
+		$new          = $imgs[ (int) $node['id'] ];
+		$node['id']   = $new;
+		$node['url']  = (string) wp_get_attachment_url( $new );
+		$node['alt']  = (string) get_post_meta( $new, '_wp_attachment_image_alt', true );
+		return $node;
+	}
 	foreach ( $node as $k => $v ) {
-		$node[ $k ] = eg_pub_landing_walk( $v, $map );
+		$node[ $k ] = eg_pub_landing_walk( $v, $map, $imgs );
 	}
 	if ( isset( $node['id'], $node['elType'] ) ) {
 		$node['id'] = substr( md5( uniqid( '', true ) . wp_rand() ), 0, 7 );
 	}
 	return $node;
+}
+
+/**
+ * Lista los marcadores y las imágenes de la maestra (para preparar la llamada con dry_run).
+ */
+function eg_pub_landing_scan( $node, &$found, $widget = '' ) {
+	if ( is_string( $node ) ) {
+		if ( preg_match_all( '/\{\{([a-z0-9_\-]+)\}\}/', $node, $m ) ) {
+			$found['markers'] = array_merge( $found['markers'], $m[1] );
+		}
+		return;
+	}
+	if ( ! is_array( $node ) ) {
+		return;
+	}
+	if ( isset( $node['id'], $node['url'] ) && ! isset( $node['elType'] ) && (int) $node['id'] ) {
+		$found['images'][ (int) $node['id'] ] = array( 'id' => (int) $node['id'], 'url' => (string) $node['url'], 'widget' => $widget );
+		return;
+	}
+	if ( isset( $node['elType'] ) ) {
+		$widget = isset( $node['widgetType'] ) ? $node['widgetType'] : $node['elType'];
+	}
+	foreach ( $node as $v ) {
+		eg_pub_landing_scan( $v, $found, $widget );
+	}
 }
 
 function eg_pub_landing_handle( WP_REST_Request $r ) {
@@ -83,7 +117,7 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	$lang        = isset( $p['lang'] ) ? sanitize_key( $p['lang'] ) : '';
 	$title       = isset( $p['title'] ) ? wp_strip_all_tags( $p['title'] ) : '';
 
-	if ( '' === $external_id || ! $template_id || '' === $title ) {
+	if ( ! $template_id || ( empty( $p['dry_run'] ) && ( '' === $external_id || '' === $title ) ) ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: landing_id, template_id o title.' );
 	}
 	$template = get_post( $template_id );
@@ -93,12 +127,49 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 		return eg_pub_error( 'eg_template', 'La página maestra ' . $template_id . ' no existe o no está hecha con Elementor.', 404 );
 	}
 
+	if ( ! empty( $p['dry_run'] ) ) {
+		$found = array( 'markers' => array(), 'images' => array() );
+		eg_pub_landing_scan( $data, $found );
+		return new WP_REST_Response( array(
+			'ok'      => true,
+			'markers' => array_values( array_unique( $found['markers'] ) ),
+			'images'  => array_values( $found['images'] ),
+		), 200 );
+	}
+
+	// Imágenes: {"<ID adjunto de la maestra>": <ID de adjunto> | "https://..." | {"url": "...", "alt": "..."}}.
+	$imgs  = array();
+	$notes = array();
+	foreach ( (array) ( $p['images'] ?? array() ) as $old => $new ) {
+		$alt = '';
+		if ( is_array( $new ) ) {
+			$alt = isset( $new['alt'] ) ? (string) $new['alt'] : '';
+			$new = isset( $new['id'] ) ? $new['id'] : ( $new['url'] ?? '' );
+		}
+		if ( is_numeric( $new ) ) {
+			$att = get_post( (int) $new ) && 'attachment' === get_post_type( (int) $new ) ? (int) $new : new WP_Error( 'eg_img', 'no existe el adjunto ' . $new );
+			if ( ! is_wp_error( $att ) && '' !== $alt ) {
+				update_post_meta( $att, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+			}
+		} else {
+			$att = eg_pub_sideload_image( 0, (string) $new, '', array(
+				'filename' => sanitize_title( $p['slug'] ?? $title ) . '-' . ( count( $imgs ) + 1 ),
+				'alt'      => $alt,
+			) );
+		}
+		if ( is_wp_error( $att ) ) {
+			$notes[] = 'imagen ' . $old . ': ' . $att->get_error_message();
+		} else {
+			$imgs[ (int) $old ] = (int) $att;
+		}
+	}
+
 	// Marcadores: {"municipio":"Blanes"} sustituye {{municipio}}.
 	$map = array();
 	foreach ( (array) ( $p['replacements'] ?? array() ) as $key => $value ) {
 		$map[ '{{' . sanitize_key( $key ) . '}}' ] = wp_kses_post( (string) $value );
 	}
-	$data    = eg_pub_landing_walk( $data, $map );
+	$data    = eg_pub_landing_walk( $data, $map, $imgs );
 	$left    = array();
 	$encoded = wp_json_encode( $data );
 	if ( preg_match_all( '/\{\{([a-z0-9_\-]+)\}\}/', $encoded, $m ) ) {
@@ -191,7 +262,8 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 		'edit'         => admin_url( 'post.php?post=' . $post_id . '&action=elementor' ),
 		'lang'         => $lang,
 		'missing_keys' => $left,
-		'message'      => $left ? 'Página guardada, pero quedan marcadores sin valor: ' . implode( ', ', $left ) : '',
+		'image_note'   => implode( ' | ', $notes ),
+		'message'      => trim( ( $left ? 'Quedan marcadores sin valor: ' . implode( ', ', $left ) . '. ' : '' ) . ( $notes ? 'Imágenes que fallaron: ' . implode( ' | ', $notes ) : '' ) ),
 	), 200 );
 }
 

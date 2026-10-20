@@ -18,7 +18,9 @@ Desactivado por defecto. Se activa por web en Ajustes → EG Publicación → «
 - `POST /wp-json/eg/v1/landing`: clona una página maestra de Elementor y crea (o actualiza) una página, en borrador salvo que se pida `status: publish`.
   - Obligatorios: `landing_id` (identificador propio, para poder actualizarla), `template_id` (ID de la página maestra) y `title`.
   - Opcionales: `replacements` (objeto: `{"municipio":"Blanes"}` sustituye `{{municipio}}` en todos los textos), `slug`, `parent_id`, `lang` y `translation_of` (el `landing_id` del original, para enlazarla en WPML), `seo_title`, `seo_description`, `focus_keyword` (también admiten marcadores).
-  - La respuesta incluye `missing_keys` si quedan marcadores sin valor.
+  - `images`: cambia las imágenes de la maestra. Clave = ID de adjunto en la maestra; valor = ID de un adjunto de la biblioteca, una URL (se descarga) o `{"url"|"id": …, "alt": "…"}`. Sirve para imágenes, fondos y galerías.
+  - `dry_run: true` (solo con `template_id`): no crea nada y devuelve los marcadores y las imágenes (ID, URL y widget) de la maestra.
+  - La respuesta incluye `missing_keys` si quedan marcadores sin valor e `image_note` si falla alguna imagen.
 - `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 
 ### Instalación en una web

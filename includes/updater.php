@@ -13,6 +13,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_SLUG          = 'eg-publicacion';
 const EG_PUB_RELEASE_CACHE = 'eg_pub_gh_release';
+const EG_PUB_OPTION_HOLD   = 'eg_pub_hold_version';
+
+/**
+ * Mantener esta web en la versión instalada: se marca en Ajustes → EG Publicación,
+ * o en wp-config.php con define( 'EG_PUB_HOLD_VERSION', true ).
+ */
+function eg_pub_update_held() {
+	if ( defined( 'EG_PUB_HOLD_VERSION' ) ) {
+		return (bool) EG_PUB_HOLD_VERSION;
+	}
+	return (bool) get_option( EG_PUB_OPTION_HOLD, false );
+}
 
 function eg_pub_gh_token() {
 	return defined( 'EG_PUB_GITHUB_TOKEN' ) ? (string) EG_PUB_GITHUB_TOKEN : '';
@@ -92,7 +104,7 @@ add_filter( 'pre_set_site_transient_update_plugins', function ( $transient ) {
 		'url'         => $release['url'],
 		'package'     => $release['package'],
 	);
-	if ( version_compare( $release['version'], EG_PUB_VERSION, '>' ) ) {
+	if ( ! eg_pub_update_held() && version_compare( $release['version'], EG_PUB_VERSION, '>' ) ) {
 		$transient->response[ EG_PUB_BASENAME ] = $item;
 		unset( $transient->no_update[ EG_PUB_BASENAME ] );
 	} else {
@@ -138,7 +150,7 @@ add_filter( 'upgrader_source_selection', function ( $source, $remote_source, $up
 
 // Actualizar solo, sin tener que pulsar el botón en cada web.
 add_filter( 'auto_update_plugin', function ( $update, $item ) {
-	return ( isset( $item->plugin ) && EG_PUB_BASENAME === $item->plugin ) ? true : $update;
+	return ( isset( $item->plugin ) && EG_PUB_BASENAME === $item->plugin ) ? ! eg_pub_update_held() : $update;
 }, 10, 2 );
 
 // Tras actualizar, olvidar la release cacheada.

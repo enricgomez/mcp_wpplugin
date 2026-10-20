@@ -1,6 +1,6 @@
 <?php
 /**
- * Bloques reutilizables de Elementor (parte del módulo opcional de landings):
+ * Bloques reutilizables de Elementor (módulo opcional «Plantillas»):
  *   POST /wp-json/eg/v1/template  crea o actualiza una plantilla de Elementor (Plantillas guardadas) por clave e idioma.
  *   POST /wp-json/eg/v1/append    añade al final de varias páginas una sección con un título H2 y esa plantilla
  *                                 (widget «Plantilla» de Elementor Pro). Si la sección ya estaba, la sustituye.
@@ -13,17 +13,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 const EG_PUB_META_TEMPLATE_KEY = '_eg_template_key';
 
 add_action( 'rest_api_init', function () {
-	if ( ! eg_pub_landings_enabled() ) {
+	if ( ! eg_pub_module_enabled( 'plantillas' ) ) {
 		return;
 	}
 	foreach ( array( 'template' => 'eg_pub_template_handle', 'append' => 'eg_pub_append_handle' ) as $route => $callback ) {
 		register_rest_route( 'eg/v1', '/' . $route, array(
 			'methods'             => 'POST',
 			'callback'            => $callback,
-			'permission_callback' => function ( WP_REST_Request $r ) {
-				$ok = eg_pub_permission( $r );
-				return ( true === $ok && ! current_user_can( 'edit_pages' ) ) ? false : $ok;
-			},
+			'permission_callback' => eg_pub_module_permission( 'edit_pages' ),
 		) );
 	}
 } );

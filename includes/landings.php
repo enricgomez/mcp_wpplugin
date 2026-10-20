@@ -1,0 +1,387 @@
+<?php
+/**
+ * Módulo opcional de landings (desactivado por defecto, se activa en Ajustes → EG Publicación):
+ *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}.
+ *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
+ * Usan la misma clave X-EG-Key que /publish.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+const EG_PUB_OPTION_LANDINGS = 'eg_pub_landings_enabled';
+const EG_PUB_META_LANDING    = '_eg_landing_id';
+
+function eg_pub_landings_enabled() {
+	return (bool) get_option( EG_PUB_OPTION_LANDINGS, false );
+}
+
+add_action( 'rest_api_init', function () {
+	if ( ! eg_pub_landings_enabled() ) {
+		return;
+	}
+	register_rest_route( 'eg/v1', '/landing', array(
+		'methods'             => 'POST',
+		'callback'            => 'eg_pub_landing_handle',
+		'permission_callback' => function ( WP_REST_Request $r ) {
+			$ok = eg_pub_permission( $r );
+			return ( true === $ok && ! current_user_can( 'publish_pages' ) ) ? false : $ok;
+		},
+	) );
+	register_rest_route( 'eg/v1', '/redirect', array(
+		'methods'             => 'POST',
+		'callback'            => 'eg_pub_redirect_handle',
+		'permission_callback' => function ( WP_REST_Request $r ) {
+			$ok = eg_pub_permission( $r );
+			return ( true === $ok && ! current_user_can( 'manage_options' ) ) ? false : $ok;
+		},
+	) );
+} );
+
+function eg_pub_find_landing( $external_id ) {
+	$external_id = sanitize_text_field( $external_id );
+	if ( '' === $external_id ) {
+		return 0;
+	}
+	$ids = get_posts( array(
+		'post_type'        => 'page',
+		'post_status'      => 'any',
+		'meta_key'         => EG_PUB_META_LANDING,
+		'meta_value'       => $external_id,
+		'fields'           => 'ids',
+		'numberposts'      => 1,
+		'suppress_filters' => true, // WPML: buscar en todos los idiomas.
+	) );
+	return $ids ? (int) $ids[0] : 0;
+}
+
+/**
+ * Recorre el JSON de Elementor: cambia el texto de los widgets indicados, sustituye marcadores,
+ * cambia las imágenes (por ID de adjunto de la maestra) y da un ID nuevo a cada elemento.
+ */
+function eg_pub_landing_walk( $node, $map, $imgs = array(), $widgets = array() ) {
+	if ( is_string( $node ) ) {
+		return strtr( $node, $map );
+	}
+	if ( ! is_array( $node ) ) {
+		return $node;
+	}
+	// Control de imagen de Elementor: {"url": "...", "id": 123}.
+	if ( isset( $node['id'], $node['url'] ) && ! isset( $node['elType'] ) && isset( $imgs[ (int) $node['id'] ] ) ) {
+		$new          = $imgs[ (int) $node['id'] ];
+		$node['id']   = $new;
+		$node['url']  = (string) wp_get_attachment_url( $new );
+		$node['alt']  = (string) get_post_meta( $new, '_wp_attachment_image_alt', true );
+		return $node;
+	}
+	// Texto nuevo para un widget concreto de la maestra (por su ID de elemento).
+	if ( isset( $node['id'], $node['elType'], $widgets[ $node['id'] ] ) ) {
+		$field = 'text-editor' === ( $node['widgetType'] ?? '' ) ? 'editor' : 'title';
+		$node['settings']           = isset( $node['settings'] ) && is_array( $node['settings'] ) ? $node['settings'] : array();
+		$node['settings'][ $field ] = $widgets[ $node['id'] ];
+	}
+	foreach ( $node as $k => $v ) {
+		$node[ $k ] = eg_pub_landing_walk( $v, $map, $imgs, $widgets );
+	}
+	if ( isset( $node['id'], $node['elType'] ) ) {
+		$node['id'] = substr( md5( uniqid( '', true ) . wp_rand() ), 0, 7 );
+	}
+	return $node;
+}
+
+/**
+ * Lista los marcadores y las imágenes de la maestra (para preparar la llamada con dry_run).
+ */
+function eg_pub_landing_scan( $node, &$found, $widget = '' ) {
+	if ( is_string( $node ) ) {
+		if ( preg_match_all( '/\{\{([a-z0-9_\-]+)\}\}/', $node, $m ) ) {
+			$found['markers'] = array_merge( $found['markers'], $m[1] );
+		}
+		return;
+	}
+	if ( ! is_array( $node ) ) {
+		return;
+	}
+	if ( isset( $node['id'], $node['url'] ) && ! isset( $node['elType'] ) && (int) $node['id'] ) {
+		$found['images'][ (int) $node['id'] ] = array( 'id' => (int) $node['id'], 'url' => (string) $node['url'], 'widget' => $widget );
+		return;
+	}
+	if ( isset( $node['elType'] ) ) {
+		$widget = isset( $node['widgetType'] ) ? $node['widgetType'] : $node['elType'];
+		$text   = $node['settings']['editor'] ?? ( $node['settings']['title'] ?? '' );
+		if ( 'widget' === $node['elType'] && is_string( $text ) && '' !== trim( $text ) ) {
+			$found['widgets'][] = array(
+				'id'     => (string) $node['id'],
+				'widget' => $widget,
+				'text'   => wp_html_excerpt( wp_strip_all_tags( $text ), 160, '…' ),
+			);
+		}
+	}
+	foreach ( $node as $v ) {
+		eg_pub_landing_scan( $v, $found, $widget );
+	}
+}
+
+/**
+ * Adjunto a partir de un ID de la biblioteca, una URL (se descarga) o {"id"|"url": …, "alt": "…"}.
+ */
+function eg_pub_landing_attachment( $img, $filename ) {
+	$alt = '';
+	if ( is_array( $img ) ) {
+		$alt = isset( $img['alt'] ) ? (string) $img['alt'] : '';
+		$img = isset( $img['id'] ) ? $img['id'] : ( $img['url'] ?? '' );
+	}
+	if ( is_numeric( $img ) ) {
+		if ( 'attachment' !== get_post_type( (int) $img ) ) {
+			return new WP_Error( 'eg_img', 'no existe el adjunto ' . $img );
+		}
+		if ( '' !== $alt ) {
+			update_post_meta( (int) $img, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+		}
+		return (int) $img;
+	}
+	if ( '' === trim( (string) $img ) ) {
+		return new WP_Error( 'eg_img', 'falta la imagen' );
+	}
+	return eg_pub_sideload_image( 0, (string) $img, '', array( 'filename' => $filename, 'alt' => $alt ) );
+}
+
+function eg_pub_landing_handle( WP_REST_Request $r ) {
+	$p = $r->get_params();
+
+	$external_id = isset( $p['landing_id'] ) ? sanitize_text_field( $p['landing_id'] ) : '';
+	$template_id = isset( $p['template_id'] ) ? (int) $p['template_id'] : 0;
+	$lang        = isset( $p['lang'] ) ? sanitize_key( $p['lang'] ) : '';
+	$title       = isset( $p['title'] ) ? wp_strip_all_tags( $p['title'] ) : '';
+
+	if ( ! $template_id || ( empty( $p['dry_run'] ) && ( '' === $external_id || '' === $title ) ) ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: landing_id, template_id o title.' );
+	}
+	$template = get_post( $template_id );
+	$raw      = $template ? get_post_meta( $template_id, '_elementor_data', true ) : '';
+	$data     = is_string( $raw ) ? json_decode( $raw, true ) : $raw;
+	if ( ! $template || ! is_array( $data ) ) {
+		return eg_pub_error( 'eg_template', 'La página maestra ' . $template_id . ' no existe o no está hecha con Elementor.', 404 );
+	}
+
+	if ( ! empty( $p['dry_run'] ) ) {
+		$found = array( 'markers' => array(), 'images' => array(), 'widgets' => array() );
+		eg_pub_landing_scan( $data, $found );
+		return new WP_REST_Response( array(
+			'ok'      => true,
+			'markers' => array_values( array_unique( $found['markers'] ) ),
+			'images'  => array_values( $found['images'] ),
+			'widgets' => $found['widgets'],
+		), 200 );
+	}
+
+	// Imágenes: {"<ID adjunto de la maestra>": <ID de adjunto> | "https://..." | {"url": "...", "alt": "..."}}.
+	$imgs  = array();
+	$notes = array();
+	foreach ( (array) ( $p['images'] ?? array() ) as $old => $new ) {
+		$att = eg_pub_landing_attachment( $new, sanitize_title( $p['slug'] ?? $title ) . '-' . ( count( $imgs ) + 1 ) );
+		if ( is_wp_error( $att ) ) {
+			$notes[] = 'imagen ' . $old . ': ' . $att->get_error_message();
+		} else {
+			$imgs[ (int) $old ] = (int) $att;
+		}
+	}
+
+	// Marcadores: {"municipio":"Blanes"} sustituye {{municipio}}.
+	$map = array();
+	foreach ( (array) ( $p['replacements'] ?? array() ) as $key => $value ) {
+		$map[ '{{' . sanitize_key( $key ) . '}}' ] = wp_kses_post( (string) $value );
+	}
+
+	// Imágenes dentro del texto: {"img_cocinas": <ID> | "https://..." | {"id"|"url": …, "alt": "…", "align": "left"}}
+	// sustituye {{img_cocinas}} por una foto integrada (al lado del texto en escritorio, a todo el ancho en el móvil).
+	$inline_ids = array();
+	foreach ( (array) ( $p['inline_images'] ?? array() ) as $key => $img ) {
+		$align = is_array( $img ) && 'left' === ( $img['align'] ?? '' ) ? ' eg-landing-img--left' : '';
+		$att   = eg_pub_landing_attachment( $img, sanitize_title( $p['slug'] ?? $title ) . '-' . sanitize_key( $key ) );
+		if ( is_wp_error( $att ) ) {
+			$notes[] = 'imagen ' . $key . ': ' . $att->get_error_message();
+			$map[ '{{' . sanitize_key( $key ) . '}}' ] = '';
+			continue;
+		}
+		$inline_ids[ sanitize_key( $key ) ] = $att;
+		$map[ '{{' . sanitize_key( $key ) . '}}' ] = '<figure class="eg-landing-img' . $align . '">'
+			. wp_get_attachment_image( $att, 'large', false, array( 'loading' => 'lazy', 'sizes' => '(max-width: 767px) 100vw, 440px' ) )
+			. '</figure>';
+	}
+
+	// Texto completo de widgets concretos: {"<ID elemento>": "<h2>…</h2><p>…</p>"} (los IDs salen con dry_run).
+	$widgets = array();
+	foreach ( (array) ( $p['widgets'] ?? array() ) as $el_id => $html ) {
+		$widgets[ sanitize_key( $el_id ) ] = wp_kses_post( (string) $html );
+	}
+	$data    = eg_pub_landing_walk( $data, $map, $imgs, $widgets );
+	$left    = array();
+	$encoded = wp_json_encode( $data );
+	if ( preg_match_all( '/\{\{([a-z0-9_\-]+)\}\}/', $encoded, $m ) ) {
+		$left = array_values( array_unique( $m[1] ) );
+	}
+
+	$has_wpml  = defined( 'ICL_SITEPRESS_VERSION' );
+	$source_id = 0;
+	if ( ! empty( $p['translation_of'] ) ) {
+		$source_id = eg_pub_find_landing( $p['translation_of'] );
+		if ( ! $source_id ) {
+			return eg_pub_error( 'eg_source', 'La landing original todavía no está en WordPress. Crea primero la del idioma principal.', 409 );
+		}
+	}
+	if ( $has_wpml && $lang ) {
+		do_action( 'wpml_switch_language', $lang );
+	}
+
+	$status  = isset( $p['status'] ) && 'publish' === $p['status'] ? 'publish' : 'draft';
+	$postarr = array(
+		'post_type'    => 'page',
+		'post_title'   => $title,
+		'post_content' => '', // El contenido real está en _elementor_data.
+		'post_status'  => $status,
+		'post_parent'  => isset( $p['parent_id'] ) ? (int) $p['parent_id'] : 0,
+	);
+	if ( ! empty( $p['slug'] ) ) {
+		$postarr['post_name'] = sanitize_title( $p['slug'] );
+	}
+	$existing = eg_pub_find_landing( $external_id );
+	if ( $existing ) {
+		$postarr['ID']            = $existing;
+		$postarr['page_template'] = ''; // La plantilla se copia abajo; así WordPress no valida la que ya tenía.
+		$post_id                  = wp_update_post( wp_slash( $postarr ), true );
+	} else {
+		$postarr['post_author'] = get_current_user_id();
+		$post_id                = wp_insert_post( wp_slash( $postarr ), true );
+	}
+	if ( is_wp_error( $post_id ) ) {
+		return eg_pub_error( 'eg_insert', 'WordPress no pudo guardar la página: ' . $post_id->get_error_message(), 500 );
+	}
+	update_post_meta( $post_id, EG_PUB_META_LANDING, $external_id );
+
+	// --- Diseño de Elementor ---------------------------------------------------
+	update_post_meta( $post_id, '_elementor_data', wp_slash( $encoded ) );
+	foreach ( array( '_elementor_edit_mode', '_elementor_template_type', '_elementor_version', '_elementor_pro_version', '_elementor_page_settings', '_wp_page_template' ) as $meta_key ) {
+		$val = get_post_meta( $template_id, $meta_key, true );
+		if ( '' !== $val ) {
+			update_post_meta( $post_id, $meta_key, wp_slash( $val ) );
+		}
+	}
+	// Elementor regenera el CSS y la caché de elementos al visitar la página.
+	delete_post_meta( $post_id, '_elementor_css' );
+	delete_post_meta( $post_id, '_elementor_element_cache' );
+
+	// --- Idioma y traducción (WPML) ------------------------------------------
+	if ( $has_wpml && $lang ) {
+		$trid     = apply_filters( 'wpml_element_trid', null, $source_id ? $source_id : $post_id, 'post_page' );
+		$src_lang = null;
+		if ( $source_id ) {
+			$src      = apply_filters( 'wpml_element_language_details', null, array( 'element_id' => $source_id, 'element_type' => 'page' ) );
+			$src_lang = $src ? $src->language_code : null;
+		}
+		do_action( 'wpml_set_element_language_details', array(
+			'element_id'           => $post_id,
+			'element_type'         => 'post_page',
+			'trid'                 => $trid ? $trid : false,
+			'language_code'        => $lang,
+			'source_language_code' => $src_lang,
+		) );
+	}
+
+	// --- SEO de Rank Math --------------------------------------------------------
+	$seo = array(
+		'seo_title'       => 'rank_math_title',
+		'seo_description' => 'rank_math_description',
+		'focus_keyword'   => 'rank_math_focus_keyword',
+	);
+	foreach ( $seo as $param => $meta_key ) {
+		if ( isset( $p[ $param ] ) && '' !== trim( $p[ $param ] ) ) {
+			update_post_meta( $post_id, $meta_key, sanitize_text_field( strtr( $p[ $param ], $map ) ) );
+		}
+	}
+
+	// --- Imagen destacada: ID, URL o el nombre de una de inline_images ------------
+	if ( ! empty( $p['featured_image'] ) ) {
+		$feat = $p['featured_image'];
+		$feat = is_string( $feat ) && isset( $inline_ids[ sanitize_key( $feat ) ] ) ? $inline_ids[ sanitize_key( $feat ) ] : eg_pub_landing_attachment( $feat, sanitize_title( $p['slug'] ?? $title ) );
+		if ( is_wp_error( $feat ) ) {
+			$notes[] = 'imagen destacada: ' . $feat->get_error_message();
+		} else {
+			set_post_thumbnail( $post_id, (int) $feat );
+		}
+	}
+
+	clean_post_cache( $post_id );
+	return new WP_REST_Response( array(
+		'ok'           => true,
+		'id'           => $post_id,
+		'status'       => get_post_status( $post_id ),
+		'link'         => get_permalink( $post_id ),
+		'edit'         => admin_url( 'post.php?post=' . $post_id . '&action=elementor' ),
+		'lang'         => $lang,
+		'missing_keys' => $left,
+		'image_note'   => implode( ' | ', $notes ),
+		'message'      => trim( ( $left ? 'Quedan marcadores sin valor: ' . implode( ', ', $left ) . '. ' : '' ) . ( $notes ? 'Imágenes que fallaron: ' . implode( ' | ', $notes ) : '' ) ),
+	), 200 );
+}
+
+function eg_pub_redirect_handle( WP_REST_Request $r ) {
+	$from = trim( (string) $r->get_param( 'from' ) );
+	$to   = trim( (string) $r->get_param( 'to' ) );
+	$code = (int) ( $r->get_param( 'code' ) ? $r->get_param( 'code' ) : 301 );
+
+	if ( '' === $from || '' === $to ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: from o to.' );
+	}
+	if ( ! in_array( $code, array( 301, 302, 307, 410, 451 ), true ) ) {
+		return eg_pub_error( 'eg_code', 'Código de redirección no válido: ' . $code );
+	}
+	if ( ! class_exists( '\RankMath\Redirections\Redirection' ) ) {
+		return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo o tiene desactivado el módulo de Redirecciones.', 501 );
+	}
+	// Rank Math guarda la URL de origen sin dominio ni barra inicial.
+	$path = trim( (string) wp_parse_url( $from, PHP_URL_PATH ), '/' );
+	if ( '' === $path ) {
+		return eg_pub_error( 'eg_from', 'La URL de origen no puede ser la portada.' );
+	}
+	if ( 0 === strpos( $to, '/' ) ) {
+		$to = home_url( $to );
+	}
+
+	$redirection = \RankMath\Redirections\Redirection::from( array(
+		'url_to'      => esc_url_raw( $to ),
+		'header_code' => $code,
+		'status'      => 'active',
+		'sources'     => array( array( 'pattern' => $path, 'comparison' => 'exact' ) ),
+	) );
+	$id = $redirection->save();
+	if ( ! $id ) {
+		return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección (¿ya existe una para ' . $path . '?).', 409 );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'id' => (int) $id, 'from' => $path, 'to' => $to, 'code' => $code ), 200 );
+}
+
+/* ======================================================================
+ * Estilo de las fotos integradas en el texto de las landings.
+ * ==================================================================== */
+add_filter( 'body_class', function ( $classes ) {
+	if ( is_page() && get_post_meta( get_queried_object_id(), EG_PUB_META_LANDING, true ) ) {
+		$classes[] = 'eg-landing';
+	}
+	return $classes;
+} );
+
+add_action( 'wp_head', function () {
+	if ( ! is_page() || ! get_post_meta( get_queried_object_id(), EG_PUB_META_LANDING, true ) ) {
+		return;
+	}
+	echo '<style id="eg-landing-css">'
+		. '.eg-landing-img{float:right;width:42%;max-width:440px;margin:.4em 0 1.2em 2em}'
+		. '.eg-landing-img--left{float:left;margin:.4em 2em 1.2em 0}'
+		. '.eg-landing-img img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px}'
+		. '.eg-landing .elementor-widget-text-editor h2{clear:both}'
+		. '.eg-landing .elementor-widget-text-editor:after{content:"";display:table;clear:both}'
+		. '@media (max-width:767px){.eg-landing-img,.eg-landing-img--left{float:none;width:100%;max-width:none;margin:1em 0 1.2em}}'
+		. '</style>' . "\n";
+} );

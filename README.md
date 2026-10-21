@@ -20,7 +20,7 @@ En Ajustes → EG Publicación → «Qué hace en esta web» se marca, por tipol
 | Blog | `/publish` | `publish_posts` |
 | Elementor (requiere Elementor) | `/landing`, `/template`, `/append` | `publish_pages`, `edit_pages` |
 | WooCommerce (requiere WooCommerce) | `/product` | `edit_others_products` |
-| Gestión de la web | `/text`, `/menu`, `/redirect` (Rank Math), `/status` | `manage_options`, `edit_theme_options`, `edit_others_pages` |
+| Gestión de la web | `/text`, `/menu`, `/redirect` (Rank Math), `/status`, `/lang-links` | `manage_options`, `edit_theme_options`, `edit_others_pages` |
 
 Al actualizar desde la 2.7.x o anterior no hay que tocar nada: el blog queda activo (antes lo estaba siempre) y cada módulo suelto encendido activa su tipología (Productos → WooCommerce; Landings o Plantillas → Elementor; Textos, Menús, Redirecciones o Contenido → Gestión de la web). Al guardar se sigue escribiendo también la opción antigua, por si se vuelve a una 2.7.x.
 
@@ -63,6 +63,11 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
   - Cambios en `set` (todos los idiomas) y en `langs` (`{"es": {...}, "ca": {...}}`, se suman a `set`): `title`, `excerpt` y `content` (texto completo), `remove_blocks` (quita del extracto y del contenido los bloques h1-h6, p, li o div, o las líneas sueltas, cuyo texto visible contiene alguna de esas cadenas), `replace` (`{"de": "a"}`, solo en el texto visible), `meta` (campos de JetEngine del producto y `rank_math_title`, `rank_math_description`, `rank_math_focus_keyword`), `add_terms` y `remove_terms` (`{"product_cat": ["preventa"]}`: slugs en cualquier idioma, se usa el término del idioma de cada producto).
   - `dry_run` devuelve qué cambiaría (antes y después) sin guardar. Los textos se guardan sin `wp_update_post`, así WPML no lanza la traducción automática. Vacía la caché del producto en WooCommerce y WP Rocket.
   - Ejemplo, sacar un libro de la preventa: `{"sku": ["rita-bumbum-4"], "set": {"remove_terms": {"product_cat": ["preventa"]}}, "langs": {"es": {"remove_blocks": ["sale a la venta el"], "meta": {"subtitle_2": "YA DISPONIBLE"}}, "ca": {"remove_blocks": ["surt a la venda el"], "meta": {"subtitle_2": "JA DISPONIBLE"}}}}`.
+- `POST /wp-json/eg/v1/lang-links` (desde la v2.9.0, tipología Gestión de la web, capacidad `manage_options`): enlaces que cambian según el idioma de WPML en el que se ve la página, por ejemplo el botón Reservar de la cabecera hacia el motor de reservas de cada idioma.
+  - `rules`: lista de reglas que sustituye a las guardadas. Cada una con `from` (URL tal como está en la web) y `to` (URL con `{lang}`). Opcionales: `langs` (`{"ca": "ca"}`, código del destino para cada idioma de WPML si no coincide) y `skip` (idiomas en los que no se cambia; por defecto el idioma principal).
+  - Ejemplo: `{"rules": [{"from": "https://engine.witbooking.com/property/campingelfar", "to": "https://engine.witbooking.com/{lang}/property/campingelfar"}]}`.
+  - El cambio se hace al servir la página, sobre el HTML final (también la forma escapada `https:\/\/` del JSON de Elementor). Da igual si el enlace está en una cabecera de Elementor sin traducir, en un menú o en el contenido: no hay que editar cada traducción ni la traducción de cadenas de WPML. No se aplica en el editor de Elementor ni en la API.
+  - Sin `rules` devuelve las reglas guardadas; `clear: true` las borra; `dry_run` no guarda. La respuesta incluye `preview` (el enlace en cada idioma activo) y `found` (dónde está la URL de `from` en la base de datos: entradas, plantillas y opciones). Al guardar vacía la caché de WP Rocket.
 - `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (tipología Gestión de la web). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 
 ### Instalación en una web

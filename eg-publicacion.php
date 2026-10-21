@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       EG Publicación
- * Description:       Endpoints /wp-json/eg/v1/ para los escenarios de Make de enricgomez Studio, por tipología de web: Blog (posts con idiomas de WPML, categoría, SEO de Rank Math e imágenes), Elementor (landings y plantillas), WooCommerce (productos) y Gestión de la web (textos, menús, redirecciones y estado de páginas). Con WordPress 6.9 también como Abilities para el MCP Adapter. La clave de acceso está en Ajustes → EG Publicación. Se actualiza solo desde GitHub.
- * Version:           2.8.0
+ * Description:       Endpoints /wp-json/eg/v1/ para los escenarios de Make de enricgomez Studio, por tipología de web: Blog (posts con idiomas de WPML, categoría, SEO de Rank Math e imágenes), Elementor (landings y plantillas), WooCommerce (productos) y Gestión de la web (textos, menús, redirecciones, estado de páginas y enlaces por idioma). Con WordPress 6.9 también como Abilities para el MCP Adapter. La clave de acceso está en Ajustes → EG Publicación. Se actualiza solo desde GitHub.
+ * Version:           2.9.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            enricgomez Studio
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const EG_PUB_VERSION = '2.8.0';
+const EG_PUB_VERSION = '2.9.0';
 const EG_PUB_REPO    = 'enricgomez/mcp_wpplugin';
 define( 'EG_PUB_BASENAME', plugin_basename( __FILE__ ) );
 
@@ -40,6 +40,7 @@ require_once __DIR__ . '/includes/landings.php';
 require_once __DIR__ . '/includes/textos.php';
 require_once __DIR__ . '/includes/plantillas.php';
 require_once __DIR__ . '/includes/contenido.php';
+require_once __DIR__ . '/includes/enlaces.php';
 require_once __DIR__ . '/includes/woocommerce.php';
 require_once __DIR__ . '/includes/updater.php';
 require_once __DIR__ . '/includes/abilities.php';

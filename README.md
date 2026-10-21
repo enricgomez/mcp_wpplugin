@@ -23,6 +23,7 @@ Todo lo que no es publicar posts va en módulos que se encienden por web en Ajus
 | Menús | `/menu` | `edit_theme_options` |
 | Redirecciones | `/redirect` | `manage_options` |
 | Contenido (v2.6.1) | `/status` | `edit_others_pages` |
+| Productos (Miriam Tirado, v2.7.0, de cliente) | `/product` | `edit_others_products` |
 
 Las webs que venían de la 2.5.x con el interruptor único de landings encendido siguen con todos los módulos generales encendidos hasta que se guarden los ajustes.
 
@@ -58,6 +59,11 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 - `POST /wp-json/eg/v1/template` (desde la v2.5.5): crea o actualiza una plantilla de Elementor (Plantillas guardadas). Parámetros `key`, `lang`, `title`, `elements` (JSON de Elementor), `type` (`section` por defecto) y `translation_of` (idioma de la versión original, para enlazarla en WPML). Devuelve también si hay claves de reCAPTCHA configuradas.
 - `POST /wp-json/eg/v1/append` (desde la v2.5.5): añade al final de páginas una sección con un H2 y el widget Plantilla de Elementor Pro apuntando a la plantilla `template_key` del idioma `lang`. `pages` (`[{"page_id"|"landing_id": …, "heading": "…"}]`), `children_of` (añade las páginas hijas) y `heading_pattern` (`{title}` = título de la página). Si la sección ya existe la sustituye; con `remove` la quita. Solo toca el JSON de Elementor, no el contenido de la entrada.
 - `POST /wp-json/eg/v1/status` (desde la v2.6.1): cambia el estado (`status`: `draft`, `publish`, `private` o `pending`) de las entradas elegidas por `paths` (rutas, también con /ca/), `ids` o `post_type` + `terms` (`{"categoria-proyecto": ["banos"]}`, con `exclude_terms` para dejar fuera las que tengan otros términos). `with_translations` añade sus traducciones de WPML. Con `dry_run` solo las lista con su estado. Guarda el estado sin `wp_update_post`, así WPML no lanza la traducción automática.
+- `POST /wp-json/eg/v1/product` (desde la v2.7.0, módulo de cliente «Productos (Miriam Tirado)», capacidad `edit_others_products`): edita productos de WooCommerce en todos sus idiomas.
+  - Productos: `sku` (lista de SKU: con WPML la traducción comparte el SKU), `ids` o `paths`. Con `with_translations` (por defecto `true`) añade sus traducciones de WPML.
+  - Cambios en `set` (todos los idiomas) y en `langs` (`{"es": {...}, "ca": {...}}`, se suman a `set`): `title`, `excerpt` y `content` (texto completo), `remove_blocks` (quita del extracto y del contenido los bloques h1-h6, p, li o div, o las líneas sueltas, cuyo texto visible contiene alguna de esas cadenas), `replace` (`{"de": "a"}`, solo en el texto visible), `meta` (campos de JetEngine del producto y `rank_math_title`, `rank_math_description`, `rank_math_focus_keyword`), `add_terms` y `remove_terms` (`{"product_cat": ["preventa"]}`: slugs en cualquier idioma, se usa el término del idioma de cada producto).
+  - `dry_run` devuelve qué cambiaría (antes y después) sin guardar. Los textos se guardan sin `wp_update_post`, así WPML no lanza la traducción automática. Vacía la caché del producto en WooCommerce y WP Rocket.
+  - Ejemplo, sacar un libro de la preventa: `{"sku": ["rita-bumbum-4"], "set": {"remove_terms": {"product_cat": ["preventa"]}}, "langs": {"es": {"remove_blocks": ["sale a la venta el"], "meta": {"subtitle_2": "YA DISPONIBLE"}}, "ca": {"remove_blocks": ["surt a la venda el"], "meta": {"subtitle_2": "JA DISPONIBLE"}}}}`.
 - `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 
 ### Instalación en una web

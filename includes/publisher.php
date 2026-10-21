@@ -49,7 +49,7 @@ function eg_pub_settings_page() {
 			update_option( EG_PUB_OPTION_USER, max( 0, (int) $_POST['eg_pub_author'] ), false );
 		}
 		if ( isset( $_POST['eg_pub_author'] ) ) {
-			eg_pub_save_modules( isset( $_POST['eg_pub_modules'] ) ? (array) wp_unslash( $_POST['eg_pub_modules'] ) : array() );
+			eg_pub_save_types( isset( $_POST['eg_pub_types'] ) ? (array) wp_unslash( $_POST['eg_pub_types'] ) : array() );
 			if ( (bool) get_option( EG_PUB_OPTION_HOLD, false ) !== ! empty( $_POST['eg_pub_hold'] ) ) {
 				update_option( EG_PUB_OPTION_HOLD, ! empty( $_POST['eg_pub_hold'] ), false );
 				delete_site_transient( 'update_plugins' ); // Que WordPress vuelva a mirar si ofrece la versión nueva.
@@ -76,11 +76,11 @@ function eg_pub_settings_page() {
 	?>
 	<div class="wrap">
 		<h1>EG Publicación (Make)</h1>
-		<p>Datos para el escenario de Make que publica los posts del blog.</p>
+		<p>Datos para los escenarios de Make de esta web.</p>
 		<table class="form-table">
 			<tr>
-				<th>Endpoint</th>
-				<td><code><?php echo esc_html( rest_url( 'eg/v1/publish' ) ); ?></code></td>
+				<th>Endpoints</th>
+				<td><code><?php echo esc_html( rest_url( 'eg/v1/' ) ); ?></code> + la ruta de cada tipología activa (abajo)</td>
 			</tr>
 			<tr>
 				<th>Nombre de la cabecera</th>
@@ -116,19 +116,26 @@ function eg_pub_settings_page() {
 					</td>
 				</tr>
 				<tr>
-					<th>Módulos opcionales</th>
+					<th>Qué hace en esta web</th>
 					<td>
-						<?php foreach ( eg_pub_modules() as $slug => $module ) : ?>
-							<label style="display:block;margin-bottom:6px">
-								<input type="checkbox" name="eg_pub_modules[]" value="<?php echo esc_attr( $slug ); ?>" <?php checked( eg_pub_module_enabled( $slug ) ); ?>>
-								<strong><?php echo esc_html( $module['label'] ); ?></strong><?php echo ! empty( $module['client'] ) ? ' <em>(' . esc_html( $module['client'] ) . ')</em>' : ''; ?>:
-								<?php echo esc_html( $module['description'] ); ?>
-								<?php foreach ( (array) ( $module['routes'] ?? array() ) as $route ) : ?>
+						<?php
+						$eg_pub_routes = array();
+						foreach ( eg_pub_modules() as $module ) {
+							$eg_pub_routes[ $module['type'] ] = array_merge( $eg_pub_routes[ $module['type'] ] ?? array(), (array) $module['routes'] );
+						}
+						foreach ( eg_pub_types() as $slug => $type ) :
+							$eg_pub_missing = ! empty( $type['requires'] ) && ! defined( $type['requires'] );
+							?>
+							<label style="display:block;margin-bottom:8px<?php echo $eg_pub_missing ? ';opacity:.6' : ''; ?>">
+								<input type="checkbox" name="eg_pub_types[]" value="<?php echo esc_attr( $slug ); ?>" <?php checked( eg_pub_type_enabled( $slug ) ); ?> <?php disabled( $eg_pub_missing && ! eg_pub_type_enabled( $slug ) ); ?>>
+								<strong><?php echo esc_html( $type['label'] ); ?></strong>: <?php echo esc_html( $type['description'] ); ?>
+								<?php foreach ( $eg_pub_routes[ $slug ] ?? array() as $route ) : ?>
 									<code>/<?php echo esc_html( $route ); ?></code>
 								<?php endforeach; ?>
+								<?php echo $eg_pub_missing ? '<em>(' . esc_html( $type['label'] ) . ' no está activo en esta web)</em>' : ''; ?>
 							</label>
 						<?php endforeach; ?>
-						<p class="description">Usan la misma clave. Un módulo apagado no responde ni aparece como ability. La publicación de posts está siempre activa.</p>
+						<p class="description">Todas usan la misma clave. Lo que está apagado no responde (404) ni aparece como ability.</p>
 					</td>
 				</tr>
 				<tr>
@@ -157,6 +164,9 @@ function eg_pub_settings_page() {
  * Endpoint
  * ==================================================================== */
 add_action( 'rest_api_init', function () {
+	if ( ! eg_pub_module_enabled( 'blog' ) ) {
+		return;
+	}
 	register_rest_route( 'eg/v1', '/publish', array(
 		'methods'             => 'POST',
 		'callback'            => 'eg_pub_handle',

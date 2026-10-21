@@ -11,23 +11,22 @@ Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que u
 - `category_slug`: slug de la categoría en el idioma del post.
 - `category_name` (opcional, desde la v2.4.0): si la categoría no existe, se crea con este nombre. Con WPML se asigna al idioma del post y, en las traducciones, se enlaza con la categoría del original.
 
-### Módulos opcionales (desde la v2.6.0)
+### Qué hace en cada web: tipologías (desde la v2.8.0)
 
-Todo lo que no es publicar posts va en módulos que se encienden por web en Ajustes → EG Publicación → «Módulos opcionales». Un módulo apagado no registra sus endpoints (responden 404) ni sus abilities. Usan la misma clave `X-EG-Key`.
+En Ajustes → EG Publicación → «Qué hace en esta web» se marca, por tipología, lo que usa cada web. Lo que está apagado no registra sus endpoints (responden 404) ni sus abilities. Todo usa la misma clave `X-EG-Key`.
 
-| Módulo | Endpoints | Capacidad del autor |
+| Tipología | Endpoints | Capacidad del autor |
 | --- | --- | --- |
-| Landings | `/landing` | `publish_pages` |
-| Textos | `/text` | `manage_options` |
-| Plantillas | `/template`, `/append` | `edit_pages` |
-| Menús | `/menu` | `edit_theme_options` |
-| Redirecciones | `/redirect` | `manage_options` |
-| Contenido (v2.6.1) | `/status` | `edit_others_pages` |
-| Productos (Miriam Tirado, v2.7.0, de cliente) | `/product` | `edit_others_products` |
+| Blog | `/publish` | `publish_posts` |
+| Elementor (requiere Elementor) | `/landing`, `/template`, `/append` | `publish_pages`, `edit_pages` |
+| WooCommerce (requiere WooCommerce) | `/product` | `edit_others_products` |
+| Gestión de la web | `/text`, `/menu`, `/redirect` (Rank Math), `/status` | `manage_options`, `edit_theme_options`, `edit_others_pages` |
 
-Las webs que venían de la 2.5.x con el interruptor único de landings encendido siguen con todos los módulos generales encendidos hasta que se guarden los ajustes.
+Al actualizar desde la 2.7.x o anterior no hay que tocar nada: el blog queda activo (antes lo estaba siempre) y cada módulo suelto encendido activa su tipología (Productos → WooCommerce; Landings o Plantillas → Elementor; Textos, Menús, Redirecciones o Contenido → Gestión de la web). Al guardar se sigue escribiendo también la opción antigua, por si se vuelve a una 2.7.x.
 
-**Módulos de un cliente.** Lo que solo sirve a una web va en `includes/clientes/<cliente>.php`, dentro del mismo plugin: se carga en todas las webs, se añade a la lista con el filtro `eg_pub_modules` (con `'client' => 'nombre'`) y registra sus endpoints solo si `eg_pub_module_enabled( 'slug' )`. Nunca se enciende solo, ni siquiera en las webs que venían de la 2.5.x.
+**Añadir algo nuevo.** Cada endpoint es un módulo de una tipología: se añade con el filtro `eg_pub_modules` (`'slug' => array( 'type' => 'woocommerce', 'routes' => array( 'ruta' ) )`) y registra su ruta solo si `eg_pub_module_enabled( 'slug' )`. Si hace falta una tipología nueva, se añade en `eg_pub_types()` (`includes/modulos.php`).
+
+**No cambiar el nombre ni la carpeta del plugin.** El plugin se llama «EG Publicación» y la release trae la carpeta `eg-publicacion/`. Desde la 2.7.2 las actualizaciones se instalan en la carpeta que ya tenga la web.
 
 ### Mantener una web en una versión (desde la v2.6.0)
 
@@ -37,12 +36,12 @@ En Ajustes → EG Publicación → «Actualizaciones», la casilla «Mantener es
 
 Las mismas funciones se registran como Abilities de WordPress (categoría `eg-publicacion`), así que un cliente MCP como Claude las puede usar con el [MCP Adapter](https://github.com/WordPress/mcp-adapter) oficial, entrando con un usuario de WordPress y su contraseña de aplicación. Los endpoints de Make no cambian. Cada ability comprueba la capacidad del usuario que la usa, igual que el endpoint.
 
-- Siempre: `eg-publicacion/status` (solo lectura: versión, módulos, idiomas y plugins de la web) y `eg-publicacion/publish-post` (publica como el autor configurado).
-- Por módulo: `create-landing`, `search-text` (solo lectura), `replace-text`, `save-template`, `append-template`, `edit-menu` y `create-redirect`.
+- Siempre: `eg-publicacion/status` (solo lectura: versión, tipologías, idiomas y plugins de la web). Con Blog: `eg-publicacion/publish-post` (publica como el autor configurado).
+- Por tipología: `create-landing`, `search-text` (solo lectura), `replace-text`, `save-template`, `append-template`, `edit-menu` y `create-redirect`.
 
 Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funciona igual.
 
-### Endpoints de los módulos
+### Endpoints
 
 - `POST /wp-json/eg/v1/landing`: clona una página maestra de Elementor y crea (o actualiza) una página, en borrador salvo que se pida `status: publish`.
   - Obligatorios: `landing_id` (identificador propio, para poder actualizarla), `template_id` (ID de la página maestra) y `title`.
@@ -59,12 +58,12 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 - `POST /wp-json/eg/v1/template` (desde la v2.5.5): crea o actualiza una plantilla de Elementor (Plantillas guardadas). Parámetros `key`, `lang`, `title`, `elements` (JSON de Elementor), `type` (`section` por defecto) y `translation_of` (idioma de la versión original, para enlazarla en WPML). Devuelve también si hay claves de reCAPTCHA configuradas.
 - `POST /wp-json/eg/v1/append` (desde la v2.5.5): añade al final de páginas una sección con un H2 y el widget Plantilla de Elementor Pro apuntando a la plantilla `template_key` del idioma `lang`. `pages` (`[{"page_id"|"landing_id": …, "heading": "…"}]`), `children_of` (añade las páginas hijas) y `heading_pattern` (`{title}` = título de la página). Si la sección ya existe la sustituye; con `remove` la quita. Solo toca el JSON de Elementor, no el contenido de la entrada.
 - `POST /wp-json/eg/v1/status` (desde la v2.6.1): cambia el estado (`status`: `draft`, `publish`, `private` o `pending`) de las entradas elegidas por `paths` (rutas, también con /ca/), `ids` o `post_type` + `terms` (`{"categoria-proyecto": ["banos"]}`, con `exclude_terms` para dejar fuera las que tengan otros términos). `with_translations` añade sus traducciones de WPML. Con `dry_run` solo las lista con su estado. Guarda el estado sin `wp_update_post`, así WPML no lanza la traducción automática.
-- `POST /wp-json/eg/v1/product` (desde la v2.7.0, módulo de cliente «Productos (Miriam Tirado)», capacidad `edit_others_products`): edita productos de WooCommerce en todos sus idiomas.
+- `POST /wp-json/eg/v1/product` (desde la v2.7.0, tipología WooCommerce, capacidad `edit_others_products`): edita productos de WooCommerce en todos sus idiomas.
   - Productos: `sku` (lista de SKU: con WPML la traducción comparte el SKU), `ids` o `paths`. Con `with_translations` (por defecto `true`) añade sus traducciones de WPML.
   - Cambios en `set` (todos los idiomas) y en `langs` (`{"es": {...}, "ca": {...}}`, se suman a `set`): `title`, `excerpt` y `content` (texto completo), `remove_blocks` (quita del extracto y del contenido los bloques h1-h6, p, li o div, o las líneas sueltas, cuyo texto visible contiene alguna de esas cadenas), `replace` (`{"de": "a"}`, solo en el texto visible), `meta` (campos de JetEngine del producto y `rank_math_title`, `rank_math_description`, `rank_math_focus_keyword`), `add_terms` y `remove_terms` (`{"product_cat": ["preventa"]}`: slugs en cualquier idioma, se usa el término del idioma de cada producto).
   - `dry_run` devuelve qué cambiaría (antes y después) sin guardar. Los textos se guardan sin `wp_update_post`, así WPML no lanza la traducción automática. Vacía la caché del producto en WooCommerce y WP Rocket.
   - Ejemplo, sacar un libro de la preventa: `{"sku": ["rita-bumbum-4"], "set": {"remove_terms": {"product_cat": ["preventa"]}}, "langs": {"es": {"remove_blocks": ["sale a la venta el"], "meta": {"subtitle_2": "YA DISPONIBLE"}}, "ca": {"remove_blocks": ["surt a la venda el"], "meta": {"subtitle_2": "JA DISPONIBLE"}}}}`.
-- `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
+- `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (tipología Gestión de la web). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 
 ### Instalación en una web
 

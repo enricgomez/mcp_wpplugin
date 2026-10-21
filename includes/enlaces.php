@@ -2,22 +2,25 @@
 /**
  * Enlaces por idioma (tipología «Gestión de la web»):
  *   POST /wp-json/eg/v1/lang-links
- * Guarda reglas que cambian un enlace según el idioma de WPML en el que se ve la página, por ejemplo el botón
- * Reservar de la cabecera hacia el motor de reservas en cada idioma. El cambio se hace al servir la página, sobre
- * el HTML final, así funciona igual si el enlace está en una cabecera de Elementor sin traducir, en un menú o en
- * el contenido, y no hay que editar cada traducción ni la traducción de cadenas de WPML.
+ * Escribe en la web el enlace correcto de cada idioma, por ejemplo el botón Reservar de la cabecera hacia el motor
+ * de reservas en cada idioma. El cambio queda guardado en el JSON de Elementor (y en el contenido) de cada
+ * traducción: el plugin no hace nada al servir las páginas, así que si se desactiva los enlaces siguen bien.
  *
- * Regla: {"from": "https://engine.witbooking.com/property/campingelfar",
- *         "to": "https://engine.witbooking.com/{lang}/property/campingelfar"}
- * Opcionales: "langs" ({"ca": "ca", "en": "en"}: código del destino para cada idioma de WPML, si no coincide) y
- * "skip" (idiomas en los que no se cambia; por defecto el idioma principal de WPML).
+ *   from     URL tal como está ahora (https://engine.witbooking.com/property/campingelfar).
+ *   to       URL con {lang} (https://engine.witbooking.com/{lang}/property/campingelfar).
+ *   langs    opcional: código del destino para cada idioma de WPML si no coincide ({"ca": "ca"}).
+ *   skip     opcional: idiomas que no se tocan (por defecto el principal de WPML).
+ *   ids      opcional: solo esas entradas o plantillas (y sus traducciones).
+ *   translate_templates  opcional: IDs de plantillas de Elementor (cabecera, pie...) que, en los idiomas que
+ *            aún no tienen traducción, se duplican desde el original y se enlazan en WPML, para poder poner
+ *            allí el enlace del idioma. El texto queda como en el original (igual que se ve hoy en esos idiomas).
+ *   dry_run  no guarda nada y devuelve qué cambiaría.
+ * Se guarda sin wp_update_post, así WPML no lanza la traducción automática.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-
-const EG_PUB_OPTION_LANG_LINKS = 'eg_pub_lang_links';
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['enlaces'] = array( 'type' => 'gestion', 'routes' => array( 'lang-links' ) );
@@ -35,133 +38,169 @@ add_action( 'rest_api_init', function () {
 	) );
 } );
 
-function eg_pub_lang_links_rules() {
-	$rules = get_option( EG_PUB_OPTION_LANG_LINKS, array() );
-	return is_array( $rules ) ? $rules : array();
+function eg_pub_lang_links_lang( $id ) {
+	return (string) apply_filters( 'wpml_element_language_code', null, array( 'element_id' => $id, 'element_type' => get_post_type( $id ) ) );
 }
 
-/** Pares «de → a» de todas las reglas para ese idioma (también en la forma escapada del JSON de Elementor). */
-function eg_pub_lang_links_pairs( $lang, $rules = null ) {
-	$default = apply_filters( 'wpml_default_language', null );
-	$pairs   = array();
-	foreach ( null === $rules ? eg_pub_lang_links_rules() : $rules as $rule ) {
-		$skip = isset( $rule['skip'] ) ? (array) $rule['skip'] : array( $default );
-		if ( '' === (string) $lang || in_array( $lang, $skip, true ) ) {
-			continue;
-		}
-		$code = isset( $rule['langs'][ $lang ] ) ? (string) $rule['langs'][ $lang ] : $lang;
-		if ( '' === $code ) {
-			continue;
-		}
-		$to = str_replace( '{lang}', $code, $rule['to'] );
-		$pairs[ $rule['from'] ]                         = $to;
-		$pairs[ str_replace( '/', '\/', $rule['from'] ) ] = str_replace( '/', '\/', $to );
-	}
-	return $pairs;
-}
-
-// Al servir una página: cambia los enlaces en el HTML final según el idioma actual.
-add_action( 'template_redirect', function () {
-	if ( is_admin() || wp_doing_ajax() || is_feed() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) || ! eg_pub_module_enabled( 'enlaces' ) ) {
-		return;
-	}
-	if ( isset( $_GET['elementor-preview'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
-		return;
-	}
-	$pairs = eg_pub_lang_links_pairs( (string) apply_filters( 'wpml_current_language', null ) );
-	if ( ! $pairs ) {
-		return;
-	}
-	ob_start( function ( $html ) use ( $pairs ) {
-		return strtr( $html, $pairs ); // strtr no vuelve a cambiar lo ya cambiado.
-	} );
-}, 0 );
-
-/** Dónde aparece una cadena en la base de datos (entradas, metas y opciones), para saber qué cubre la regla. */
-function eg_pub_lang_links_find( $needle ) {
-	global $wpdb;
+/** Traducciones de WPML de una entrada: idioma => ID (incluida ella misma). */
+function eg_pub_lang_links_translations( $id ) {
+	$type = 'post_' . get_post_type( $id );
+	$trid = apply_filters( 'wpml_element_trid', null, $id, $type );
 	$out  = array();
-	$like = '%' . $wpdb->esc_like( $needle ) . '%';
-	$esc  = '%' . $wpdb->esc_like( str_replace( '/', '\/', $needle ) ) . '%';
-	$rows = $wpdb->get_results( $wpdb->prepare(
-		"SELECT DISTINCT p.ID, p.post_type, p.post_status, p.post_title FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID
-		WHERE p.post_type <> 'revision' AND p.post_status NOT IN ('trash','auto-draft','inherit')
-		AND ( p.post_content LIKE %s OR p.post_content LIKE %s OR m.meta_value LIKE %s OR m.meta_value LIKE %s ) LIMIT 50",
-		$like, $esc, $like, $esc
-	) );
-	foreach ( $rows as $r ) {
-		$lang  = apply_filters( 'wpml_element_language_code', null, array( 'element_id' => $r->ID, 'element_type' => $r->post_type ) );
-		$out[] = array(
-			'id'       => (int) $r->ID,
-			'type'     => $r->post_type,
-			'template' => (string) get_post_meta( $r->ID, '_elementor_template_type', true ),
-			'status'   => $r->post_status,
-			'title'    => $r->post_title,
-			'lang'     => (string) $lang,
-		);
+	foreach ( $trid ? (array) apply_filters( 'wpml_get_element_translations', null, $trid, $type ) : array() as $lang => $t ) {
+		$out[ $lang ] = (int) $t->element_id;
 	}
-	foreach ( $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_value LIKE %s OR option_value LIKE %s LIMIT 20", $like, $esc ) ) as $name ) {
-		$out[] = array( 'id' => 'option:' . $name, 'type' => 'option' );
+	if ( ! $out ) {
+		$out[ eg_pub_lang_links_lang( $id ) ] = (int) $id;
 	}
 	return $out;
 }
 
+/** Duplica una plantilla de Elementor a un idioma de WPML y la enlaza como traducción. Devuelve el ID nuevo. */
+function eg_pub_lang_links_duplicate( $source_id, $lang ) {
+	$src = get_post( $source_id );
+	$id  = wp_insert_post( wp_slash( array(
+		'post_type'    => $src->post_type,
+		'post_status'  => $src->post_status,
+		'post_title'   => $src->post_title . ' (' . strtoupper( $lang ) . ')',
+		'post_content' => $src->post_content,
+		'post_author'  => $src->post_author,
+	) ), true );
+	if ( is_wp_error( $id ) ) {
+		return $id;
+	}
+	$skip = array( '_edit_lock', '_edit_last', '_elementor_css', '_elementor_element_cache', '_elementor_page_assets', '_wp_old_slug' );
+	foreach ( get_post_meta( $source_id ) as $key => $values ) {
+		if ( in_array( $key, $skip, true ) || 0 === strpos( $key, '_wpml_' ) || 0 === strpos( $key, '_icl_' ) ) {
+			continue;
+		}
+		foreach ( $values as $value ) {
+			add_post_meta( $id, $key, wp_slash( maybe_unserialize( $value ) ) );
+		}
+	}
+	foreach ( get_object_taxonomies( $src->post_type ) as $tax ) {
+		$terms = wp_get_object_terms( $source_id, $tax, array( 'fields' => 'ids' ) );
+		if ( $terms && ! is_wp_error( $terms ) ) {
+			wp_set_object_terms( $id, $terms, $tax );
+		}
+	}
+	$type = 'post_' . $src->post_type;
+	do_action( 'wpml_set_element_language_details', array(
+		'element_id'           => $id,
+		'element_type'         => $type,
+		'trid'                 => apply_filters( 'wpml_element_trid', null, $source_id, $type ),
+		'language_code'        => $lang,
+		'source_language_code' => eg_pub_lang_links_lang( $source_id ),
+	) );
+	return (int) $id;
+}
+
+/** URLs del motor que hay en un texto (también en la forma escapada del JSON). */
+function eg_pub_lang_links_urls( $str, $host ) {
+	preg_match_all( '#https?:(?:\\\\/|/){2}[^"\'\s<>]*' . preg_quote( $host, '#' ) . '[^"\'\s<>]*#i', (string) $str, $m );
+	return array_values( array_unique( array_map( function ( $u ) {
+		return str_replace( '\/', '/', $u );
+	}, $m[0] ) ) );
+}
+
 function eg_pub_lang_links_handle( WP_REST_Request $r ) {
+	global $wpdb;
 	$p       = $r->get_params();
 	$dry_run = ! empty( $p['dry_run'] );
-	$rules   = eg_pub_lang_links_rules();
+	$from    = esc_url_raw( trim( (string) ( $p['from'] ?? '' ) ) );
+	$to      = trim( (string) ( $p['to'] ?? '' ) );
+	if ( '' === $from || false === strpos( $to, '{lang}' ) ) {
+		return eg_pub_error( 'eg_missing', 'Faltan from (URL actual) y to (URL con {lang}).' );
+	}
+	$host    = (string) wp_parse_url( $from, PHP_URL_HOST );
+	$default = (string) apply_filters( 'wpml_default_language', null );
+	$skip    = isset( $p['skip'] ) ? array_map( 'sanitize_key', (array) $p['skip'] ) : array( $default );
+	$codes   = is_array( $p['langs'] ?? null ) ? $p['langs'] : array();
+	$active  = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0 ) );
+	$active  = is_array( $active ) ? array_keys( $active ) : array();
+	$notes   = array();
 
-	if ( ! empty( $p['clear'] ) ) {
-		$rules = array();
-	} elseif ( isset( $p['rules'] ) ) {
-		$rules = array();
-		foreach ( (array) $p['rules'] as $rule ) {
-			$from = esc_url_raw( trim( (string) ( $rule['from'] ?? '' ) ) );
-			$to   = trim( (string) ( $rule['to'] ?? '' ) );
-			if ( '' === $from || false === strpos( $to, '{lang}' ) || '' === esc_url_raw( str_replace( '{lang}', 'xx', $to ) ) ) {
-				return eg_pub_error( 'eg_rule', 'Cada regla necesita from (URL) y to (URL con {lang}).' );
-			}
-			$clean = array( 'from' => $from, 'to' => $to );
-			if ( isset( $rule['langs'] ) && is_array( $rule['langs'] ) ) {
-				$clean['langs'] = array_map( 'sanitize_text_field', $rule['langs'] );
-			}
-			if ( isset( $rule['skip'] ) ) {
-				$clean['skip'] = array_values( array_map( 'sanitize_key', (array) $rule['skip'] ) );
-			}
-			$rules[] = $clean;
+	// Plantillas que hay que traducir a los idiomas que no las tienen.
+	$created = array();
+	foreach ( array_map( 'intval', (array) ( $p['translate_templates'] ?? array() ) ) as $tpl ) {
+		if ( 'elementor_library' !== get_post_type( $tpl ) ) {
+			$notes[] = $tpl . ': no es una plantilla de Elementor';
+			continue;
+		}
+		$have = eg_pub_lang_links_translations( $tpl );
+		$orig = isset( $have[ $default ] ) ? $have[ $default ] : $tpl;
+		foreach ( array_diff( $active, array_keys( $have ), $skip ) as $lang ) {
+			$new                            = $dry_run ? 0 : eg_pub_lang_links_duplicate( $orig, $lang );
+			$created[ $tpl . ':' . $lang ] = is_wp_error( $new ) ? $new->get_error_message() : $new;
 		}
 	}
 
-	if ( ! $dry_run && ( isset( $p['rules'] ) || ! empty( $p['clear'] ) ) ) {
-		update_option( EG_PUB_OPTION_LANG_LINKS, $rules, false );
+	// Entradas donde está la URL (y, si se pidieron ids, solo esas y sus traducciones).
+	$like = '%' . $wpdb->esc_like( $from ) . '%';
+	$esc  = '%' . $wpdb->esc_like( str_replace( '/', '\/', $from ) ) . '%';
+	$ids  = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
+		"SELECT DISTINCT p.ID FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = '_elementor_data'
+		WHERE p.post_type NOT IN ('revision','nav_menu_item') AND p.post_status NOT IN ('trash','auto-draft','inherit')
+		AND ( p.post_content LIKE %s OR p.post_content LIKE %s OR m.meta_value LIKE %s OR m.meta_value LIKE %s )",
+		$like, $esc, $like, $esc
+	) ) );
+	if ( ! empty( $p['ids'] ) ) {
+		$only = array();
+		foreach ( (array) $p['ids'] as $id ) {
+			$only = array_merge( $only, array_values( eg_pub_lang_links_translations( (int) $id ) ) );
+		}
+		$ids = array_values( array_intersect( $ids, $only ) );
+	}
+
+	$changed = array();
+	$kept    = array();
+	foreach ( $ids as $id ) {
+		$lang = eg_pub_lang_links_lang( $id );
+		$row  = array( 'id' => $id, 'type' => get_post_type( $id ), 'title' => get_the_title( $id ), 'lang' => $lang );
+		$code = array_key_exists( $lang, $codes ) ? (string) $codes[ $lang ] : $lang;
+		if ( '' === $lang || '' === $code || in_array( $lang, $skip, true ) ) {
+			$kept[] = $row + array( 'urls' => eg_pub_lang_links_urls( get_post_meta( $id, '_elementor_data', true ) . get_post_field( 'post_content', $id ), $host ) );
+			continue;
+		}
+		$new_url = str_replace( '{lang}', $code, $to );
+		$pairs   = array( $from => $new_url, str_replace( '/', '\/', $from ) => str_replace( '/', '\/', $new_url ) );
+		$count   = 0;
+		$data    = (string) get_post_meta( $id, '_elementor_data', true );
+		$content = (string) get_post_field( 'post_content', $id );
+		$data2   = strtr( $data, $pairs );
+		$content2 = strtr( $content, $pairs );
+		$count   = ( $data2 !== $data ? 1 : 0 ) + ( $content2 !== $content ? 1 : 0 );
+		if ( $count && ! $dry_run ) {
+			if ( $data2 !== $data ) {
+				update_post_meta( $id, '_elementor_data', wp_slash( $data2 ) );
+				delete_post_meta( $id, '_elementor_css' );
+				delete_post_meta( $id, '_elementor_element_cache' );
+			}
+			if ( $content2 !== $content ) {
+				$wpdb->update( $wpdb->posts, array( 'post_content' => $content2 ), array( 'ID' => $id ) );
+			}
+			clean_post_cache( $id );
+		}
+		$changed[] = $row + array( 'to' => $new_url );
+	}
+
+	if ( ( $changed || $created ) && ! $dry_run ) {
+		if ( class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
+			\Elementor\Plugin::$instance->files_manager->clear_cache();
+		}
 		if ( function_exists( 'rocket_clean_domain' ) ) {
 			rocket_clean_domain();
 		}
 	}
 
-	// Cómo queda el enlace en cada idioma activo.
-	$langs   = apply_filters( 'wpml_active_languages', null, array( 'skip_missing' => 0 ) );
-	$langs   = is_array( $langs ) ? array_keys( $langs ) : array();
-	$preview = array();
-	foreach ( $rules as $i => $rule ) {
-		foreach ( $langs as $lang ) {
-			$pairs                    = eg_pub_lang_links_pairs( $lang, array( $rule ) );
-			$preview[ $i ][ $lang ] = $pairs[ $rule['from'] ] ?? $rule['from'];
-		}
-	}
-	$found = array();
-	foreach ( $rules as $rule ) {
-		$found[ $rule['from'] ] = eg_pub_lang_links_find( $rule['from'] );
-	}
-
 	return new WP_REST_Response( array(
 		'ok'               => true,
 		'dry_run'          => $dry_run,
-		'rules'            => $rules,
-		'default_language' => apply_filters( 'wpml_default_language', null ),
-		'languages'        => $langs,
-		'preview'          => $preview,
-		'found'            => $found,
-		'wp_rocket'        => function_exists( 'rocket_clean_domain' ),
+		'default_language' => $default,
+		'languages'        => $active,
+		'created'          => $created,
+		'changed'          => $changed,
+		'kept'             => $kept,
+		'message'          => implode( ' | ', $notes ),
 	), 200 );
 }

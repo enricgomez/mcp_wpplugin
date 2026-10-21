@@ -32,7 +32,7 @@ function eg_pub_types() {
 		),
 		'gestion'     => array(
 			'label'       => 'Gestión de la web',
-			'description' => 'Buscar y sustituir textos, menús, redirecciones de Rank Math, publicar o pasar a borrador páginas y entradas, y enlaces que cambian según el idioma (p. ej. el motor de reservas).',
+			'description' => 'Buscar y sustituir textos, menús, redirecciones de Rank Math, publicar o pasar a borrador páginas y entradas, y poner el enlace de cada idioma (p. ej. el motor de reservas) en las traducciones.',
 		),
 	);
 }

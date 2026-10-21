@@ -572,20 +572,21 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 		return eg_pub_error( 'eg_from', 'La URL de origen no puede ser la portada.' );
 	}
 	if ( 0 === strpos( $to, '/' ) ) {
-		$to = home_url( $to );
+		// get_option y no home_url: con WPML, home_url() quita el prefijo de idioma (/ca/) de la ruta.
+		$to = untrailingslashit( get_option( 'home' ) ) . $to;
 	}
 
-	$redirection = \RankMath\Redirections\Redirection::from( array(
+	// Rank Math actualiza la redirección que ya tenga ese mismo origen en lugar de crear otra.
+	$id = \RankMath\Redirections\Redirection::from( array(
 		'url_to'      => esc_url_raw( $to ),
 		'header_code' => $code,
 		'status'      => 'active',
 		'sources'     => array( array( 'pattern' => $path, 'comparison' => 'exact' ) ),
-	) );
-	$id = $redirection->save();
+	) )->save();
 	if ( ! $id ) {
-		return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección (¿ya existe una para ' . $path . '?).', 409 );
+		return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección de ' . $path . '.', 409 );
 	}
-	return new WP_REST_Response( array( 'ok' => true, 'id' => (int) $id, 'from' => $path, 'to' => $to, 'code' => $code ), 200 );
+	return new WP_REST_Response( array( 'ok' => true, 'id' => (int) $id, 'from' => $path, 'to' => esc_url_raw( $to ), 'code' => $code ), 200 );
 }
 
 /* ======================================================================

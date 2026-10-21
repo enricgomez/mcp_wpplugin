@@ -1,6 +1,6 @@
 <?php
 /**
- * Módulo de cliente «Productos» (miriamtirado.com): editar productos de WooCommerce en todos sus idiomas.
+ * Tipología «WooCommerce»: editar productos en todos sus idiomas.
  *   POST /wp-json/eg/v1/product
  * Elige los productos por SKU (sku), ID (ids) o ruta (paths) y, salvo with_translations: false, también sus
  * traducciones de WPML. Los cambios van en set (todos los idiomas) y en langs (por idioma, {"ca": {...}}):
@@ -20,12 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
-	$modules['productos'] = array(
-		'label'       => 'Productos',
-		'description' => 'Edita productos de WooCommerce en todos sus idiomas: textos, campos de JetEngine y categorías.',
-		'routes'      => array( 'product' ),
-		'client'      => 'miriamtirado',
-	);
+	$modules['productos'] = array( 'type' => 'woocommerce', 'routes' => array( 'product' ) );
 	return $modules;
 } );
 

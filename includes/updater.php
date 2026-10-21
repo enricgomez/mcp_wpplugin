@@ -129,7 +129,7 @@ add_filter( 'plugins_api', function ( $result, $action, $args ) {
 		'last_updated'  => $release ? $release['published'] : '',
 		'download_link' => $release ? $release['package'] : '',
 		'sections'      => array(
-			'description' => 'Publicación de posts desde Make (Notion → WordPress) para las webs de clientes de enricgomez Studio.',
+			'description' => 'Conexión de Make con las webs de clientes de enricgomez Studio: blog, Elementor, WooCommerce y gestión de la web.',
 			'changelog'   => $release && $release['notes'] ? wpautop( esc_html( $release['notes'] ) ) : 'Sin notas.',
 		),
 	);

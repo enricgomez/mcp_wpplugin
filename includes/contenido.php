@@ -1,6 +1,6 @@
 <?php
 /**
- * Cambiar el estado de páginas, entradas o proyectos (módulo opcional «Contenido»):
+ * Cambiar el estado de páginas, entradas o proyectos (tipología «Gestión de la web»):
  *   POST /wp-json/eg/v1/status
  * Elige las entradas por ruta (paths), por ID (ids) o por términos de una taxonomía (post_type + terms), con
  * sus traducciones de WPML si se pide. Con dry_run solo las lista con su estado actual. El cambio se guarda
@@ -12,11 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
-	$modules['contenido'] = array(
-		'label'       => 'Contenido',
-		'description' => 'Pasa páginas, entradas o proyectos a borrador (o los publica) por ruta, ID o categoría.',
-		'routes'      => array( 'status' ),
-	);
+	$modules['contenido'] = array( 'type' => 'gestion', 'routes' => array( 'status' ) );
 	return $modules;
 } );
 

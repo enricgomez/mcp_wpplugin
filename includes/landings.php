@@ -1,6 +1,6 @@
 <?php
 /**
- * Módulos opcionales (desactivados por defecto, cada uno se activa en Ajustes → EG Publicación; ver includes/modulos.php):
+ * Endpoints de las tipologías Elementor y Gestión de la web (se activan en Ajustes → EG Publicación; ver includes/modulos.php):
  *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}.
  *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
  *   POST /wp-json/eg/v1/menu      añade páginas a un menú (y quita las que se indiquen).

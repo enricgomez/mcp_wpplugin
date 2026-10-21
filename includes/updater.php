@@ -158,8 +158,11 @@ add_action( 'upgrader_process_complete', function () {
 	delete_site_transient( EG_PUB_RELEASE_CACHE );
 } );
 
-// Enlace "Buscar actualizaciones" en la fila del plugin.
+// Enlaces "Ajustes" (el primero) y "Buscar actualizaciones" en la fila del plugin.
 add_filter( 'plugin_action_links_' . EG_PUB_BASENAME, function ( $links ) {
+	if ( current_user_can( 'manage_options' ) ) {
+		array_unshift( $links, '<a href="' . esc_url( admin_url( 'options-general.php?page=eg-publicacion' ) ) . '">Ajustes</a>' );
+	}
 	$url = wp_nonce_url( admin_url( 'plugins.php?eg_pub_check=1' ), 'eg_pub_check' );
 	$links[] = '<a href="' . esc_url( $url ) . '">Buscar actualizaciones</a>';
 	return $links;

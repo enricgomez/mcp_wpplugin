@@ -68,7 +68,7 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 
 ### Instalación en una web
 
-1. Descarga `eg-publicacion.zip` de la última [release](https://github.com/enricgomez/mcp_wpplugin/releases/latest).
+1. Descarga `eg-publicacion.zip` de la última [release](https://github.com/enricgomez/mcp_wpplugin/releases/latest) (no el zip del código del repositorio, que crea la carpeta `mcp_wpplugin-main`). Desde la v2.7.2, si una web ya lo tiene en otra carpeta, las actualizaciones se instalan en esa misma carpeta y no dejan dos copias.
 2. En WordPress: Plugins → Añadir nuevo → Subir plugin, y actívalo.
 3. Si la web tenía la versión antigua como mu-plugin, borra `wp-content/mu-plugins/eg-studio-rest-publisher.php`. La clave y los ajustes se conservan, así que Make sigue funcionando.
 4. La clave para Make está en Ajustes → EG Publicación.

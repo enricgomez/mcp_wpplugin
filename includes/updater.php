@@ -135,13 +135,16 @@ add_filter( 'plugins_api', function ( $result, $action, $args ) {
 	);
 }, 10, 3 );
 
-// El zip automático de GitHub trae una carpeta "enricgomez-eg-publicacion-<hash>": renombrarla.
+// Instalar la versión nueva en la misma carpeta que la actual. El zip de la release trae "eg-publicacion/"
+// y el automático de GitHub "enricgomez-mcp_wpplugin-<hash>/"; si la web lo tiene en otra carpeta
+// (p. ej. "mcp_wpplugin-main", de instalarlo con el zip del repositorio), sin esto WordPress dejaría dos copias.
 add_filter( 'upgrader_source_selection', function ( $source, $remote_source, $upgrader, $hook_extra = array() ) {
 	global $wp_filesystem;
 	if ( ( $hook_extra['plugin'] ?? '' ) !== EG_PUB_BASENAME ) {
 		return $source;
 	}
-	$wanted = trailingslashit( $remote_source ) . EG_PUB_SLUG . '/';
+	$folder = dirname( EG_PUB_BASENAME );
+	$wanted = trailingslashit( $remote_source ) . ( '.' === $folder ? EG_PUB_SLUG : $folder ) . '/';
 	if ( trailingslashit( $source ) === $wanted ) {
 		return $source;
 	}

@@ -4,7 +4,7 @@
  *   POST /wp-json/eg/v1/lang-links
  * Escribe en la web el enlace correcto de cada idioma, por ejemplo el botón Reservar de la cabecera hacia el motor
  * de reservas en cada idioma. El cambio queda guardado en el JSON de Elementor (y en el contenido) de cada
- * traducción: el plugin no hace nada al servir las páginas, así que si se desactiva los enlaces siguen bien.
+ * traducción (y en los elementos de menú con enlace personalizado): el plugin no hace nada al servir las páginas, así que si se desactiva los enlaces siguen bien.
  *
  *   from     URL tal como está ahora (https://engine.witbooking.com/property/campingelfar).
  *   to       URL con {lang} (https://engine.witbooking.com/{lang}/property/campingelfar).
@@ -139,11 +139,20 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 	$like = '%' . $wpdb->esc_like( $from ) . '%';
 	$esc  = '%' . $wpdb->esc_like( str_replace( '/', '\/', $from ) ) . '%';
 	$ids  = array_map( 'intval', $wpdb->get_col( $wpdb->prepare(
-		"SELECT DISTINCT p.ID FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key = '_elementor_data'
-		WHERE p.post_type NOT IN ('revision','nav_menu_item') AND p.post_status NOT IN ('trash','auto-draft','inherit')
+		"SELECT DISTINCT p.ID FROM {$wpdb->posts} p LEFT JOIN {$wpdb->postmeta} m ON m.post_id = p.ID AND m.meta_key IN ('_elementor_data','_menu_item_url')
+		WHERE p.post_type <> 'revision' AND p.post_status NOT IN ('trash','auto-draft','inherit')
 		AND ( p.post_content LIKE %s OR p.post_content LIKE %s OR m.meta_value LIKE %s OR m.meta_value LIKE %s )",
 		$like, $esc, $like, $esc
 	) ) );
+	// Dónde más aparece el dominio (otras metas, opciones, cadenas de WPML), para saber qué no se cambia.
+	$hlike     = '%' . $wpdb->esc_like( $host ) . '%';
+	$elsewhere = array(
+		'meta'    => $wpdb->get_results( $wpdb->prepare( "SELECT m.post_id, p.post_type, m.meta_key, LEFT(m.meta_value, 300) AS value FROM {$wpdb->postmeta} m JOIN {$wpdb->posts} p ON p.ID = m.post_id WHERE m.meta_value LIKE %s AND m.meta_key NOT IN ('_elementor_data','_menu_item_url','_elementor_element_cache','_elementor_css') AND p.post_type <> 'revision' LIMIT 30", $hlike ), ARRAY_A ),
+		'options' => $wpdb->get_col( $wpdb->prepare( "SELECT option_name FROM {$wpdb->options} WHERE option_value LIKE %s AND option_name NOT LIKE '%%transient%%' LIMIT 30", $hlike ) ),
+	);
+	if ( $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}icl_strings'" ) ) {
+		$elsewhere['wpml_strings'] = $wpdb->get_results( $wpdb->prepare( "SELECT s.id, s.context, s.name, s.value, GROUP_CONCAT(CONCAT(t.language, ':', t.status, ':', t.value) SEPARATOR ' | ') AS translations FROM {$wpdb->prefix}icl_strings s LEFT JOIN {$wpdb->prefix}icl_string_translations t ON t.string_id = s.id WHERE s.value LIKE %s OR t.value LIKE %s GROUP BY s.id LIMIT 30", $hlike, $hlike ), ARRAY_A );
+	}
 	if ( ! empty( $p['ids'] ) ) {
 		$only = array();
 		foreach ( (array) $p['ids'] as $id ) {
@@ -159,7 +168,7 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 		$row  = array( 'id' => $id, 'type' => get_post_type( $id ), 'title' => get_the_title( $id ), 'lang' => $lang );
 		$code = array_key_exists( $lang, $codes ) ? (string) $codes[ $lang ] : $lang;
 		if ( '' === $lang || '' === $code || in_array( $lang, $skip, true ) ) {
-			$kept[] = $row + array( 'urls' => eg_pub_lang_links_urls( get_post_meta( $id, '_elementor_data', true ) . get_post_field( 'post_content', $id ), $host ) );
+			$kept[] = $row + array( 'urls' => eg_pub_lang_links_urls( get_post_meta( $id, '_elementor_data', true ) . ' ' . get_post_meta( $id, '_menu_item_url', true ) . ' ' . get_post_field( 'post_content', $id ), $host ) );
 			continue;
 		}
 		$new_url = str_replace( '{lang}', $code, $to );
@@ -169,19 +178,28 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 		$content = (string) get_post_field( 'post_content', $id );
 		$data2   = strtr( $data, $pairs );
 		$content2 = strtr( $content, $pairs );
-		$count   = ( $data2 !== $data ? 1 : 0 ) + ( $content2 !== $content ? 1 : 0 );
+		$menu    = (string) get_post_meta( $id, '_menu_item_url', true );
+		$menu2   = strtr( $menu, $pairs );
+		$count   = ( $data2 !== $data ? 1 : 0 ) + ( $content2 !== $content ? 1 : 0 ) + ( $menu2 !== $menu ? 1 : 0 );
 		if ( $count && ! $dry_run ) {
 			if ( $data2 !== $data ) {
 				update_post_meta( $id, '_elementor_data', wp_slash( $data2 ) );
 				delete_post_meta( $id, '_elementor_css' );
 				delete_post_meta( $id, '_elementor_element_cache' );
 			}
+			if ( $menu2 !== $menu ) {
+				update_post_meta( $id, '_menu_item_url', wp_slash( $menu2 ) );
+			}
 			if ( $content2 !== $content ) {
 				$wpdb->update( $wpdb->posts, array( 'post_content' => $content2 ), array( 'ID' => $id ) );
 			}
 			clean_post_cache( $id );
 		}
-		$changed[] = $row + array( 'to' => $new_url );
+		if ( $count ) {
+			$changed[] = $row + array( 'to' => $new_url );
+		} else {
+			$kept[] = $row + array( 'urls' => array() );
+		}
 	}
 
 	if ( ( $changed || $created ) && ! $dry_run ) {
@@ -201,6 +219,7 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 		'created'          => $created,
 		'changed'          => $changed,
 		'kept'             => $kept,
+		'elsewhere'        => $elsewhere,
 		'message'          => implode( ' | ', $notes ),
 	), 200 );
 }

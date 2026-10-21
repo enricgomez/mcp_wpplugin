@@ -22,6 +22,7 @@ Todo lo que no es publicar posts va en módulos que se encienden por web en Ajus
 | Plantillas | `/template`, `/append` | `edit_pages` |
 | Menús | `/menu` | `edit_theme_options` |
 | Redirecciones | `/redirect` | `manage_options` |
+| Contenido (v2.6.1) | `/status` | `edit_others_pages` |
 
 Las webs que venían de la 2.5.x con el interruptor único de landings encendido siguen con todos los módulos generales encendidos hasta que se guarden los ajustes.
 
@@ -56,6 +57,7 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 - `POST /wp-json/eg/v1/text` (desde la v2.5.4): busca y sustituye textos en toda la web (títulos, contenido, JSON de Elementor incluidas las plantillas de cabecera y pie, elementos de menú, title/meta/keyword de Rank Math y las opciones `blogname`, `blogdescription` y `rank-math-options-titles`). Con `search` (`["reforma", …]`, sin distinguir mayúsculas) lista dónde aparece cada cadena. Con `replace` (`{"de": "a"}` o `[{"from": …, "to": …}]`, distingue mayúsculas) sustituye solo en el texto visible, nunca dentro de etiquetas ni enlaces, y vacía la caché de Elementor y de WP Rocket. `ids` limita a esas entradas (`"option:blogdescription"` para opciones), `post_types` cambia los tipos revisados y `dry_run` cuenta los cambios sin guardarlos.
 - `POST /wp-json/eg/v1/template` (desde la v2.5.5): crea o actualiza una plantilla de Elementor (Plantillas guardadas). Parámetros `key`, `lang`, `title`, `elements` (JSON de Elementor), `type` (`section` por defecto) y `translation_of` (idioma de la versión original, para enlazarla en WPML). Devuelve también si hay claves de reCAPTCHA configuradas.
 - `POST /wp-json/eg/v1/append` (desde la v2.5.5): añade al final de páginas una sección con un H2 y el widget Plantilla de Elementor Pro apuntando a la plantilla `template_key` del idioma `lang`. `pages` (`[{"page_id"|"landing_id": …, "heading": "…"}]`), `children_of` (añade las páginas hijas) y `heading_pattern` (`{title}` = título de la página). Si la sección ya existe la sustituye; con `remove` la quita. Solo toca el JSON de Elementor, no el contenido de la entrada.
+- `POST /wp-json/eg/v1/status` (desde la v2.6.1): cambia el estado (`status`: `draft`, `publish`, `private` o `pending`) de las entradas elegidas por `paths` (rutas, también con /ca/), `ids` o `post_type` + `terms` (`{"categoria-proyecto": ["banos"]}`, con `exclude_terms` para dejar fuera las que tengan otros términos). `with_translations` añade sus traducciones de WPML. Con `dry_run` solo las lista con su estado. Guarda el estado sin `wp_update_post`, así WPML no lanza la traducción automática.
 - `POST /wp-json/eg/v1/redirect`: crea una redirección en Rank Math (módulo Redirecciones activo). Parámetros `from` (ruta o URL), `to` y `code` (301 por defecto).
 
 ### Instalación en una web

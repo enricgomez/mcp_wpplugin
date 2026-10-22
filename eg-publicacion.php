@@ -35,6 +35,7 @@ if ( function_exists( 'eg_pub_get_key' ) ) {
 }
 
 require_once __DIR__ . '/includes/publisher.php';
+require_once __DIR__ . '/includes/indexnow.php';
 require_once __DIR__ . '/includes/modulos.php';
 require_once __DIR__ . '/includes/seo.php';
 require_once __DIR__ . '/includes/landings.php';

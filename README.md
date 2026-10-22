@@ -14,6 +14,18 @@ Si Yoast SEO está activo, `seo_title`, `seo_description` y `focus_keyword` se g
 
 Ejemplo seguro de creación de borrador: `{"notion_id":"desire-test-es-001","lang":"es","title":"Borrador de prueba","content":"<p>Contenido de prueba.</p>","status":"draft","seo_title":"Título SEO","seo_description":"Descripción SEO","focus_keyword":"palabra clave"}`.
 
+### SEO para posts, páginas y cualquier tipo de contenido (propuesta)
+
+Con **Gestión de la web** activada, `POST /wp-json/eg/v1/seo` permite revisar y editar el SEO de entradas, páginas y tipos de contenido personalizados públicos, incluidos los que usan Elementor o WooCommerce. Requiere la clave `X-EG-Key` y permisos de edición del contenido. No altera título, cuerpo, estado de publicación ni traducciones.
+
+- Selección: `ids: [123]` o `paths: ["/ruta/"]` (máximo 100 entradas). Para varias traducciones, indicar los IDs de cada idioma.
+- `set`: campos comunes `seo_title`, `seo_description`, `focus_keyword` y `canonical_url`. `langs`: sobreescrituras por idioma WPML (`es`, `en`, etc.).
+- **Por defecto previsualiza**: devuelve valores, cambios propuestos y advertencias orientativas. Solo guarda con `apply: true`.
+- Guarda metadatos nativos de Yoast SEO cuando está activo; Rank Math cuando está activo. El editor de blog y las landings también usan este mismo sistema. La búsqueda/sustitución de textos y la edición de productos admiten claves Yoast.
+- El diagnóstico es una ayuda básica, **no** reproduce el análisis ni garantiza los semáforos de Yoast. El análisis completo debe revisarse en el editor de WordPress, especialmente con Elementor y contenidos traducidos.
+
+Ejemplo de previsualización: `{"ids":[123,456],"set":{"seo_title":"Título optimizado","seo_description":"Descripción para buscadores","focus_keyword":"frase clave"},"langs":{"en":{"seo_title":"Optimized title","seo_description":"English search snippet","focus_keyword":"key phrase"}}}`. Para aplicar los cambios, añadir `"apply":true`.
+
 ### Parámetros de categoría
 
 - `category_slug`: slug de la categoría en el idioma del post.

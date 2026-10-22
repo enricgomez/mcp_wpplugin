@@ -10,6 +10,13 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.9.6 · 22/10/2026 · PR #23, #24 y #25 (ChatGPT y Claude)
+
+- **Nuevo `POST /post-media`** (Blog, `includes/post-media.php`): asigna como imagen destacada una imagen que ya está en la biblioteca (`post_id`, `attachment_id`, `dry_run`). Solo llama a `set_post_thumbnail`: no re-guarda el contenido ni toca los trabajos del editor de traducción de WPML. Con `dry_run: true` devuelve la imagen actual en `previous_attachment_id` sin cambiar nada (PR #25, ChatGPT).
+- **IndexNow opcional** (`includes/indexnow.php`, PR #23, ChatGPT): avisa a IndexNow de las entradas publicadas por EG Publicación (también las traducciones), sin duplicar avisos. Viene **apagado** (opción `eg_pub_indexnow_enabled`); se enciende en Ajustes → EG IndexNow. Antes de activarlo en una web, comprobar que ningún otro plugin (SEO, caché o CDN) ya envía IndexNow.
+- `CHANGELOG.md` y la sección «Cómo trabajamos en este repositorio» del README (PR #24, Claude).
+- Webs: desire-vips.com (imagen 57310 de los posts 57301/57303). El escenario de Make de Desire Vips (10022329) aún no ofrece la ruta `post-media` y solo devuelve el código HTTP. Esta entrada se añadió después de la release.
+
 ## 2.9.5 · 22/10/2026 · PR #21 y #22 (ChatGPT)
 
 - **Nuevo `POST /seo`** (Gestión de la web): revisa y edita título SEO, descripción, frase clave y canonical de entradas, páginas y tipos de contenido públicos (también Elementor y WooCommerce), por `ids` o `paths`, con sobrescrituras por idioma WPML en `langs`. Por defecto solo previsualiza; guarda con `apply: true`.

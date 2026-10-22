@@ -75,3 +75,12 @@ add_action( 'eg_pub_indexnow_submit', function ( $post_id ) {
         update_post_meta( $post_id, '_eg_indexnow_sent', $fingerprint );
     }
 } );
+
+/* New posts receive the EG idempotency meta AFTER wp_insert_post fires. */
+add_action( 'added_post_meta', function ( $meta_id, $post_id, $meta_key, $meta_value ) {
+    if ( EG_PUB_META_NOTION !== $meta_key || ! eg_pub_indexnow_enabled() ) { return; }
+    if ( 'post' !== get_post_type( $post_id ) || 'publish' !== get_post_status( $post_id ) ) { return; }
+    if ( ! wp_next_scheduled( 'eg_pub_indexnow_submit', array( (int) $post_id ) ) ) {
+        wp_schedule_single_event( time() + 180, 'eg_pub_indexnow_submit', array( (int) $post_id ) );
+    }
+}, 10, 4 );

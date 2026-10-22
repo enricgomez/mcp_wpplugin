@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EG Publicación
  * Description:       Endpoints /wp-json/eg/v1/ para los escenarios de Make de enricgomez Studio, por tipología de web: Blog (posts con idiomas de WPML, categoría, SEO de Yoast o Rank Math e imágenes), Elementor (landings y plantillas), WooCommerce (productos) y Gestión de la web (textos, menús, redirecciones, estado de páginas y enlaces por idioma). Con WordPress 6.9 también como Abilities para el MCP Adapter. La clave de acceso está en Ajustes → EG Publicación. Se actualiza solo desde GitHub.
- * Version:           2.9.5
+ * Version:           2.9.6
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            enricgomez Studio
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const EG_PUB_VERSION = '2.9.5';
+const EG_PUB_VERSION = '2.9.6';
 const EG_PUB_REPO    = 'enricgomez/mcp_wpplugin';
 define( 'EG_PUB_BASENAME', plugin_basename( __FILE__ ) );
 
@@ -35,6 +35,7 @@ if ( function_exists( 'eg_pub_get_key' ) ) {
 }
 
 require_once __DIR__ . '/includes/publisher.php';
+require_once __DIR__ . '/includes/post-media.php';
 require_once __DIR__ . '/includes/indexnow.php';
 require_once __DIR__ . '/includes/modulos.php';
 require_once __DIR__ . '/includes/seo.php';

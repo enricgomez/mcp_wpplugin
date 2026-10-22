@@ -6,6 +6,14 @@ Plugins para conectar con webs en WordPress via MCP
 
 Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que usa el escenario de Make "Blogs clientes: Notion → WordPress" para publicar los posts de blog de los clientes (idioma y traducción WPML, categoría, SEO de Rank Math, imagen destacada, imagen dentro del contenido y aviso por email).
 
+### Borradores y Yoast (cambio propuesto, pendiente de release)
+
+`POST /publish` admite `status: "draft"`, `"pending"`, `"private"` o `"publish"`. Sin `status` mantiene el comportamiento anterior (publicación inmediata o programada mediante `date`). Si se indica una fecha futura con `status: "draft"`, sigue siendo borrador. El endpoint requiere `notion_id`, `title` y `content`, también para borradores. `translation_of_notion` enlaza una traducción con el post original; crear primero el original.
+
+Si Yoast SEO está activo, `seo_title`, `seo_description` y `focus_keyword` se guardan también en sus metadatos (`_yoast_wpseo_title`, `_yoast_wpseo_metadesc`, `_yoast_wpseo_focuskw`). Se conserva la escritura de Rank Math para compatibilidad con escenarios existentes. No se cambia el estado de ningún post ya creado hasta que se invoque el endpoint.
+
+Ejemplo seguro de creación de borrador: `{"notion_id":"desire-test-es-001","lang":"es","title":"Borrador de prueba","content":"<p>Contenido de prueba.</p>","status":"draft","seo_title":"Título SEO","seo_description":"Descripción SEO","focus_keyword":"palabra clave"}`.
+
 ### Parámetros de categoría
 
 - `category_slug`: slug de la categoría en el idioma del post.

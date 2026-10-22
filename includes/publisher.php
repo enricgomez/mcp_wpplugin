@@ -335,36 +335,8 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		wp_set_post_terms( $post_id, array( (int) $term->term_id ), 'category', false );
 	}
 
-	// --- SEO de Rank Math ----------------------------------------------------
-	$seo = array(
-		'seo_title'       => 'rank_math_title',
-		'seo_description' => 'rank_math_description',
-		'focus_keyword'   => 'rank_math_focus_keyword',
-	);
-	foreach ( $seo as $param => $meta_key ) {
-		if ( isset( $p[ $param ] ) && '' !== trim( $p[ $param ] ) ) {
-			$val = sanitize_text_field( $p[ $param ] );
-			if ( 'focus_keyword' === $param ) {
-				$val = implode( ',', array_filter( array_map( 'trim', explode( ',', $val ) ) ) );
-			}
-			update_post_meta( $post_id, $meta_key, $val );
-		}
-	}
-
-	// --- SEO de Yoast --------------------------------------------------------
-	// Rank Math metadata above is retained for backwards compatibility.
-	if ( defined( 'WPSEO_VERSION' ) ) {
-		$yoast_meta = array(
-			'seo_title'       => '_yoast_wpseo_title',
-			'seo_description' => '_yoast_wpseo_metadesc',
-			'focus_keyword'   => '_yoast_wpseo_focuskw',
-		);
-		foreach ( $yoast_meta as $param => $meta_key ) {
-			if ( isset( $p[ $param ] ) && '' !== trim( (string) $p[ $param ] ) ) {
-				update_post_meta( $post_id, $meta_key, sanitize_text_field( $p[ $param ] ) );
-			}
-		}
-	}
+	// --- SEO del plugin activo (Yoast SEO o Rank Math) --------------------------
+	eg_pub_seo_save( $post_id, $p );
 
 	// --- Imagen destacada ---------------------------------------------------
 	$notes   = array();

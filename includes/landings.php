@@ -425,17 +425,14 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 		) );
 	}
 
-	// --- SEO de Rank Math --------------------------------------------------------
-	$seo = array(
-		'seo_title'       => 'rank_math_title',
-		'seo_description' => 'rank_math_description',
-		'focus_keyword'   => 'rank_math_focus_keyword',
-	);
-	foreach ( $seo as $param => $meta_key ) {
-		if ( isset( $p[ $param ] ) && '' !== trim( $p[ $param ] ) ) {
-			update_post_meta( $post_id, $meta_key, sanitize_text_field( strtr( $p[ $param ], $map ) ) );
+	// --- SEO del plugin activo (Yoast SEO o Rank Math) --------------------------
+	$seo_values = array();
+	foreach ( eg_pub_seo_meta_map() as $field => $keys ) {
+		if ( isset( $p[ $field ] ) && is_scalar( $p[ $field ] ) ) {
+			$seo_values[ $field ] = strtr( (string) $p[ $field ], $map );
 		}
 	}
+	eg_pub_seo_save( $post_id, $seo_values );
 
 	// --- Imagen destacada: ID, URL o el nombre de una de inline_images ------------
 	if ( ! empty( $p['featured_image'] ) ) {

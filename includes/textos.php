@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const EG_PUB_TEXT_META    = array( '_elementor_data', 'rank_math_title', 'rank_math_description', 'rank_math_focus_keyword' );
+const EG_PUB_TEXT_META    = array( '_elementor_data', 'rank_math_title', 'rank_math_description', 'rank_math_focus_keyword', '_yoast_wpseo_title', '_yoast_wpseo_metadesc', '_yoast_wpseo_focuskw', '_yoast_wpseo_canonical' );
 const EG_PUB_TEXT_OPTIONS = array( 'blogname', 'blogdescription', 'rank-math-options-titles' );
 // Claves de Elementor que no son texto visible.
 const EG_PUB_TEXT_SKIP_KEYS = array( 'url', 'id', 'elType', 'widgetType', '_element_id', '_css_classes', 'css_classes', 'link', 'custom_css', 'html_tag' );

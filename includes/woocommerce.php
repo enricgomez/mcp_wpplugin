@@ -37,7 +37,7 @@ add_action( 'rest_api_init', function () {
 
 /** Campos de meta que se pueden cambiar: los de JetEngine para productos y los de SEO de Rank Math. */
 function eg_pub_product_meta_keys() {
-	$keys  = array( 'rank_math_title', 'rank_math_description', 'rank_math_focus_keyword' );
+	$keys  = array( 'rank_math_title', 'rank_math_description', 'rank_math_focus_keyword', '_yoast_wpseo_title', '_yoast_wpseo_metadesc', '_yoast_wpseo_focuskw', '_yoast_wpseo_canonical' );
 	$boxes = get_option( 'jet_engine_meta_boxes', array() );
 	foreach ( is_array( $boxes ) ? $boxes : array() as $box ) {
 		if ( in_array( 'product', (array) ( $box['args']['allowed_post_type'] ?? array() ), true ) ) {

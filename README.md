@@ -6,7 +6,16 @@ Plugins para conectar con webs en WordPress via MCP
 
 Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que usa el escenario de Make "Blogs clientes: Notion → WordPress" para publicar los posts de blog de los clientes (idioma y traducción WPML, categoría, SEO de Rank Math, imagen destacada, imagen dentro del contenido y aviso por email).
 
-### Borradores y Yoast (cambio propuesto, pendiente de release)
+### Cómo trabajamos en este repositorio (Claude y ChatGPT)
+
+Claude y ChatGPT modifican este plugin en paralelo. Para no pisarse ni decidir sobre una versión que ya no es la actual:
+
+1. **Antes de cambiar o decidir nada**: `git pull` de `main`, mira la [última release](https://github.com/enricgomez/mcp_wpplugin/releases/latest), los PR abiertos y el [CHANGELOG.md](CHANGELOG.md). Parte siempre de `main` actualizado, nunca de una copia antigua.
+2. **Cada cambio en el código del plugin** (`eg-publicacion.php` o `includes/`) sube la versión en el mismo PR: cabecera `Version:` y `EG_PUB_VERSION`, iguales (si no coinciden, la Action falla). Si no se sube, el merge no genera release y el cambio queda en `main` sin llegar a las webs hasta la siguiente versión.
+3. **Cada cambio añade su entrada en [CHANGELOG.md](CHANGELOG.md)** en el mismo PR, arriba del todo: versión, fecha, PR, quién lo hace (Claude o ChatGPT), qué cambia y qué tipología, módulo y webs afecta. Un cambio solo de documentación no sube versión.
+4. Un PR por cambio, sin fusionar sin el OK de Enric. Después de fusionar, la rama de trabajo se reinicia desde `origin/main` antes del siguiente cambio.
+
+### Borradores y Yoast (desde la v2.9.4)
 
 `POST /publish` admite `status: "draft"`, `"pending"`, `"private"` o `"publish"`. Sin `status` mantiene el comportamiento anterior (publicación inmediata o programada mediante `date`). Si se indica una fecha futura con `status: "draft"`, sigue siendo borrador. El endpoint requiere `notion_id`, `title` y `content`, también para borradores. `translation_of_notion` enlaza una traducción con el post original; crear primero el original.
 
@@ -14,7 +23,7 @@ Si Yoast SEO está activo, `seo_title`, `seo_description` y `focus_keyword` se g
 
 Ejemplo seguro de creación de borrador: `{"notion_id":"desire-test-es-001","lang":"es","title":"Borrador de prueba","content":"<p>Contenido de prueba.</p>","status":"draft","seo_title":"Título SEO","seo_description":"Descripción SEO","focus_keyword":"palabra clave"}`.
 
-### SEO para posts, páginas y cualquier tipo de contenido (propuesta)
+### SEO para posts, páginas y cualquier tipo de contenido (desde la v2.9.5)
 
 Con **Gestión de la web** activada, `POST /wp-json/eg/v1/seo` permite revisar y editar el SEO de entradas, páginas y tipos de contenido personalizados públicos, incluidos los que usan Elementor o WooCommerce. Requiere la clave `X-EG-Key` y permisos de edición del contenido. No altera título, cuerpo, estado de publicación ni traducciones.
 
@@ -100,8 +109,8 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 
 ### Publicar una versión nueva
 
-1. Cambia la versión en `eg-publicacion.php` (cabecera `Version:` y constante `EG_PUB_VERSION`).
-2. Haz commit y súbelo a `main`.
+1. Cambia la versión en `eg-publicacion.php` (cabecera `Version:` y constante `EG_PUB_VERSION`) y añade la entrada en `CHANGELOG.md`.
+2. Haz commit y súbelo a `main` (por PR).
 3. La GitHub Action crea la release `vX.Y.Z` con el zip (si esa versión ya tenía release, no hace nada). Cada web la detecta en unas horas y se actualiza sola (o al momento con "Buscar actualizaciones" en la fila del plugin).
 
 Si el repositorio es privado, cada web necesita en `wp-config.php`:

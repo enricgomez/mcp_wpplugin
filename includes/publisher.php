@@ -250,7 +250,12 @@ function eg_pub_handle( WP_REST_Request $r ) {
 	// --- Fecha y estado -----------------------------------------------------
 	$tz        = wp_timezone();
 	$date_raw  = isset( $p['date'] ) ? trim( (string) $p['date'] ) : '';
-	$status    = 'publish';
+	// Preserve existing integrations: publishing remains the default unless explicitly overridden.
+	$requested_status = isset( $p['status'] ) ? sanitize_key( $p['status'] ) : 'publish';
+	if ( ! in_array( $requested_status, array( 'draft', 'pending', 'private', 'publish' ), true ) ) {
+		return eg_pub_error( 'eg_status', 'Estado no válido: usa draft, pending, private o publish.' );
+	}
+	$status    = $requested_status;
 	$post_date = null;
 	if ( '' !== $date_raw ) {
 		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date_raw ) ) {
@@ -260,7 +265,10 @@ function eg_pub_handle( WP_REST_Request $r ) {
 			$dt        = new DateTimeImmutable( $date_raw, $tz );
 			$dt        = $dt->setTimezone( $tz );
 			$post_date = $dt->format( 'Y-m-d H:i:s' );
-			$status    = ( $dt->getTimestamp() > time() ) ? 'future' : 'publish';
+			// Only scheduled publications become future; drafts must stay drafts.
+			if ( 'publish' === $requested_status ) {
+				$status = ( $dt->getTimestamp() > time() ) ? 'future' : 'publish';
+			}
 		} catch ( Exception $e ) {
 			return eg_pub_error( 'eg_date', 'Fecha de publicación no válida: ' . $date_raw );
 		}
@@ -340,6 +348,21 @@ function eg_pub_handle( WP_REST_Request $r ) {
 				$val = implode( ',', array_filter( array_map( 'trim', explode( ',', $val ) ) ) );
 			}
 			update_post_meta( $post_id, $meta_key, $val );
+		}
+	}
+
+	// --- SEO de Yoast --------------------------------------------------------
+	// Rank Math metadata above is retained for backwards compatibility.
+	if ( defined( 'WPSEO_VERSION' ) ) {
+		$yoast_meta = array(
+			'seo_title'       => '_yoast_wpseo_title',
+			'seo_description' => '_yoast_wpseo_metadesc',
+			'focus_keyword'   => '_yoast_wpseo_focuskw',
+		);
+		foreach ( $yoast_meta as $param => $meta_key ) {
+			if ( isset( $p[ $param ] ) && '' !== trim( (string) $p[ $param ] ) ) {
+				update_post_meta( $post_id, $meta_key, sanitize_text_field( $p[ $param ] ) );
+			}
 		}
 	}
 

@@ -4,7 +4,8 @@
  *   POST /wp-json/eg/v1/lang-links
  * Escribe en la web el enlace correcto de cada idioma, por ejemplo el botón Reservar de la cabecera hacia el motor
  * de reservas en cada idioma. El cambio queda guardado en el JSON de Elementor (y en el contenido) de cada
- * traducción (y en los elementos de menú con enlace personalizado): el plugin no hace nada al servir las páginas, así que si se desactiva los enlaces siguen bien.
+ * traducción (y en los elementos de menú con enlace personalizado y en las traducciones de cadenas de WPML cuyo
+ * original es esa URL, como un campo de opciones): el plugin no hace nada al servir las páginas, así que si se desactiva los enlaces siguen bien.
  *
  *   from     URL tal como está ahora (https://engine.witbooking.com/property/campingelfar).
  *   to       URL con {lang} (https://engine.witbooking.com/{lang}/property/campingelfar).
@@ -202,7 +203,37 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 		}
 	}
 
-	if ( ( $changed || $created ) && ! $dry_run ) {
+	// Cadenas de WPML (p. ej. un campo de opciones traducido como «admin text») cuyo original es la URL: se guarda
+	// como traducción completa de cada idioma el enlace de ese idioma.
+	$strings = array();
+	if ( $wpdb->get_var( "SHOW TABLES LIKE '{$wpdb->prefix}icl_strings'" ) ) {
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT id, context, name, value FROM {$wpdb->prefix}icl_strings WHERE value = %s OR value = %s", $from, untrailingslashit( $from ) . '/' ) ) as $str ) {
+			foreach ( $active as $lang ) {
+				$code = array_key_exists( $lang, $codes ) ? (string) $codes[ $lang ] : $lang;
+				if ( in_array( $lang, $skip, true ) || '' === $code ) {
+					continue;
+				}
+				$new_url = str_replace( '{lang}', $code, $to );
+				$old     = (string) $wpdb->get_var( $wpdb->prepare( "SELECT value FROM {$wpdb->prefix}icl_string_translations WHERE string_id = %d AND language = %s", $str->id, $lang ) );
+				if ( $old === $new_url ) {
+					continue;
+				}
+				if ( ! $dry_run ) {
+					if ( function_exists( 'icl_add_string_translation' ) ) {
+						icl_add_string_translation( (int) $str->id, $lang, $new_url, defined( 'ICL_TM_COMPLETE' ) ? ICL_TM_COMPLETE : 10 );
+					} else {
+						$wpdb->replace( $wpdb->prefix . 'icl_string_translations', array( 'string_id' => (int) $str->id, 'language' => $lang, 'status' => 10, 'value' => $new_url ) );
+					}
+				}
+				$strings[] = array( 'string' => (int) $str->id, 'name' => $str->name, 'context' => $str->context, 'lang' => $lang, 'from' => $old, 'to' => $new_url );
+			}
+		}
+		if ( $strings && ! $dry_run ) {
+			wp_cache_flush();
+		}
+	}
+
+	if ( ( $changed || $created || $strings ) && ! $dry_run ) {
 		if ( class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
 			\Elementor\Plugin::$instance->files_manager->clear_cache();
 		}
@@ -219,6 +250,7 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 		'created'          => $created,
 		'changed'          => $changed,
 		'kept'             => $kept,
+		'strings'          => $strings,
 		'elsewhere'        => $elsewhere,
 		'message'          => implode( ' | ', $notes ),
 	), 200 );

@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.11.0 · 23/10/2026 · PR pendiente (Claude)
+
+- `/template` (Elementor) admite `conditions`: condiciones de visualización del Theme Builder de Elementor Pro (p. ej. `["include/singular/post"]`, `["include/archive/category", "include/archive/post_tag"]`; `[]` las quita). Guarda `_elementor_conditions` y rehace la caché de condiciones de Elementor Pro (si su API no está, la escribe a mano). Se ponen solo en la plantilla original; las traducciones se enlazan con `translation_of`.
+- `/template` admite también `status` (`publish` por defecto, `draft`, `private`) y `settings` (ajustes de la plantilla, `_elementor_page_settings`, p. ej. la entrada de vista previa). Con `type: "single-post"` o `"archive"` crea plantillas de entrada o de archivo del blog.
+- Webs: taxi-calella.com (plantillas del blog). El resto no cambia: sin esos parámetros `/template` funciona igual que antes.
+
 ## 2.9.5 · 22/10/2026 · PR #21 y #22 (ChatGPT)
 
 - **Nuevo `POST /seo`** (Gestión de la web): revisa y edita título SEO, descripción, frase clave y canonical de entradas, páginas y tipos de contenido públicos (también Elementor y WooCommerce), por `ids` o `paths`, con sobrescrituras por idioma WPML en `langs`. Por defecto solo previsualiza; guarda con `apply: true`.

@@ -59,13 +59,14 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	$title    = wp_strip_all_tags( $p['title'] ?? '' );
 	$elements = $p['elements'] ?? null;
 	$type     = sanitize_key( $p['type'] ?? 'section' );
+	$status   = in_array( $p['status'] ?? '', array( 'publish', 'draft', 'private' ), true ) ? $p['status'] : 'publish';
 	if ( '' === $key || '' === $title || ! is_array( $elements ) || ! $elements ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: key, title o elements (JSON de Elementor).' );
 	}
 
 	$postarr = array(
 		'post_type'   => 'elementor_library',
-		'post_status' => 'publish',
+		'post_status' => $status,
 		'post_title'  => $title,
 	);
 	$id = eg_pub_find_template( $key, $lang );
@@ -87,6 +88,10 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 		update_post_meta( $id, '_elementor_version', ELEMENTOR_VERSION );
 	}
 	wp_set_object_terms( $id, $type, 'elementor_library_type' );
+	if ( isset( $p['settings'] ) && is_array( $p['settings'] ) ) {
+		update_post_meta( $id, '_elementor_page_settings', $p['settings'] );
+	}
+	$conditions = isset( $p['conditions'] ) && is_array( $p['conditions'] ) ? eg_pub_template_conditions( $id, $p['conditions'] ) : null;
 	delete_post_meta( $id, '_elementor_css' );
 	delete_post_meta( $id, '_elementor_element_cache' );
 
@@ -112,10 +117,58 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 		'id'          => (int) $id,
 		'key'         => $key,
 		'lang'        => $lang,
+		'conditions'  => $conditions,
 		'elementor_pro' => defined( 'ELEMENTOR_PRO_VERSION' ),
 		'recaptcha'   => $recaptcha,
 		'admin_email' => get_option( 'admin_email' ),
 	), 200 );
+}
+
+/**
+ * Condiciones de visualización del Theme Builder de Elementor Pro (p. ej. "include/singular/post",
+ * "include/archive/category"). Guarda _elementor_conditions y rehace la caché de condiciones,
+ * que es lo que Elementor Pro consulta. Con [] quita las condiciones. Devuelve las guardadas.
+ */
+function eg_pub_template_conditions( $id, $conditions ) {
+	$clean = array();
+	foreach ( $conditions as $c ) {
+		$c = trim( (string) $c, " /\t\n" );
+		if ( preg_match( '#^(include|exclude)(/[a-z0-9_-]+){1,4}$#', $c ) ) {
+			$clean[] = $c;
+		}
+	}
+	$clean = array_values( array_unique( $clean ) );
+	if ( $clean ) {
+		update_post_meta( $id, '_elementor_conditions', $clean );
+	} else {
+		delete_post_meta( $id, '_elementor_conditions' );
+	}
+
+	$regenerated = false;
+	if ( class_exists( '\\ElementorPro\\Modules\\ThemeBuilder\\Module' ) ) {
+		$manager = \ElementorPro\Modules\ThemeBuilder\Module::instance()->get_conditions_manager();
+		if ( method_exists( $manager, 'get_cache' ) ) {
+			$cache = $manager->get_cache();
+			if ( method_exists( $cache, 'regenerate' ) ) {
+				$cache->regenerate();
+				$regenerated = true;
+			}
+		}
+	}
+	if ( ! $regenerated ) {
+		// Sin la API de Elementor Pro: se escribe la caché a mano (ubicación = tipo sin «-post»/«-page»).
+		$location = preg_replace( '/-(post|page)$/', '', (string) get_post_meta( $id, '_elementor_template_type', true ) );
+		$cache    = get_option( 'elementor_pro_theme_builder_conditions', array() );
+		$cache    = is_array( $cache ) ? $cache : array();
+		foreach ( $cache as $loc => $templates ) {
+			unset( $cache[ $loc ][ $id ] );
+		}
+		if ( $clean && $location ) {
+			$cache[ $location ][ $id ] = $clean;
+		}
+		update_option( 'elementor_pro_theme_builder_conditions', $cache );
+	}
+	return $clean;
 }
 
 /** Quita de la lista de elementos los que lleven la clase CSS indicada (en cualquier nivel). */

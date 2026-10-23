@@ -1,7 +1,8 @@
 <?php
 /**
  * Endpoints de las tipologías Elementor y Gestión de la web (se activan en Ajustes → EG Publicación; ver includes/modulos.php):
- *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}.
+ *   POST /wp-json/eg/v1/landing   clona una página maestra de Elementor y sustituye sus marcadores {{clave}}
+ *                                 (o crea la página con su propio JSON de Elementor en "elements").
  *   POST /wp-json/eg/v1/redirect  crea una redirección en Rank Math.
  *   POST /wp-json/eg/v1/menu      añade páginas a un menú (y quita las que se indiquen).
  *   POST /wp-json/eg/v1/text      busca y sustituye textos en toda la web (includes/textos.php).
@@ -294,12 +295,27 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
 	if ( ! empty( $p['dry_run'] ) ) {
 		$found = array( 'markers' => array(), 'images' => array(), 'widgets' => array() );
 		eg_pub_landing_scan( $data, $found );
-		return new WP_REST_Response( array(
+		$out = array(
 			'ok'      => true,
 			'markers' => array_values( array_unique( $found['markers'] ) ),
 			'images'  => array_values( $found['images'] ),
 			'widgets' => $found['widgets'],
-		), 200 );
+		);
+		// Con "data": true devuelve también el JSON de Elementor completo de la maestra (solo lectura).
+		if ( ! empty( $p['data'] ) ) {
+			$out['data'] = $data;
+		}
+		return new WP_REST_Response( $out, 200 );
+	}
+
+	// "elements": JSON de Elementor propio para la página nueva. De la maestra solo se copian
+	// la plantilla de página y sus ajustes (así una página existente sirve de base para rehacerla).
+	if ( isset( $p['elements'] ) ) {
+		$elements = is_string( $p['elements'] ) ? json_decode( $p['elements'], true ) : $p['elements'];
+		if ( ! is_array( $elements ) || ! $elements ) {
+			return eg_pub_error( 'eg_elements', 'elements debe ser el JSON de Elementor de la página (una lista de secciones o contenedores).' );
+		}
+		$data = array_values( $elements );
 	}
 
 	// Imágenes: {"<ID adjunto de la maestra>": <ID de adjunto> | "https://..." | {"url": "...", "alt": "..."}}.

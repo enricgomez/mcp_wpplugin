@@ -155,6 +155,8 @@ function eg_pub_ability_defs() {
 					'status'         => eg_pub_prop( 'string', 'publish o draft.' ),
 					'replacements'   => eg_pub_prop( 'object', 'Marcadores {{clave}} => texto.' ),
 					'dry_run'        => eg_pub_prop( 'boolean', 'Solo analizar la página maestra.' ),
+					'data'           => eg_pub_prop( 'boolean', 'Con dry_run, devolver también el JSON de Elementor de la maestra.' ),
+					'elements'       => eg_pub_prop( 'array', 'JSON de Elementor propio para la página nueva (sustituye al de la maestra).' ),
 				),
 			),
 			'execute'     => eg_pub_ability_route( 'eg_pub_landing_handle', 'landing' ),

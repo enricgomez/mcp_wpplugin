@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.13.3 · 24/10/2026 · PR #35 (Claude)
+
+- FAQ (Blog): el estilo por defecto ya no usa el color `accent` de Elementor, que en taxi-calella.com es blanco casi transparente y dejaba el «+» invisible. El icono toma el color de la pregunta y el borde abierto es neutro. Para los colores de la marca, `faq_css`.
+- Webs: taxi-calella.com y taxi-santasusanna.com.
+
 ## 2.13.2 · 24/10/2026 · PR #34 (Claude)
 
 - `faqs: "auto"` (Blog): el texto que va después de la última pregunta, como la llamada final a reservar, ya no se mete en la última respuesta. En HTML suelto, la respuesta acaba en la primera línea en blanco; con bloques de Gutenberg, en su primer bloque.

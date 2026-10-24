@@ -265,7 +265,7 @@ add_action( 'wp_head', function () {
 	echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
 } );
 
-/** Estilo de los desplegables: colores globales de Elementor si los hay; `faq_css` en /publish lo sustituye. */
+/** Estilo de los desplegables: neutro, con la pregunta en el color secundario de Elementor si lo hay; `faq_css` en /publish lo sustituye por el de la marca. */
 function eg_pub_faq_css() {
 	$custom = (string) get_option( EG_PUB_OPTION_FAQ_CSS, '' );
 	if ( '' !== $custom ) {
@@ -273,12 +273,12 @@ function eg_pub_faq_css() {
 	}
 	return '.eg-faq{margin:2.5em 0}'
 		. '.eg-faq .eg-faq-item{border:1px solid rgba(0,0,0,.12);border-radius:10px;margin:0 0 12px;background:#fff;overflow:hidden;transition:box-shadow .2s}'
-		. '.eg-faq .eg-faq-item[open]{box-shadow:0 6px 18px rgba(0,0,0,.08);border-color:var(--e-global-color-accent,var(--e-global-color-primary,#333))}'
+		. '.eg-faq .eg-faq-item[open]{box-shadow:0 6px 18px rgba(0,0,0,.08);border-color:rgba(0,0,0,.25)}'
 		. '.eg-faq .eg-faq-item>summary{list-style:none;cursor:pointer;position:relative;padding:16px 52px 16px 20px;font-weight:600;line-height:1.4;color:var(--e-global-color-secondary,inherit)}'
 		. '.eg-faq .eg-faq-item>summary::-webkit-details-marker{display:none}'
-		. '.eg-faq .eg-faq-item>summary::after{content:"+";position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:400;line-height:1;color:var(--e-global-color-accent,var(--e-global-color-primary,currentColor))}'
+		. '.eg-faq .eg-faq-item>summary::after{content:"+";position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:400;line-height:1;color:currentColor}'
 		. '.eg-faq .eg-faq-item[open]>summary::after{content:"\2212"}'
-		. '.eg-faq .eg-faq-item>summary:focus-visible{outline:2px solid var(--e-global-color-accent,currentColor);outline-offset:-2px}'
+		. '.eg-faq .eg-faq-item>summary:focus-visible{outline:2px solid currentColor;outline-offset:-2px}'
 		. '.eg-faq .eg-faq-item>:not(summary){margin:0;padding:0 20px 16px}'
 		. '.eg-faq .eg-faq-item>summary+*{padding-top:2px}';
 }

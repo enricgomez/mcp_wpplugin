@@ -50,6 +50,8 @@ function eg_pub_faq_extract( $html ) {
 		$start = $m[0][ $i ][1];
 		$from  = $start + strlen( $m[0][ $i ][0] );
 		$end   = isset( $m[0][ $i + 1 ] ) ? $m[0][ $i + 1 ][1] : strlen( $html );
+		$raw   = substr( $html, $from, $end - $from );
+		$end   = $from + eg_pub_faq_section_length( $raw );
 		$body  = eg_pub_faq_strip_blocks( substr( $html, $from, $end - $from ) );
 		$items = array();
 		if ( preg_match( '/<summary\b/i', $body ) ) {
@@ -72,6 +74,30 @@ function eg_pub_faq_extract( $html ) {
 		return array( rtrim( $before ), $text, $items, ltrim( substr( $html, $end ) ) );
 	}
 	return null;
+}
+
+/**
+ * Largo de la sección de FAQ dentro del texto que va de su H2 al siguiente H2. Tras la última pregunta,
+ * un texto final (p. ej. la llamada a reservar) no forma parte de la respuesta: en HTML suelto, la respuesta
+ * acaba en la primera línea en blanco; con bloques de Gutenberg, en su primer bloque.
+ */
+function eg_pub_faq_section_length( $raw ) {
+	if ( preg_match( '/<summary\b/i', $raw ) || ! preg_match_all( '/<h[34]\b[^>]*>.*?<\/h[34]>(?:\s*<!--\s*\/wp:heading\s*-->)?/is', $raw, $hs, PREG_OFFSET_CAPTURE ) ) {
+		return strlen( $raw );
+	}
+	$last = end( $hs[0] );
+	$from = $last[1] + strlen( $last[0] );
+	$rest = substr( $raw, $from );
+	if ( false !== strpos( $rest, '<!-- wp:' ) ) {
+		if ( preg_match( '/^\s*<!--\s*wp:([a-z0-9\/-]+).*?<!--\s*\/wp:\1\s*-->/is', $rest, $b ) ) {
+			return $from + strlen( $b[0] );
+		}
+		return strlen( $raw );
+	}
+	if ( preg_match( '/\S.*?(?=\n[ \t]*\n)/s', $rest, $b, PREG_OFFSET_CAPTURE ) ) {
+		return $from + $b[0][1] + strlen( $b[0][0] );
+	}
+	return strlen( $raw );
 }
 
 /** Normaliza la lista: pregunta en texto plano, respuesta en HTML permitido; descarta las vacías. */

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.13.1 · 24/10/2026 · PR #33 (Claude)
+
+- `/publish` (Blog): al actualizar un post sin `content_image_url` ni `content_image_base64`, el marcador `<!-- eg:imagen-contenido -->` vuelve a poner la imagen de contenido que el post ya tenía (antes se quedaba sin imagen). Las traducciones siguen usando la del original si no tienen una propia.
+- Webs: todas las de tipología Blog; afecta solo a actualizaciones de posts.
+
 ## 2.13.0 · 24/10/2026 · PR #32 (Claude)
 
 - `/publish` (Blog) admite `faqs`: con `"auto"` convierte la sección «Preguntas frecuentes» (H2 y preguntas en H3, en es, ca, en, fr o de) en desplegables nativos de WordPress (bloque Detalles) con estilo propio, y añade los datos estructurados `FAQPage` al grafo de Yoast (sin Yoast, JSON-LD propio). También una lista `[{q, a}]`, `faq_title` y `false`. `faq_css` guarda un CSS propio para la web. Nuevo `includes/faq.php`; la respuesta trae `faqs` (número de preguntas).

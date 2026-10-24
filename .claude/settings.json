@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "mcp__Make__scenarios_run"
+      "mcp__Make__scenarios_run",
+      "mcp__Make__s10027927_servidor_egserver_orden_claude_gate",
+      "mcp__Make__data-store-records_list"
     ]
   }
 }

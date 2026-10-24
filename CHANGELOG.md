@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.12.0 · 24/10/2026 · PR pendiente (Claude)
+
+- `/template` (Elementor) admite `id` + `patch` para editar una plantilla o página que ya existe sin rehacerla: `patch` = `{"<id de elemento>": {ajustes}}` y esos ajustes sustituyen a los del elemento en su JSON de Elementor (p. ej. la lista de enlaces de una columna del pie). Solo toca `_elementor_data`; devuelve `patched` y `missing`.
+- Webs: taxi-calella.com (enlace «Blog» en el pie, plantilla Main Footer). El resto no cambia: sin `id` y `patch`, `/template` funciona igual que antes.
+
 ## 2.11.0 · 23/10/2026 · PR #28 (Claude)
 
 - `/template` (Elementor) admite `conditions`: condiciones de visualización del Theme Builder de Elementor Pro (p. ej. `["include/singular/post"]`, `["include/archive/category", "include/archive/post_tag"]`; `[]` las quita). Guarda `_elementor_conditions` y rehace la caché de condiciones de Elementor Pro (si su API no está, la escribe a mano). Se ponen solo en la plantilla original; las traducciones se enlazan con `translation_of`.

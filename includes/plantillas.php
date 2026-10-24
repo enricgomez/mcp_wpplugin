@@ -60,6 +60,9 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	$elements = $p['elements'] ?? null;
 	$type     = sanitize_key( $p['type'] ?? 'section' );
 	$status   = in_array( $p['status'] ?? '', array( 'publish', 'draft', 'private' ), true ) ? $p['status'] : 'publish';
+	if ( ! empty( $p['id'] ) && isset( $p['patch'] ) ) {
+		return eg_pub_template_patch( (int) $p['id'], $p['patch'] );
+	}
 	if ( '' === $key || '' === $title || ! is_array( $elements ) || ! $elements ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: key, title o elements (JSON de Elementor).' );
 	}
@@ -122,6 +125,48 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 		'recaptcha'   => $recaptcha,
 		'admin_email' => get_option( 'admin_email' ),
 	), 200 );
+}
+
+/**
+ * Cambia ajustes de elementos concretos del JSON de Elementor de una plantilla o página existente
+ * (p. ej. la lista de enlaces del pie). `patch` = {"<id de elemento>": {ajustes que se sustituyen}}.
+ * Solo toca _elementor_data; el resto del documento queda igual.
+ */
+function eg_pub_template_patch( $id, $patch ) {
+	$post = get_post( $id );
+	if ( ! $post || ! is_array( $patch ) || ! $patch ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}}.' );
+	}
+	if ( ! current_user_can( 'edit_post', $id ) ) {
+		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );
+	}
+	$data = json_decode( (string) get_post_meta( $id, '_elementor_data', true ), true );
+	if ( ! is_array( $data ) ) {
+		return eg_pub_error( 'eg_not_elementor', 'Ese contenido no tiene JSON de Elementor.', 400 );
+	}
+	$found = array();
+	$walk  = function ( $elements ) use ( &$walk, $patch, &$found ) {
+		foreach ( $elements as &$el ) {
+			$eid = (string) ( $el['id'] ?? '' );
+			if ( isset( $patch[ $eid ] ) && is_array( $patch[ $eid ] ) ) {
+				$el['settings'] = array_merge( (array) ( $el['settings'] ?? array() ), $patch[ $eid ] );
+				$found[]        = $eid;
+			}
+			if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
+				$el['elements'] = $walk( $el['elements'] );
+			}
+		}
+		return $elements;
+	};
+	$data    = $walk( $data );
+	$missing = array_values( array_diff( array_map( 'strval', array_keys( $patch ) ), $found ) );
+	if ( ! $found ) {
+		return eg_pub_error( 'eg_not_found', 'No se encontró ningún elemento con esos ids.', 404 );
+	}
+	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( $data ) ) );
+	delete_post_meta( $id, '_elementor_css' );
+	delete_post_meta( $id, '_elementor_element_cache' );
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'missing' => $missing ), 200 );
 }
 
 /**

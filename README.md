@@ -35,6 +35,14 @@ Con **Gestión de la web** activada, `POST /wp-json/eg/v1/seo` permite revisar y
 
 Ejemplo de previsualización: `{"ids":[123,456],"set":{"seo_title":"Título optimizado","seo_description":"Descripción para buscadores","focus_keyword":"frase clave"},"langs":{"en":{"seo_title":"Optimized title","seo_description":"English search snippet","focus_keyword":"key phrase"}}}`. Para aplicar los cambios, añadir `"apply":true`.
 
+### Preguntas frecuentes en desplegables (desde la v2.13.0)
+
+En `/publish`, `faqs: "auto"` busca la sección cuyo H2 es «Preguntas frecuentes» (o «Preguntes freqüents», «Frequently asked questions», «Questions fréquentes», «Häufig gestellte Fragen», «FAQ») y convierte cada pregunta en H3 con su respuesta en un desplegable nativo de WordPress (bloque Detalles), dentro de un grupo `eg-faq`. La sección acaba en el siguiente H2. También admite `faqs: [{"q":"…","a":"<p>…</p>"}]` (sustituye a la sección detectada o se añade al final, con `faq_title` opcional) y `faqs: false` (deja de marcarla como FAQ). Sin el parámetro, el post no cambia.
+
+- Datos estructurados: con Yoast, la página pasa a `WebPage` + `FAQPage` y cada pregunta entra en su grafo como `Question` (igual que el bloque FAQ de Yoast); sin Yoast se imprime un JSON-LD `FAQPage`. Si el contenido ya usa el bloque FAQ de Yoast, no se toca.
+- Estilo: tarjetas con borde, «+» y «−», con los colores globales de Elementor (`secondary` para la pregunta y `accent` para el icono) si la web los tiene. `faq_css` en `/publish` guarda un CSS propio para toda la web.
+- Los posts o páginas hechos con Elementor no pasan por aquí: usan el widget Acordeón de Elementor con «FAQ Schema» activado.
+
 ### Parámetros de categoría
 
 - `category_slug`: slug de la categoría en el idioma del post.

@@ -123,6 +123,8 @@ function eg_pub_ability_defs() {
 					'category_slug'         => eg_pub_prop( 'string', 'Slug de la categoría.' ),
 					'image_url'             => eg_pub_prop( 'string', 'URL de la imagen destacada.' ),
 					'image_alt'             => eg_pub_prop( 'string', 'Texto alternativo de la imagen destacada.' ),
+					'faqs'                  => array( 'description' => '"auto" convierte la sección con H2 «Preguntas frecuentes» y preguntas en H3 en desplegables con schema FAQPage; también una lista [{q, a}] o false.' ),
+					'faq_title'             => eg_pub_prop( 'string', 'Título H2 de la sección de preguntas frecuentes.' ),
 				),
 			),
 			'execute'     => function ( $input = null ) {

@@ -209,7 +209,7 @@ function eg_pub_ability_defs() {
 			'description' => 'Crea o actualiza una plantilla de Elementor (Plantillas guardadas) por clave e idioma, y la enlaza con su traducción en WPML.',
 			'annotations' => $write,
 			'input'       => array(
-				'required'   => array( 'key', 'title', 'elements' ),
+				'required'   => array(),
 				'properties' => array(
 					'key'            => eg_pub_prop( 'string', 'Clave de la plantilla.' ),
 					'lang'           => eg_pub_prop( 'string', 'Código de idioma de WPML.' ),
@@ -220,6 +220,8 @@ function eg_pub_ability_defs() {
 					'conditions'     => eg_pub_prop( 'array', 'Condiciones del Theme Builder, p. ej. ["include/singular/post"]; [] las quita. Solo en la plantilla original.' ),
 					'status'         => eg_pub_prop( 'string', 'publish (por defecto), draft o private.' ),
 					'settings'       => eg_pub_prop( 'object', 'Ajustes de la plantilla en Elementor (_elementor_page_settings), p. ej. la vista previa.' ),
+					'id'             => eg_pub_prop( 'integer', 'Con patch: ID de una plantilla o página existente a editar.' ),
+					'patch'          => eg_pub_prop( 'object', 'Con id: {"id de elemento": {ajustes}} que sustituyen esos ajustes en su JSON de Elementor.' ),
 				),
 			),
 			'execute'     => eg_pub_ability_route( 'eg_pub_template_handle', 'template' ),

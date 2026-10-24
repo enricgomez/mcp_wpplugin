@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.13.2 · 24/10/2026 · PR #34 (Claude)
+
+- `faqs: "auto"` (Blog): el texto que va después de la última pregunta, como la llamada final a reservar, ya no se mete en la última respuesta. En HTML suelto, la respuesta acaba en la primera línea en blanco; con bloques de Gutenberg, en su primer bloque.
+- Webs: taxi-calella.com y taxi-santasusanna.com.
+
 ## 2.13.1 · 24/10/2026 · PR #33 (Claude)
 
 - `/publish` (Blog): al actualizar un post sin `content_image_url` ni `content_image_base64`, el marcador `<!-- eg:imagen-contenido -->` vuelve a poner la imagen de contenido que el post ya tenía (antes se quedaba sin imagen). Las traducciones siguen usando la del original si no tienen una propia.

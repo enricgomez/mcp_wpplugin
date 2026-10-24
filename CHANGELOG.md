@@ -10,11 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.11.0 · 23/10/2026 · PR pendiente (Claude)
+## 2.9.6 · 22/10/2026 · PR #23, #24 y #25 (ChatGPT y Claude)
 
-- `/template` (Elementor) admite `conditions`: condiciones de visualización del Theme Builder de Elementor Pro (p. ej. `["include/singular/post"]`, `["include/archive/category", "include/archive/post_tag"]`; `[]` las quita). Guarda `_elementor_conditions` y rehace la caché de condiciones de Elementor Pro (si su API no está, la escribe a mano). Se ponen solo en la plantilla original; las traducciones se enlazan con `translation_of`.
-- `/template` admite también `status` (`publish` por defecto, `draft`, `private`) y `settings` (ajustes de la plantilla, `_elementor_page_settings`, p. ej. la entrada de vista previa). Con `type: "single-post"` o `"archive"` crea plantillas de entrada o de archivo del blog.
-- Webs: taxi-calella.com (plantillas del blog). El resto no cambia: sin esos parámetros `/template` funciona igual que antes.
+- **Nuevo `POST /post-media`** (Blog, `includes/post-media.php`): asigna como imagen destacada una imagen que ya está en la biblioteca (`post_id`, `attachment_id`, `dry_run`). Solo llama a `set_post_thumbnail`: no re-guarda el contenido ni toca los trabajos del editor de traducción de WPML. Con `dry_run: true` devuelve la imagen actual en `previous_attachment_id` sin cambiar nada (PR #25, ChatGPT).
+- **IndexNow opcional** (`includes/indexnow.php`, PR #23, ChatGPT): avisa a IndexNow de las entradas publicadas por EG Publicación (también las traducciones), sin duplicar avisos. Viene **apagado** (opción `eg_pub_indexnow_enabled`); se enciende en Ajustes → EG IndexNow. Antes de activarlo en una web, comprobar que ningún otro plugin (SEO, caché o CDN) ya envía IndexNow.
+- `CHANGELOG.md` y la sección «Cómo trabajamos en este repositorio» del README (PR #24, Claude).
+- Webs: desire-vips.com (imagen 57310 de los posts 57301/57303). El escenario de Make de Desire Vips (10022329) aún no ofrece la ruta `post-media` y solo devuelve el código HTTP. Esta entrada se añadió después de la release.
 
 ## 2.9.5 · 22/10/2026 · PR #21 y #22 (ChatGPT)
 

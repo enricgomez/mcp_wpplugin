@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.12.0 · 24/10/2026 · PR pendiente (Claude)
+## 2.13.0 · 24/10/2026 · PR pendiente (Claude)
+
+- `/publish` (Blog) admite `faqs`: con `"auto"` convierte la sección «Preguntas frecuentes» (H2 y preguntas en H3, en es, ca, en, fr o de) en desplegables nativos de WordPress (bloque Detalles) con estilo propio, y añade los datos estructurados `FAQPage` al grafo de Yoast (sin Yoast, JSON-LD propio). También una lista `[{q, a}]`, `faq_title` y `false`. `faq_css` guarda un CSS propio para la web. Nuevo `includes/faq.php`; la respuesta trae `faqs` (número de preguntas).
+- Webs: taxi-calella.com y taxi-santasusanna.com (FAQ de los posts). El resto no cambia: sin `faqs`, `/publish` funciona igual que antes.
+
+## 2.12.0 · 24/10/2026 · PR #31 (Claude)
 
 - `/template` (Elementor) admite `id` + `patch` para editar una plantilla o página que ya existe sin rehacerla: `patch` = `{"<id de elemento>": {ajustes}}` y esos ajustes sustituyen a los del elemento en su JSON de Elementor (p. ej. la lista de enlaces de una columna del pie). Solo toca `_elementor_data`; devuelve `patched` y `missing`.
 - Webs: taxi-calella.com (enlace «Blog» en el pie, plantilla Main Footer). El resto no cambia: sin `id` y `patch`, `/template` funciona igual que antes.

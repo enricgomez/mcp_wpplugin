@@ -403,6 +403,15 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		) ) );
 	}
 
+	// --- Preguntas frecuentes en desplegables con schema FAQPage -----------
+	if ( isset( $p['faq_css'] ) && is_string( $p['faq_css'] ) ) {
+		update_option( EG_PUB_OPTION_FAQ_CSS, wp_strip_all_tags( $p['faq_css'] ), false );
+	}
+	$faq = eg_pub_faq_apply( $post_id, $p );
+	if ( is_string( $faq ) ) {
+		$notes[] = $faq;
+	}
+
 	$image_note = implode( ' | ', $notes );
 	clean_post_cache( $post_id );
 	return new WP_REST_Response( array(
@@ -412,6 +421,7 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		'link'       => get_permalink( $post_id ),
 		'lang'       => $lang,
 		'image_note' => $image_note,
+		'faqs'       => is_int( $faq ) ? $faq : 0,
 		'message'    => '' === $image_note ? '' : 'Post guardado, pero falló: ' . $image_note,
 	), 200 );
 }

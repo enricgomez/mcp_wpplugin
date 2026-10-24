@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.14.0 · 24/10/2026 · PR #36 (Claude)
+
+- FAQ (Blog): la primera vez que una web recibe `faqs` en `/publish`, queda activado por defecto (opción `eg_pub_faq_auto`). Desde entonces, los posts que llegan sin el parámetro, como los del escenario de Make de Notion (9927615), también convierten su sección de preguntas frecuentes. `faqs_default` (`true`/`false`) lo enciende o apaga a mano.
+- Webs: taxi-calella.com y taxi-santasusanna.com. Las webs que nunca han usado `faqs` no cambian.
+
 ## 2.13.3 · 24/10/2026 · PR #35 (Claude)
 
 - FAQ (Blog): el estilo por defecto ya no usa el color `accent` de Elementor, que en taxi-calella.com es blanco casi transparente y dejaba el «+» invisible. El icono toma el color de la pregunta y el borde abierto es neutro. Para los colores de la marca, `faq_css`.

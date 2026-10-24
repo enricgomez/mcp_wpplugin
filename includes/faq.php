@@ -6,6 +6,8 @@
  * En /publish, `faqs: "auto"` busca en el contenido la sección cuyo H2 es «Preguntas frecuentes» (o su
  * equivalente en ca, en, fr, de) y convierte cada H3 con su respuesta en un desplegable. `faqs` también
  * admite una lista [{q, a}] (sustituye a la sección detectada o se añade al final) y `false` la deja como texto.
+ * La primera vez que una web recibe `faqs`, queda activado por defecto (opción eg_pub_faq_auto): los posts que llegan
+ * sin el parámetro, como los de Notion, se convierten igual si tienen la sección. `faqs_default: false` lo apaga.
  * El schema se añade al grafo de Yoast (la página pasa a WebPage + FAQPage, como el bloque FAQ de Yoast);
  * sin Yoast se imprime un JSON-LD propio. Los posts hechos con Elementor usan su widget de acordeón con FAQ Schema.
  */
@@ -16,6 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_META_FAQ     = '_eg_faq';
 const EG_PUB_OPTION_FAQ_CSS = 'eg_pub_faq_css';
+const EG_PUB_OPTION_FAQ_AUTO = 'eg_pub_faq_auto';
 const EG_PUB_FAQ_HEADING  = '/preguntas\s+frecuentes|preguntes\s+freq[üu]ents|frequently\s+asked|\bfaqs?\b|questions\s+fr[ée]quentes|h[äa]ufig\s+gestellte|h[äa]ufige\s+fragen/iu';
 
 /** Título por defecto de la sección según el idioma. */
@@ -154,8 +157,22 @@ function eg_pub_faq_blocks( $title, $items ) {
  * o una nota si no se pudo.
  */
 function eg_pub_faq_apply( $post_id, $p ) {
+	if ( isset( $p['faqs_default'] ) ) {
+		update_option( EG_PUB_OPTION_FAQ_AUTO, rest_sanitize_boolean( $p['faqs_default'] ) ? 1 : 0, false );
+	}
 	if ( ! array_key_exists( 'faqs', $p ) ) {
-		return 0;
+		// Web que ya ha usado las FAQ: los posts que llegan sin `faqs` (p. ej. desde Notion) también se convierten.
+		if ( ! get_option( EG_PUB_OPTION_FAQ_AUTO ) ) {
+			return 0;
+		}
+		$found = eg_pub_faq_extract( (string) get_post_field( 'post_content', $post_id, 'raw' ) );
+		if ( ! $found ) {
+			delete_post_meta( $post_id, EG_PUB_META_FAQ );
+			return 0;
+		}
+		$p['faqs'] = 'auto';
+	} elseif ( ! isset( $p['faqs_default'] ) && ( 'auto' === $p['faqs'] || is_array( $p['faqs'] ) ) ) {
+		update_option( EG_PUB_OPTION_FAQ_AUTO, 1, false );
 	}
 	$faqs    = $p['faqs'];
 	$content = (string) get_post_field( 'post_content', $post_id, 'raw' );

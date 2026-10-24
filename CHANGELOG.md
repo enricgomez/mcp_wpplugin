@@ -10,6 +10,18 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.11.0 · 23/10/2026 · PR #28 (Claude)
+
+- `/template` (Elementor) admite `conditions`: condiciones de visualización del Theme Builder de Elementor Pro (p. ej. `["include/singular/post"]`, `["include/archive/category", "include/archive/post_tag"]`; `[]` las quita). Guarda `_elementor_conditions` y rehace la caché de condiciones de Elementor Pro (si su API no está, la escribe a mano). Se ponen solo en la plantilla original; las traducciones se enlazan con `translation_of`.
+- `/template` admite también `status` (`publish` por defecto, `draft`, `private`) y `settings` (ajustes de la plantilla, `_elementor_page_settings`, p. ej. la entrada de vista previa). Con `type: "single-post"` o `"archive"` crea plantillas de entrada o de archivo del blog.
+- Webs: taxi-calella.com (plantillas del blog). El resto no cambia: sin esos parámetros `/template` funciona igual que antes.
+
+## 2.10.0 · 23/10/2026 · PR #27 (Claude)
+
+- `/landing` (Elementor) admite `elements`: JSON de Elementor propio para la página nueva, en lugar del de la maestra. De la maestra solo se copian la plantilla de página y sus ajustes, así una página existente sirve de base para rehacerla en borrador sin tocar la publicada. Los marcadores, `images` y `widgets` se aplican también sobre ese JSON.
+- `dry_run: true` con `data: true` devuelve además el JSON de Elementor completo de la maestra (solo lectura), para usarlo de base.
+- El resto no cambia: sin `elements` ni `data`, `/landing` funciona igual que antes. Esta entrada se añadió después de fusionar el PR.
+
 ## 2.9.6 · 22/10/2026 · PR #23, #24 y #25 (ChatGPT y Claude)
 
 - **Nuevo `POST /post-media`** (Blog, `includes/post-media.php`): asigna como imagen destacada una imagen que ya está en la biblioteca (`post_id`, `attachment_id`, `dry_run`). Solo llama a `set_post_thumbnail`: no re-guarda el contenido ni toca los trabajos del editor de traducción de WPML. Con `dry_run: true` devuelve la imagen actual en `previous_attachment_id` sin cambiar nada (PR #25, ChatGPT).

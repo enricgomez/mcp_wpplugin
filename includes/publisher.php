@@ -378,9 +378,12 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		} else {
 			$cimg_id = (int) $c_att;
 		}
-	} elseif ( $source_id ) {
-		// Traducción: reutilizar la imagen de contenido del original.
-		$cimg_id = (int) get_post_meta( $source_id, '_eg_content_image_id', true );
+	} else {
+		// Actualización: conservar la imagen de contenido que ya tenía; traducción: reutilizar la del original.
+		$cimg_id = (int) get_post_meta( $post_id, '_eg_content_image_id', true );
+		if ( ! $cimg_id && $source_id ) {
+			$cimg_id = (int) get_post_meta( $source_id, '_eg_content_image_id', true );
+		}
 	}
 	if ( $cimg_id ) {
 		update_post_meta( $post_id, '_eg_content_image_id', $cimg_id );

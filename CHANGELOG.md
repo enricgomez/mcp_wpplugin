@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.15.0 · 26/10/2026 · PR pendiente (Claude)
+
+- **Nuevo `POST /term`** (Gestión de la web, `includes/terminos.php`): cambia el nombre, la descripción y el SEO (título, descripción y frase clave, en Rank Math o Yoast) de una categoría de productos o de otro término público, elegido por `slug` o `id`. Por defecto solo previsualiza; guarda con `apply: true`. No toca el slug. La descripción admite HTML de entradas (h2, h3, listas, enlaces).
+- Webs: nilacakes.com (texto y SEO de la categoría Cookies). El resto no cambia: es un endpoint nuevo.
+
 ## 2.14.0 · 24/10/2026 · PR #36 (Claude)
 
 - FAQ (Blog): la primera vez que una web recibe `faqs` en `/publish`, queda activado por defecto (opción `eg_pub_faq_auto`). Desde entonces, los posts que llegan sin el parámetro, como los del escenario de Make de Notion (9927615), también convierten su sección de preguntas frecuentes. `faqs_default` (`true`/`false`) lo enciende o apaga a mano.

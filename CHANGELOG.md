@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.27.1 · 27/10/2026 · PR pendiente (Claude)
+## 2.27.1 · 27/10/2026 · PR #53 (Claude)
 
 - Corrige la 2.27.0: `/cpt` respondía que JetEngine no traía la herramienta add-cpt porque JetEngine solo carga sus herramientas MCP cuando arranca su servidor MCP. Ahora carga el fichero de la herramienta si hace falta.
 - Webs: test-viajestauro.com.egserver.cloud.

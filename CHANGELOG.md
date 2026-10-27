@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.30.0 · 27/10/2026 · PR #58 (Claude)
+
+- `/item`: nuevo `set.parent` para cambiar la página superior de una página (o de otro tipo jerárquico). `0` la deja sin superior. Rechaza tipos no jerárquicos, la propia entrada, otro tipo o una entrada que cuelgue de ella. El slug se recalcula con la nueva superior.
+- Webs: test-neptunoapartments.com.egserver.cloud (Shama Spa y Gastronomía pasan a colgar de Instalaciones, como en las URLs de GNA). En las demás no cambia nada mientras no se use.
+
 ## 2.29.0 · 27/10/2026 · PR #57 (Claude)
 
 - `/cpt`: nuevo **`listings`** para crear o actualizar (por `key`) plantillas de listado de JetEngine hechas con Elementor para un CPT (`title`, `post_type`, `elements` con el JSON de Elementor y `settings` opcional). Devuelve el ID que va en el widget Listing Grid (`lisitng_id`). La lista de `dry_run` añade los listados existentes y `listing_legacy_disabled` (si es true, el Listing Grid ignora sus filtros propios y hay que filtrar con el Query Builder).

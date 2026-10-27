@@ -71,6 +71,11 @@ function eg_pub_cpt_list() {
 /** Crea el CPT con la normalización de la herramienta MCP de JetEngine (campos simplificados → campos de JetEngine). */
 function eg_pub_cpt_create( $input ) {
 	$tool = '\Jet_Engine\Post_Types\MCP\Tool_Add_CPT';
+	// JetEngine solo carga sus herramientas MCP cuando arranca su servidor MCP: si no está cargada, se carga aquí.
+	$file = method_exists( jet_engine(), 'plugin_path' ) ? jet_engine()->plugin_path( 'includes/components/post-types/mcp/tool-add-cpt.php' ) : '';
+	if ( ! class_exists( $tool ) && $file && file_exists( $file ) ) {
+		require_once $file;
+	}
 	if ( ! class_exists( $tool ) ) {
 		return new WP_Error( 'eg_jet_version', 'Esta versión de JetEngine no trae la herramienta add-cpt; actualiza JetEngine.' );
 	}

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.27.1 · 27/10/2026 · PR #53 (Claude)
+
+- Corrige la 2.27.0: `/cpt` respondía que JetEngine no traía la herramienta add-cpt porque JetEngine solo carga sus herramientas MCP cuando arranca su servidor MCP. Ahora carga el fichero de la herramienta si hace falta.
+- Webs: test-viajestauro.com.egserver.cloud.
+
 ## 2.27.0 · 27/10/2026 · PR #52 (Claude)
 
 - Nuevo endpoint **`/cpt`** (módulo «JetEngine», tipología Gestión de la web): crea tipos de contenido (CPT) y taxonomías de JetEngine con sus campos, sin entrar en el panel. `post_type` usa el mismo formato que la herramienta MCP «add-cpt» de JetEngine (`general_settings`, `labels`, `advanced_settings`, `meta_fields` con `name`, `title`, `type`, `options`…); `taxonomies` crea taxonomías (`name`, `slug`, `object_type`, `hierarchical`) y sus `terms`. Lo que ya existe con el mismo slug no se toca y se devuelve como `existing`. `dry_run` (o una llamada vacía) lista los CPT y taxonomías de JetEngine con sus campos. Tras crear, regenera las URL en la siguiente carga. Necesita una versión de JetEngine que traiga sus herramientas MCP (si no, responde con un error claro).

@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.19.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.20.0 · 27/10/2026 · PR pendiente (Claude)
+
+- `/template` con `id` admite **`copy_from`**: copia a la página `id` el JSON de Elementor, sus ajustes, la plantilla de página y el SEO (título, descripción y frase clave de Yoast o Rank Math) de otra página, sin tocar su URL, su slug ni su idioma en WPML. Con `copy_title: true` copia también el título. Antes guarda el JSON anterior en `_eg_pub_elementor_backup` y después vacía la caché de Elementor y la de esa página en WP Rocket.
+- Webs: sonovet.net (sustituir las páginas publicadas por los borradores revisados del Plan SEO). En las demás no cambia nada mientras no se use.
+
+## 2.19.0 · 27/10/2026 · PR #41 (Claude)
 
 - `/template` con `id` admite **`replace`**: `{"<id de elemento>": {elemento completo}}` sustituye ese elemento entero, con sus hijos, en el JSON de Elementor de una plantilla o página. Sirve para reestructurar una sección (añadir una imagen, pasar a dos columnas) sin reenviar la página completa por `/landing`. Se aplica antes que `patch` y se pueden mandar los dos; la respuesta trae `replaced`.
 - Webs: sonovet.net (ajustes estéticos del borrador de la home). En las demás no cambia nada mientras no se use.

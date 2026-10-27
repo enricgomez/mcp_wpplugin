@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.21.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.22.0 · 27/10/2026 · PR pendiente (Claude)
+
+- `/menu`: `create: true` crea el menú si no existe (con `menu` como nombre), para montar webs nuevas desde Make, y `location` lo asigna a una ubicación del tema (p. ej. `menu-1` en Hello Elementor). Sin estos parámetros funciona igual que antes.
+- Webs: test-viajestauro.com.egserver.cloud (menú principal y del pie). En las demás no cambia nada.
+
+## 2.21.0 · 27/10/2026 · PR #43 (Claude)
 
 - **Nuevo `POST /kit`** (tipología Elementor, módulo `kit`, `includes/kit.php`): estilos globales del kit activo de Elementor sin entrar en wp-admin. `colors` y `typography` cambian los colores y tipografías del sistema (`primary`, `secondary`, `text`, `accent`); `custom_colors` y `custom_typography` añaden o cambian los globales propios por `_id`; `settings` fusiona cualquier otro ajuste del kit (ancho del contenedor, botones, enlaces…). `fonts` (`[{"family", "css_url"}]`) descarga los woff2 de una hoja `@font-face` (p. ej. Fontshare) a `uploads/eg-fonts/`, la sirve en local y añade la familia al selector de fuentes de Elementor (grupo «Fuentes propias»). Por defecto solo previsualiza; `apply: true` guarda y vacía la caché de CSS de Elementor. Pide `manage_options`.
 - **Nuevo `POST /media`** (mismo módulo): `items` (`[{"url", "alt", "title", "key"}]`) descarga imágenes a la biblioteca y devuelve `id` y `src`, para usarlas en el JSON de `/template` y `/landing`. Con `key`, repetir la llamada devuelve la imagen ya subida en lugar de duplicarla. Pide `upload_files`.

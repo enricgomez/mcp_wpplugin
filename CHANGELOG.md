@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.24.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.24.0 · 27/10/2026 · PR #47 (Claude)
 
 - `/product`: nuevo campo **`slug`** en `set` o `langs`. Cambia la URL del producto (con `wp_unique_post_slug`, así nunca choca con otra) y guarda la anterior en `_wp_old_slug`, como hace el editor de WordPress: la URL vieja redirige con un 301 a la nueva. `dry_run` muestra el cambio en `post_name`.
 - Webs: nilacakes.com (slugs descriptivos para los productos con nombres genéricos, p. ej. `/producto/pistacho/` → `/producto/cookie-pistacho/`). En las demás no cambia nada mientras no se use.

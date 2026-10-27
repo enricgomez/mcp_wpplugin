@@ -63,8 +63,8 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	if ( ! empty( $p['id'] ) && ! empty( $p['copy_from'] ) ) {
 		return eg_pub_template_copy( (int) $p['id'], (int) $p['copy_from'], ! empty( $p['copy_title'] ) );
 	}
-	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) ) ) {
-		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array() );
+	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) ) ) {
+		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array() );
 	}
 	if ( '' === $key || '' === $title || ! is_array( $elements ) || ! $elements ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: key, title o elements (JSON de Elementor).' );
@@ -153,9 +153,15 @@ function eg_pub_template_patch( $id, $patch, $replace = array() ) {
 	}
 	$found    = array();
 	$replaced = array();
-	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, &$found, &$replaced ) {
-		foreach ( $elements as &$el ) {
+	$removed  = array();
+	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, $remove, &$found, &$replaced, &$removed ) {
+		foreach ( $elements as $i => &$el ) {
 			$eid = (string) ( $el['id'] ?? '' );
+			if ( in_array( $eid, $remove, true ) ) {
+				unset( $elements[ $i ] );
+				$removed[] = $eid;
+				continue;
+			}
 			if ( isset( $replace[ $eid ] ) ) {
 				$el = $replace[ $eid ] + array( 'id' => $eid, 'settings' => array(), 'elements' => array() );
 				$replaced[] = $eid;
@@ -168,17 +174,23 @@ function eg_pub_template_patch( $id, $patch, $replace = array() ) {
 				$el['elements'] = $walk( $el['elements'] );
 			}
 		}
-		return $elements;
+		unset( $el );
+		return array_values( $elements );
 	};
+	$old     = (string) get_post_meta( $id, '_elementor_data', true );
 	$data    = $walk( $data );
-	$missing = array_values( array_diff( array_map( 'strval', array_merge( array_keys( $patch ), array_keys( $replace ) ) ), $found, $replaced ) );
-	if ( ! $found && ! $replaced ) {
+	$missing = array_values( array_diff( array_map( 'strval', array_merge( array_keys( $patch ), array_keys( $replace ), $remove ) ), $found, $replaced, $removed ) );
+	if ( ! $found && ! $replaced && ! $removed ) {
 		return eg_pub_error( 'eg_not_found', 'No se encontró ningún elemento con esos ids.', 404 );
 	}
+	update_post_meta( $id, '_eg_pub_elementor_backup', wp_slash( wp_json_encode( array( 'time' => time(), 'title' => $post->post_title, 'data' => $old ) ) ) );
 	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( $data ) ) );
 	delete_post_meta( $id, '_elementor_css' );
 	delete_post_meta( $id, '_elementor_element_cache' );
-	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'missing' => $missing ), 200 );
+	if ( function_exists( 'rocket_clean_post' ) ) {
+		rocket_clean_post( $id );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'removed' => $removed, 'missing' => $missing ), 200 );
 }
 
 /**

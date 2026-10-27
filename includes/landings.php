@@ -504,8 +504,21 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 	if ( ! empty( $p['dry_run'] ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'menus' => $menus, 'menu' => $menu ? (int) $menu->term_id : 0, 'items' => $menu ? $items_of( $menu->term_id ) : array() ), 200 );
 	}
+	if ( ! $menu && ! empty( $p['create'] ) && isset( $p['menu'] ) && ! is_numeric( $p['menu'] ) ) {
+		// Web nueva: crea el menú con ese nombre (y, con `location`, lo asigna a esa ubicación del tema).
+		$new_id = wp_create_nav_menu( sanitize_text_field( (string) $p['menu'] ) );
+		if ( is_wp_error( $new_id ) ) {
+			return eg_pub_error( 'eg_menu', 'No se ha podido crear el menú: ' . $new_id->get_error_message(), 500 );
+		}
+		$menu = wp_get_nav_menu_object( $new_id );
+	}
 	if ( ! $menu ) {
 		return eg_pub_error( 'eg_menu', 'No existe el menú indicado. Menús: ' . wp_json_encode( $menus ), 404 );
+	}
+	if ( ! empty( $p['location'] ) ) {
+		$locations = (array) get_theme_mod( 'nav_menu_locations', array() );
+		$locations[ sanitize_key( $p['location'] ) ] = (int) $menu->term_id;
+		set_theme_mod( 'nav_menu_locations', $locations );
 	}
 	if ( $lang ) {
 		do_action( 'wpml_switch_language', $lang );

@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.15.0 · 26/10/2026 · PR pendiente (Claude)
+## 2.16.0 · 26/10/2026 · PR pendiente (Claude)
+
+- `/term` (Gestión de la web): nuevo campo `bottom_description`, el texto largo de una categoría que va **debajo** del listado de productos para no empujar los productos hacia abajo (la `description` de WooCommerce sale encima). Se guarda en el metadato `eg_pub_bottom_description` y se pinta tras el listado (`woocommerce_after_shop_loop`, que lanzan WooCommerce y el widget «Productos de archivo» de Elementor Pro). Si una plantilla no lo muestra, el shortcode `[eg_texto_categoria]` lo coloca donde se ponga; nunca sale dos veces.
+- Webs: nilacakes.com (categoría Cookies). En las demás no cambia nada mientras no se use el campo.
+
+## 2.15.0 · 26/10/2026 · PR #37 (Claude)
 
 - **Nuevo `POST /term`** (Gestión de la web, `includes/terminos.php`): cambia el nombre, la descripción y el SEO (título, descripción y frase clave, en Rank Math o Yoast) de una categoría de productos o de otro término público, elegido por `slug` o `id`. Por defecto solo previsualiza; guarda con `apply: true`. No toca el slug. La descripción admite HTML de entradas (h2, h3, listas, enlaces).
 - Webs: nilacakes.com (texto y SEO de la categoría Cookies). El resto no cambia: es un endpoint nuevo.

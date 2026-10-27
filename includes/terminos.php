@@ -5,6 +5,9 @@
  * Elige el término por taxonomy (product_cat por defecto) + slug o id. Los cambios van en set:
  *   name                 nombre visible de la categoría
  *   description          descripción (HTML permitido en entradas: p, h2, h3, ul, li, strong, a...)
+ *   bottom_description   texto que va DEBAJO del listado de productos (mismo HTML). Se pinta solo tras el
+ *                        listado de WooCommerce o del widget «Productos de archivo» de Elementor; si la plantilla
+ *                        no lo muestra, el shortcode [eg_texto_categoria] lo coloca donde se ponga.
  *   seo_title, seo_description, focus_keyword   SEO del archivo de la categoría (Rank Math y/o Yoast)
  * Como /seo, por defecto solo previsualiza; apply:true guarda. No cambia el slug (las URLs no se mueven).
  * Vacía la caché del archivo en WP Rocket.
@@ -13,6 +16,8 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+const EG_PUB_META_TERM_BOTTOM = 'eg_pub_bottom_description';
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['terminos'] = array( 'type' => 'gestion', 'routes' => array( 'term' ) );
@@ -96,6 +101,13 @@ function eg_pub_term_handle( WP_REST_Request $r ) {
 			$changes[ $field ] = array( 'before' => $term->$field, 'after' => $new );
 		}
 	}
+	if ( array_key_exists( 'bottom_description', $set ) && is_scalar( $set['bottom_description'] ) ) {
+		$old = (string) get_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, true );
+		$new = wp_kses_post( (string) $set['bottom_description'] );
+		if ( $new !== $old ) {
+			$changes['bottom_description'] = array( 'before' => $old, 'after' => $new );
+		}
+	}
 	$seo = eg_pub_term_seo_get( $term );
 	foreach ( $seo as $field => $old ) {
 		if ( ! array_key_exists( $field, $set ) || ! is_scalar( $set[ $field ] ) ) {
@@ -134,6 +146,10 @@ function eg_pub_term_handle( WP_REST_Request $r ) {
 				return eg_pub_error( 'eg_term_save', $done->get_error_message() );
 			}
 		}
+		if ( isset( $changes['bottom_description'] ) ) {
+			// update_term_meta pasa por wp_unslash: se protege el HTML igual que en wp_update_term.
+			update_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, wp_slash( $changes['bottom_description']['after'] ) );
+		}
 		eg_pub_term_seo_save( $term, array_map( function ( $c ) { return $c['after']; }, array_intersect_key( $changes, $seo ) ) );
 		if ( function_exists( 'rocket_clean_term' ) ) {
 			rocket_clean_term( $term->term_id, $taxonomy );
@@ -150,7 +166,30 @@ function eg_pub_term_handle( WP_REST_Request $r ) {
 		'link'        => get_term_link( $term ),
 		'name'        => $term->name,
 		'description' => $term->description,
+		'bottom_description' => (string) get_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, true ),
 		'seo'         => $seo,
 		'changes'     => $changes,
 	), 200 );
 }
+
+/** Texto de debajo del listado del término que se está viendo ('' si no hay). Se pinta una sola vez por página. */
+function eg_pub_term_bottom_html() {
+	static $done = false;
+	if ( $done || ! ( is_tax() || is_category() || is_tag() ) ) {
+		return '';
+	}
+	$term = get_queried_object();
+	$text = $term instanceof WP_Term ? (string) get_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, true ) : '';
+	if ( '' === trim( $text ) ) {
+		return '';
+	}
+	$done = true;
+	return '<div class="eg-term-bottom term-description">' . wp_kses_post( $text ) . '</div>';
+}
+
+// Tras el listado: WooCommerce clásico y el widget «Productos de archivo» de Elementor Pro (paginado) lanzan esta acción.
+add_action( 'woocommerce_after_shop_loop', function () {
+	echo eg_pub_term_bottom_html(); // phpcs:ignore WordPress.Security.EscapeOutput -- ya pasa por wp_kses_post.
+}, 20 );
+
+add_shortcode( 'eg_texto_categoria', 'eg_pub_term_bottom_html' );

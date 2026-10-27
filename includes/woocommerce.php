@@ -5,6 +5,7 @@
  * Elige los productos por SKU (sku), ID (ids) o ruta (paths) y, salvo with_translations: false, también sus
  * traducciones de WPML. Los cambios van en set (todos los idiomas) y en langs (por idioma, {"ca": {...}}):
  *   title, excerpt, content      texto completo nuevo
+ *   slug                         URL nueva del producto; la vieja redirige (301) a la nueva
  *   remove_blocks                quita del extracto y del contenido los bloques (h1-h6, p, li, div o líneas
  *                                sueltas) cuyo texto visible contiene alguna de estas cadenas
  *   replace                      {"de": "a"}: sustituye solo en el texto visible del extracto y el contenido
@@ -196,6 +197,15 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 				$row['changes'][ $field ] = array( 'before' => $post->$field, 'after' => $value );
 			}
 		}
+		// Slug: la URL vieja queda en _wp_old_slug y WordPress la redirige (301) a la nueva.
+		if ( isset( $c['slug'] ) ) {
+			$slug = sanitize_title( (string) $c['slug'] );
+			if ( '' !== $slug && $slug !== $post->post_name ) {
+				$slug                         = wp_unique_post_slug( $slug, $id, $post->post_status, 'product', $post->post_parent );
+				$update['post_name']          = $slug;
+				$row['changes']['post_name'] = array( 'before' => $post->post_name, 'after' => $slug );
+			}
+		}
 
 		// Campos de JetEngine y SEO.
 		$meta = array();
@@ -248,6 +258,13 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 				$update['post_modified']     = current_time( 'mysql' );
 				$update['post_modified_gmt'] = current_time( 'mysql', true );
 				$wpdb->update( $wpdb->posts, $update, array( 'ID' => $id ) );
+			}
+			if ( isset( $update['post_name'] ) ) {
+				// Lo mismo que hace wp_check_for_changed_slugs() al guardar desde el editor.
+				delete_post_meta( $id, '_wp_old_slug', $update['post_name'] );
+				if ( '' !== $post->post_name && ! in_array( $post->post_name, (array) get_post_meta( $id, '_wp_old_slug' ), true ) ) {
+					add_post_meta( $id, '_wp_old_slug', $post->post_name );
+				}
 			}
 			foreach ( $meta as $key => $value ) {
 				update_post_meta( $id, $key, $value );

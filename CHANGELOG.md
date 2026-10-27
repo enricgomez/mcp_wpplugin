@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.24.0 · 27/10/2026 · PR pendiente (Claude)
+
+- `/product`: nuevo campo **`slug`** en `set` o `langs`. Cambia la URL del producto (con `wp_unique_post_slug`, así nunca choca con otra) y guarda la anterior en `_wp_old_slug`, como hace el editor de WordPress: la URL vieja redirige con un 301 a la nueva. `dry_run` muestra el cambio en `post_name`.
+- Webs: nilacakes.com (slugs descriptivos para los productos con nombres genéricos, p. ej. `/producto/pistacho/` → `/producto/cookie-pistacho/`). En las demás no cambia nada mientras no se use.
+
 ## 2.23.0 · 27/10/2026 · PR pendiente (Claude)
 
 - `/menu`: **`labels`** (`{"id de elemento": "texto"}`) cambia solo el texto de elementos que ya están en el menú, sin tocar su posición ni su padre. Hasta ahora, cambiar el texto pasando la página en `items` la movía a la posición de la lista y la sacaba de su submenú. **`keep_place: true`** deja en su sitio las páginas que ya están y añade las nuevas al final. Cada elemento de `items` admite `position` y `parent`. `dry_run` devuelve también `parent` y `order`. Sin estos parámetros funciona igual que antes.

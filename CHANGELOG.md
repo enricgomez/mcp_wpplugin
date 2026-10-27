@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.16.0 · 26/10/2026 · PR pendiente (Claude)
+## 2.17.0 · pendiente de publicar · PR #39 (Claude)
+
+- **Nuevo `POST /update`** (`includes/actualizar.php`): instala al momento la última release de GitHub, sin esperar a la actualización automática de WordPress (que mira GitHub cada 6 horas y se aplica en el cron). Está activo en todas las webs, sea cual sea su tipología, con la clave X-EG-Key de siempre, así que se llama desde el escenario de Make de cada web con `path: update`. `dry_run: true` solo devuelve la versión instalada y la última. Respeta «Mantener esta web en la versión». Deja el plugin activo (fuera del cron, WordPress lo desactiva al actualizarlo) y devuelve la versión que queda instalada.
+- Webs: todas. Esta versión llega a cada web por la actualización automática; desde entonces las siguientes se pueden instalar al momento con `/update`.
+
+## 2.16.0 · 27/10/2026 · PR #38 (Claude)
 
 - `/term` (Gestión de la web): nuevo campo `bottom_description`, el texto largo de una categoría que va **debajo** del listado de productos para no empujar los productos hacia abajo (la `description` de WooCommerce sale encima). Se guarda en el metadato `eg_pub_bottom_description` y se pinta tras el listado (`woocommerce_after_shop_loop`, que lanzan WooCommerce y el widget «Productos de archivo» de Elementor Pro). Si una plantilla no lo muestra, el shortcode `[eg_texto_categoria]` lo coloca donde se ponga; nunca sale dos veces.
 - Webs: nilacakes.com (categoría Cookies). En las demás no cambia nada mientras no se use el campo.

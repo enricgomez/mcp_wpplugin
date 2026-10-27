@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.28.1 · 27/10/2026 · PR pendiente (Claude)
+## 2.28.1 · 27/10/2026 · PR #56 (Claude)
 
 - `/term`: con WPML, cambiar el nombre o la descripción de un término traducido (p. ej. una categoría en catalán) fallaba con «El slug … ya lo está utilizando otro término», porque WPML pasa la comprobación de slug al idioma principal. Ahora se cambia al idioma del término mientras se guarda. El texto de debajo y el SEO ya funcionaban.
 - Webs: nilacakes.com (versión catalana). En las demás no cambia nada.

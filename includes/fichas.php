@@ -139,8 +139,18 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 		}
 		$row['post_status'] = $status;
 	}
-	if ( ! empty( $set['slug'] ) ) {
-		$row['post_name'] = wp_unique_post_slug( sanitize_title( $set['slug'] ), $post_id, $row['post_status'] ?? $post->post_status, $post->post_type, $post->post_parent );
+	if ( isset( $set['parent'] ) ) {
+		$parent = (int) $set['parent'];
+		if ( ! is_post_type_hierarchical( $post->post_type ) ) {
+			return eg_pub_error( 'eg_parent', 'El tipo ' . $post->post_type . ' no admite página superior.' );
+		}
+		if ( $parent && ( $parent === $post_id || get_post_type( $parent ) !== $post->post_type || in_array( $post_id, get_post_ancestors( $parent ), true ) ) ) {
+			return eg_pub_error( 'eg_parent', 'parent debe ser 0 u otra entrada del mismo tipo que no cuelgue de esta.' );
+		}
+		$row['post_parent'] = $parent;
+	}
+	if ( ! empty( $set['slug'] ) || isset( $row['post_parent'] ) ) {
+		$row['post_name'] = wp_unique_post_slug( sanitize_title( $set['slug'] ?? $post->post_name ), $post_id, $row['post_status'] ?? $post->post_status, $post->post_type, $row['post_parent'] ?? $post->post_parent );
 	}
 	if ( $row ) {
 		global $wpdb;

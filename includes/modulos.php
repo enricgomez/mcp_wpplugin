@@ -22,7 +22,7 @@ function eg_pub_types() {
 		),
 		'elementor'   => array(
 			'label'       => 'Elementor',
-			'description' => 'Landings a partir de una página maestra y plantillas reutilizables al pie de las páginas.',
+			'description' => 'Landings a partir de una página maestra, plantillas reutilizables al pie de las páginas, estilos globales del kit, fuentes propias e imágenes.',
 			'requires'    => 'ELEMENTOR_VERSION',
 		),
 		'woocommerce' => array(

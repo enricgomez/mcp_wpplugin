@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.26.1 · 27/10/2026 · PR #51 (Claude)
+
+- Corrige la 2.26.0: `/template` con `id` y `patch`, `replace` o `remove` daba un error crítico (500) porque la función no recibía `remove`. Con la 2.26.0 cualquier `patch` de `/template` fallaba sin cambiar nada.
+- Webs: las que tengan la 2.26.0 (test-neptunoapartments.com).
+
 ## 2.26.0 · 27/10/2026 · PR #50 (Claude)
 
 - `/template` con `id`: nuevo **`remove`** (`["<id de elemento>", …]`) quita elementos con sus hijos, también secciones de primer nivel, sin reenviar la página. Se combina con `patch` y `replace`. Desde esta versión, `patch`, `replace` y `remove` guardan antes el JSON anterior en `_eg_pub_elementor_backup` (como `copy_from`) y vacían la caché de WP Rocket de esa página.

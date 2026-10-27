@@ -60,6 +60,9 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	$elements = $p['elements'] ?? null;
 	$type     = sanitize_key( $p['type'] ?? 'section' );
 	$status   = in_array( $p['status'] ?? '', array( 'publish', 'draft', 'private' ), true ) ? $p['status'] : 'publish';
+	if ( ! empty( $p['id'] ) && ! empty( $p['copy_from'] ) ) {
+		return eg_pub_template_copy( (int) $p['id'], (int) $p['copy_from'], ! empty( $p['copy_title'] ) );
+	}
 	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) ) ) {
 		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array() );
 	}
@@ -176,6 +179,61 @@ function eg_pub_template_patch( $id, $patch, $replace = array() ) {
 	delete_post_meta( $id, '_elementor_css' );
 	delete_post_meta( $id, '_elementor_element_cache' );
 	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'missing' => $missing ), 200 );
+}
+
+/**
+ * Pasa el diseño de una página a otra que ya existe (p. ej. de un borrador revisado a la página publicada),
+ * sin cambiar su URL, su slug ni su idioma en WPML. Copia el JSON de Elementor, sus ajustes, la plantilla de
+ * página y el SEO (título, descripción y frase clave); con `copy_title` también el título. Antes guarda el JSON
+ * anterior en `_eg_pub_elementor_backup` para poder deshacerlo.
+ */
+function eg_pub_template_copy( $id, $from, $copy_title = false ) {
+	$post   = get_post( $id );
+	$source = get_post( $from );
+	if ( ! $post || ! $source || $id === $from ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos: id (página de destino) y copy_from (página de origen), distintas.' );
+	}
+	if ( ! current_user_can( 'edit_post', $id ) ) {
+		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );
+	}
+	$data = get_post_meta( $from, '_elementor_data', true );
+	if ( ! is_array( json_decode( (string) $data, true ) ) ) {
+		return eg_pub_error( 'eg_not_elementor', 'La página de origen no tiene JSON de Elementor.', 400 );
+	}
+	$old = get_post_meta( $id, '_elementor_data', true );
+	if ( '' !== $old ) {
+		update_post_meta( $id, '_eg_pub_elementor_backup', wp_slash( wp_json_encode( array( 'time' => time(), 'title' => $post->post_title, 'data' => $old ) ) ) );
+	}
+	update_post_meta( $id, '_elementor_data', wp_slash( $data ) );
+	foreach ( array( '_elementor_edit_mode', '_elementor_template_type', '_elementor_version', '_elementor_pro_version', '_elementor_page_settings', '_wp_page_template' ) as $meta_key ) {
+		$val = get_post_meta( $from, $meta_key, true );
+		if ( '' !== $val ) {
+			update_post_meta( $id, $meta_key, wp_slash( $val ) );
+		}
+	}
+	$seo = array();
+	foreach ( eg_pub_seo_meta_map() as $field => $keys ) {
+		if ( 'canonical_url' === $field ) {
+			continue;
+		}
+		foreach ( $keys as $meta_key ) {
+			$val = get_post_meta( $from, $meta_key, true );
+			if ( '' !== $val ) {
+				$seo[ $field ] = $val;
+				break;
+			}
+		}
+	}
+	eg_pub_seo_save( $id, $seo );
+	if ( $copy_title && $source->post_title !== $post->post_title ) {
+		wp_update_post( array( 'ID' => $id, 'post_title' => $source->post_title ) );
+	}
+	delete_post_meta( $id, '_elementor_css' );
+	delete_post_meta( $id, '_elementor_element_cache' );
+	if ( function_exists( 'rocket_clean_post' ) ) {
+		rocket_clean_post( $id );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'copied_from' => $from, 'title' => get_the_title( $id ), 'link' => get_permalink( $id ), 'seo' => array_keys( $seo ) ), 200 );
 }
 
 /**

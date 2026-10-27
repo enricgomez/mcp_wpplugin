@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.27.2 · 27/10/2026 · PR pendiente (Claude)
+## 2.27.2 · 27/10/2026 · PR #54 (Claude)
 
 - `/cpt`: busca la herramienta add-cpt de JetEngine a partir de la carpeta real del plugin JetEngine y, si no la encuentra, dice en el error qué ruta ha probado. La 2.27.1 seguía sin cargarla en test-viajestauro.
 - Webs: test-viajestauro.com.egserver.cloud.

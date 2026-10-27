@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.28.0 · 27/10/2026 · PR #55 (Claude)
+
+- `/cpt`: nuevo **`entries`** para crear o actualizar (por tipo y slug) entradas de un CPT de JetEngine con título, contenido, extracto, estado, orden, imagen destacada, términos y campos de JetEngine (`meta`). Las fechas en AAAA-MM-DD se guardan como timestamp si el campo lo es, las galerías como lista de IDs y los switcher como true/false. Los campos que no existen en el CPT se devuelven en `unknown_meta` sin guardarse.
+- Webs: test-viajestauro.com.egserver.cloud (dar de alta los proyectos como eventos). En las demás no cambia nada mientras no se use.
+
 ## 2.27.2 · 27/10/2026 · PR #54 (Claude)
 
 - `/cpt`: busca la herramienta add-cpt de JetEngine a partir de la carpeta real del plugin JetEngine y, si no la encuentra, dice en el error qué ruta ha probado. La 2.27.1 seguía sin cargarla en test-viajestauro.

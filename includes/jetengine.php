@@ -7,6 +7,10 @@
  * (general_settings, labels, advanced_settings, meta_fields simplificados: name, title, type, options…).
  * `taxonomies` crea taxonomías de JetEngine (name, slug, object_type, hierarchical, labels) y sus `terms`.
  * Lo que ya existe (mismo slug) no se toca: se devuelve como `existing`.
+ * `entries` crea o actualiza (por post_type + slug) entradas de un CPT de JetEngine: title, slug, content, excerpt,
+ * status, menu_order, featured_image (ID), terms ({"taxonomía": ["Término", …]}) y meta ({"campo": valor}). Las
+ * fechas se pasan como AAAA-MM-DD y se guardan como timestamp si el campo es de timestamp; las galerías como lista
+ * de IDs; los switcher como true/false.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -140,7 +144,7 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 	}
 	$p      = (array) $r->get_json_params();
 	$before = eg_pub_cpt_list();
-	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) ) ) {
+	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) && empty( $p['entries'] ) ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $before );
 	}
 
@@ -190,8 +194,95 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 		$result['taxonomies'][] = $row;
 	}
 
+	if ( ! empty( $p['entries'] ) ) {
+		$result['entries'] = array();
+		foreach ( (array) $p['entries'] as $entry ) {
+			$row = is_array( $entry ) ? eg_pub_cpt_entry( $entry ) : new WP_Error( 'eg_entry_input', 'Entrada no válida.' );
+			if ( is_wp_error( $row ) ) {
+				$row          = array( 'slug' => $entry['slug'] ?? '', 'error' => $row->get_error_message() );
+				$result['ok'] = false;
+			}
+			$result['entries'][] = $row;
+		}
+	}
+
 	if ( $changed ) {
 		update_option( EG_PUB_OPTION_FLUSH, 1, false );
 	}
 	return new WP_REST_Response( $result, $result['ok'] ? 200 : 207 );
+}
+
+/** Campos de JetEngine de un CPT: nombre => definición. */
+function eg_pub_cpt_fields( $post_type ) {
+	foreach ( (array) jet_engine()->cpt->data->get_items() as $item ) {
+		if ( $item['slug'] === $post_type ) {
+			$fields = (array) jet_engine_safe_unserialize_array( $item['meta_fields'], 'eg_pub_cpt_fields' );
+			return array_column( $fields, null, 'name' );
+		}
+	}
+	return array();
+}
+
+function eg_pub_cpt_meta_value( $field, $value ) {
+	$type = $field['type'] ?? 'text';
+	if ( in_array( $type, array( 'date', 'datetime', 'datetime-local' ), true ) && ! empty( $field['is_timestamp'] ) && ! is_numeric( $value ) ) {
+		return '' === (string) $value ? '' : (string) strtotime( $value . ( 'date' === $type ? ' 00:00:00' : '' ) . ' UTC' );
+	}
+	if ( 'gallery' === $type ) {
+		return implode( ',', array_map( 'absint', (array) $value ) );
+	}
+	if ( 'switcher' === $type ) {
+		return filter_var( $value, FILTER_VALIDATE_BOOLEAN ) ? 'true' : 'false';
+	}
+	if ( 'number' === $type ) {
+		return '' === (string) $value ? '' : (string) ( 0 + $value );
+	}
+	return is_array( $value ) ? $value : wp_kses_post( (string) $value );
+}
+
+/** Crea o actualiza una entrada de un CPT con sus campos de JetEngine y sus términos. */
+function eg_pub_cpt_entry( $e ) {
+	$type = sanitize_key( $e['post_type'] ?? '' );
+	if ( ! $type || ! post_type_exists( $type ) ) {
+		return new WP_Error( 'eg_entry_type', 'El tipo de contenido «' . $type . '» no existe.' );
+	}
+	$slug  = sanitize_title( $e['slug'] ?? ( $e['title'] ?? '' ) );
+	$found = $slug ? get_posts( array( 'post_type' => $type, 'name' => $slug, 'post_status' => 'any', 'numberposts' => 1, 'fields' => 'ids', 'suppress_filters' => true ) ) : array();
+	$data  = array( 'post_type' => $type );
+	foreach ( array( 'title' => 'post_title', 'content' => 'post_content', 'excerpt' => 'post_excerpt', 'status' => 'post_status', 'menu_order' => 'menu_order' ) as $in => $col ) {
+		if ( isset( $e[ $in ] ) ) {
+			$data[ $col ] = 'post_title' === $col ? sanitize_text_field( $e[ $in ] ) : ( 'menu_order' === $col ? (int) $e[ $in ] : ( 'post_status' === $col ? sanitize_key( $e[ $in ] ) : wp_kses_post( $e[ $in ] ) ) );
+		}
+	}
+	if ( $found ) {
+		$data['ID'] = (int) $found[0];
+		$id         = wp_update_post( wp_slash( $data ), true );
+	} else {
+		$data['post_name']   = $slug;
+		$data['post_status'] = $data['post_status'] ?? 'publish';
+		$id                  = wp_insert_post( wp_slash( $data ), true );
+	}
+	if ( is_wp_error( $id ) ) {
+		return $id;
+	}
+	$fields  = eg_pub_cpt_fields( $type );
+	$unknown = array();
+	foreach ( (array) ( $e['meta'] ?? array() ) as $key => $value ) {
+		$key = sanitize_key( $key );
+		if ( ! isset( $fields[ $key ] ) ) {
+			$unknown[] = $key;
+			continue;
+		}
+		update_post_meta( $id, $key, eg_pub_cpt_meta_value( $fields[ $key ], $value ) );
+	}
+	foreach ( (array) ( $e['terms'] ?? array() ) as $tax => $names ) {
+		$tax = sanitize_key( $tax );
+		if ( taxonomy_exists( $tax ) ) {
+			wp_set_object_terms( $id, array_map( 'sanitize_text_field', (array) $names ), $tax );
+		}
+	}
+	if ( ! empty( $e['featured_image'] ) ) {
+		set_post_thumbnail( $id, absint( $e['featured_image'] ) );
+	}
+	return array( 'slug' => get_post_field( 'post_name', $id ), 'id' => (int) $id, 'created' => ! $found, 'link' => get_permalink( $id ) ) + ( $unknown ? array( 'unknown_meta' => $unknown ) : array() );
 }

@@ -225,6 +225,7 @@ function eg_pub_ability_defs() {
 					'settings'       => eg_pub_prop( 'object', 'Ajustes de la plantilla en Elementor (_elementor_page_settings), p. ej. la vista previa.' ),
 					'id'             => eg_pub_prop( 'integer', 'Con patch: ID de una plantilla o página existente a editar.' ),
 					'patch'          => eg_pub_prop( 'object', 'Con id: {"id de elemento": {ajustes}} que sustituyen esos ajustes en su JSON de Elementor.' ),
+					'replace'        => eg_pub_prop( 'object', 'Con id: {"id de elemento": {elemento completo de Elementor}} que sustituye ese elemento entero, con sus hijos.' ),
 				),
 			),
 			'execute'     => eg_pub_ability_route( 'eg_pub_template_handle', 'template' ),

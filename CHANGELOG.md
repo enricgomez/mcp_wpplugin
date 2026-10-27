@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.18.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.19.0 · 27/10/2026 · PR pendiente (Claude)
+
+- `/template` con `id` admite **`replace`**: `{"<id de elemento>": {elemento completo}}` sustituye ese elemento entero, con sus hijos, en el JSON de Elementor de una plantilla o página. Sirve para reestructurar una sección (añadir una imagen, pasar a dos columnas) sin reenviar la página completa por `/landing`. Se aplica antes que `patch` y se pueden mandar los dos; la respuesta trae `replaced`.
+- Webs: sonovet.net (ajustes estéticos del borrador de la home). En las demás no cambia nada mientras no se use.
+
+## 2.18.0 · 27/10/2026 · PR #40 (Claude)
 
 - **Nuevo `POST /rocket`** (Gestión de la web, módulo `rendimiento`, `includes/rendimiento.php`): ajustes de WP Rocket sin entrar en wp-admin. `add`/`remove` añaden o quitan valores de las listas (`exclude_lazyload`, `cache_reject_uri`, `cache_reject_cookies`, `exclude_css`, `exclude_js`, `exclude_defer_js`, `delay_js_exclusions`) sin tocar el resto, y `set` cambia interruptores (`lazyload`, `async_css`, `remove_unused_css`, `delay_js`...). Por defecto solo previsualiza; `apply: true` guarda y vacía la caché. Sin parámetros devuelve los ajustes y si la licencia parece oficial (las GPL no tienen CSS no usado ni CSS crítico). Pide `manage_options` al autor configurado.
 - `/term`: el texto de debajo del listado (`bottom_description`) se puede editar también en wp-admin, en la pantalla de la categoría («Texto debajo del listado»). Sus preguntas frecuentes (h3 + respuesta bajo un h2 de preguntas frecuentes/FAQ) salen como schema `FAQPage` en el archivo de la categoría.

@@ -60,8 +60,8 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	$elements = $p['elements'] ?? null;
 	$type     = sanitize_key( $p['type'] ?? 'section' );
 	$status   = in_array( $p['status'] ?? '', array( 'publish', 'draft', 'private' ), true ) ? $p['status'] : 'publish';
-	if ( ! empty( $p['id'] ) && isset( $p['patch'] ) ) {
-		return eg_pub_template_patch( (int) $p['id'], $p['patch'] );
+	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) ) ) {
+		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array() );
 	}
 	if ( '' === $key || '' === $title || ! is_array( $elements ) || ! $elements ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: key, title o elements (JSON de Elementor).' );
@@ -130,12 +130,16 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 /**
  * Cambia ajustes de elementos concretos del JSON de Elementor de una plantilla o página existente
  * (p. ej. la lista de enlaces del pie). `patch` = {"<id de elemento>": {ajustes que se sustituyen}}.
+ * `replace` = {"<id de elemento>": {elemento completo}} cambia ese elemento entero, con sus hijos
+ * (para reestructurar una sección sin reenviar toda la página); se aplica antes que `patch`.
  * Solo toca _elementor_data; el resto del documento queda igual.
  */
-function eg_pub_template_patch( $id, $patch ) {
-	$post = get_post( $id );
-	if ( ! $post || ! is_array( $patch ) || ! $patch ) {
-		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}}.' );
+function eg_pub_template_patch( $id, $patch, $replace = array() ) {
+	$post    = get_post( $id );
+	$patch   = is_array( $patch ) ? $patch : array();
+	$replace = is_array( $replace ) ? array_filter( $replace, fn( $el ) => is_array( $el ) && ! empty( $el['elType'] ) ) : array();
+	if ( ! $post || ( ! $patch && ! $replace ) ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}} o replace {"id de elemento": {elemento}}.' );
 	}
 	if ( ! current_user_can( 'edit_post', $id ) ) {
 		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );
@@ -144,10 +148,15 @@ function eg_pub_template_patch( $id, $patch ) {
 	if ( ! is_array( $data ) ) {
 		return eg_pub_error( 'eg_not_elementor', 'Ese contenido no tiene JSON de Elementor.', 400 );
 	}
-	$found = array();
-	$walk  = function ( $elements ) use ( &$walk, $patch, &$found ) {
+	$found    = array();
+	$replaced = array();
+	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, &$found, &$replaced ) {
 		foreach ( $elements as &$el ) {
 			$eid = (string) ( $el['id'] ?? '' );
+			if ( isset( $replace[ $eid ] ) ) {
+				$el = $replace[ $eid ] + array( 'id' => $eid, 'settings' => array(), 'elements' => array() );
+				$replaced[] = $eid;
+			}
 			if ( isset( $patch[ $eid ] ) && is_array( $patch[ $eid ] ) ) {
 				$el['settings'] = array_merge( (array) ( $el['settings'] ?? array() ), $patch[ $eid ] );
 				$found[]        = $eid;
@@ -159,14 +168,14 @@ function eg_pub_template_patch( $id, $patch ) {
 		return $elements;
 	};
 	$data    = $walk( $data );
-	$missing = array_values( array_diff( array_map( 'strval', array_keys( $patch ) ), $found ) );
-	if ( ! $found ) {
+	$missing = array_values( array_diff( array_map( 'strval', array_merge( array_keys( $patch ), array_keys( $replace ) ) ), $found, $replaced ) );
+	if ( ! $found && ! $replaced ) {
 		return eg_pub_error( 'eg_not_found', 'No se encontró ningún elemento con esos ids.', 404 );
 	}
 	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( $data ) ) );
 	delete_post_meta( $id, '_elementor_css' );
 	delete_post_meta( $id, '_elementor_element_cache' );
-	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'missing' => $missing ), 200 );
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'missing' => $missing ), 200 );
 }
 
 /**

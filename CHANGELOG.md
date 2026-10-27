@@ -10,6 +10,21 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.26.1 · 27/10/2026 · PR #51 (Claude)
+
+- Corrige la 2.26.0: `/template` con `id` y `patch`, `replace` o `remove` daba un error crítico (500) porque la función no recibía `remove`. Con la 2.26.0 cualquier `patch` de `/template` fallaba sin cambiar nada.
+- Webs: las que tengan la 2.26.0 (test-neptunoapartments.com).
+
+## 2.26.0 · 27/10/2026 · PR #50 (Claude)
+
+- `/template` con `id`: nuevo **`remove`** (`["<id de elemento>", …]`) quita elementos con sus hijos, también secciones de primer nivel, sin reenviar la página. Se combina con `patch` y `replace`. Desde esta versión, `patch`, `replace` y `remove` guardan antes el JSON anterior en `_eg_pub_elementor_backup` (como `copy_from`) y vacían la caché de WP Rocket de esa página.
+- Webs: test-neptunoapartments.com (quitar de la home las secciones del hotel: TripAdvisor, eventos, preguntas frecuentes). En las demás no cambia nada mientras no se use.
+
+## 2.25.0 · 27/10/2026 · PR #49 (Claude)
+
+- Nuevo endpoint **`/item`** (módulo «Fichas», tipología Gestión de la web): edita una entrada existente de cualquier tipo y sus campos de ACF. `dry_run` lista los campos con su tipo y valor; `set` cambia título, slug, extracto, contenido, estado u orden; `acf` cambia campos (imágenes y galerías por ID, URL o `{"url","alt"}`, sin duplicar subidas); `featured_image` pone la destacada. Guarda sin `wp_update_post` para que WPML no traduzca solo.
+- Webs: test-neptunoapartments.com (convertir las fichas de habitaciones del hotel en los 8 apartamentos). En las demás no cambia nada mientras no se use.
+
 ## 2.24.1 · 27/10/2026 · PR pendiente (Claude)
 
 - `/product`: al quitar o añadir términos (`remove_terms`, `add_terms`) invalida la caché de términos del producto en WooCommerce. Con Redis u otra caché de objetos, la ficha seguía mostrando los atributos de antes (p. ej. un alérgeno quitado) hasta vaciar la caché a mano.

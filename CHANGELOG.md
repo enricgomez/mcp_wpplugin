@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.24.1 · 27/10/2026 · PR pendiente (Claude)
+
+- `/product`: al quitar o añadir términos (`remove_terms`, `add_terms`) invalida la caché de términos del producto en WooCommerce. Con Redis u otra caché de objetos, la ficha seguía mostrando los atributos de antes (p. ej. un alérgeno quitado) hasta vaciar la caché a mano.
+- Webs: las que usan `/product` con caché de objetos (nilacakes.com). Corrección, no cambia nada más.
+
 ## 2.24.0 · 27/10/2026 · PR #47 (Claude)
 
 - `/product`: nuevo campo **`slug`** en `set` o `langs`. Cambia la URL del producto (con `wp_unique_post_slug`, así nunca choca con otra) y guarda la anterior en `_wp_old_slug`, como hace el editor de WordPress: la URL vieja redirige con un 301 a la nueva. `dry_run` muestra el cambio en `post_name`.

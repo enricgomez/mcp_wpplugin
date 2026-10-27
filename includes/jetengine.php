@@ -11,6 +11,9 @@
  * status, menu_order, featured_image (ID), terms ({"taxonomía": ["Término", …]}) y meta ({"campo": valor}). Las
  * fechas se pasan como AAAA-MM-DD y se guardan como timestamp si el campo es de timestamp; las galerías como lista
  * de IDs; los switcher como true/false.
+ * `listings` crea o actualiza (por key) plantillas de listado de JetEngine hechas con Elementor para un CPT: key, title,
+ * post_type, elements (JSON de Elementor del elemento del listado) y settings (ajustes de página opcionales). El ID que
+ * devuelve es el que se pone en `lisitng_id` del widget Listing Grid.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -18,6 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 const EG_PUB_OPTION_FLUSH = 'eg_pub_flush_rewrite';
+const EG_PUB_META_LISTING_KEY = '_eg_pub_listing_key';
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['jetengine'] = array( 'type' => 'gestion', 'routes' => array( 'cpt' ) );
@@ -69,6 +73,13 @@ function eg_pub_cpt_list() {
 			);
 		}
 	}
+	$out['listings'] = array();
+	foreach ( get_posts( array( 'post_type' => 'jet-engine', 'post_status' => 'any', 'numberposts' => 100, 'suppress_filters' => true ) ) as $listing ) {
+		$data = (array) get_post_meta( $listing->ID, '_listing_data', true );
+		$out['listings'][] = array( 'id' => $listing->ID, 'title' => $listing->post_title, 'post_type' => $data['post_type'] ?? '', 'key' => (string) get_post_meta( $listing->ID, EG_PUB_META_LISTING_KEY, true ) );
+	}
+	// Con los ajustes antiguos desactivados, el Listing Grid ignora sus filtros propios (posts_query) y hay que usar el Query Builder.
+	$out['listing_legacy_disabled'] = isset( jet_engine()->listings->legacy ) ? (bool) jet_engine()->listings->legacy->is_disabled() : null;
 	return $out;
 }
 
@@ -144,7 +155,7 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 	}
 	$p      = (array) $r->get_json_params();
 	$before = eg_pub_cpt_list();
-	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) && empty( $p['entries'] ) ) ) {
+	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) && empty( $p['entries'] ) && empty( $p['listings'] ) ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $before );
 	}
 
@@ -203,6 +214,18 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 				$result['ok'] = false;
 			}
 			$result['entries'][] = $row;
+		}
+	}
+
+	if ( ! empty( $p['listings'] ) ) {
+		$result['listings'] = array();
+		foreach ( (array) $p['listings'] as $listing ) {
+			$row = is_array( $listing ) ? eg_pub_cpt_listing( $listing ) : new WP_Error( 'eg_listing_input', 'Listado no válido.' );
+			if ( is_wp_error( $row ) ) {
+				$row          = array( 'key' => $listing['key'] ?? '', 'error' => $row->get_error_message() );
+				$result['ok'] = false;
+			}
+			$result['listings'][] = $row;
 		}
 	}
 
@@ -285,4 +308,53 @@ function eg_pub_cpt_entry( $e ) {
 		set_post_thumbnail( $id, absint( $e['featured_image'] ) );
 	}
 	return array( 'slug' => get_post_field( 'post_name', $id ), 'id' => (int) $id, 'created' => ! $found, 'link' => get_permalink( $id ) ) + ( $unknown ? array( 'unknown_meta' => $unknown ) : array() );
+}
+
+/** Crea o actualiza (por key) una plantilla de listado de JetEngine hecha con Elementor para las entradas de un CPT. */
+function eg_pub_cpt_listing( $l ) {
+	$key       = sanitize_key( $l['key'] ?? '' );
+	$title     = sanitize_text_field( $l['title'] ?? '' );
+	$post_type = sanitize_key( $l['post_type'] ?? '' );
+	$elements  = $l['elements'] ?? null;
+	if ( ! $key || ! $title || ! $post_type || ! is_array( $elements ) || ! $elements ) {
+		return new WP_Error( 'eg_listing_input', 'Cada listado necesita key, title, post_type y elements (JSON de Elementor).' );
+	}
+	if ( ! post_type_exists( $post_type ) ) {
+		return new WP_Error( 'eg_listing_type', 'El tipo de contenido «' . $post_type . '» no existe.' );
+	}
+	$found = get_posts( array( 'post_type' => 'jet-engine', 'post_status' => 'any', 'meta_key' => EG_PUB_META_LISTING_KEY, 'meta_value' => $key, 'numberposts' => 1, 'fields' => 'ids', 'suppress_filters' => true ) );
+	$data  = array( 'post_type' => 'jet-engine', 'post_title' => $title, 'post_status' => 'publish' );
+	if ( $found ) {
+		$data['ID'] = (int) $found[0];
+		$id         = wp_update_post( wp_slash( $data ), true );
+	} else {
+		$data['post_author'] = get_current_user_id();
+		$id                  = wp_insert_post( wp_slash( $data ), true );
+	}
+	if ( is_wp_error( $id ) ) {
+		return $id;
+	}
+	// Los mismos metadatos que guarda JetEngine al crear un listado desde el panel (fuente: entradas del CPT).
+	$source = array( 'source' => 'posts', 'post_type' => $post_type, 'tax' => 'category' );
+	update_post_meta( $id, EG_PUB_META_LISTING_KEY, $key );
+	update_post_meta( $id, '_entry_type', 'listing' );
+	update_post_meta( $id, '_listing_type', 'elementor' );
+	update_post_meta( $id, '_listing_data', $source );
+	update_post_meta( $id, '_elementor_page_settings', array_merge( (array) ( $l['settings'] ?? array() ), array(
+		'listing_source'    => 'posts',
+		'listing_post_type' => $post_type,
+		'listing_tax'       => 'category',
+		'repeater_source'   => '',
+		'repeater_field'    => '',
+		'repeater_option'   => '',
+	) ) );
+	update_post_meta( $id, '_elementor_template_type', 'jet-listing-items' );
+	update_post_meta( $id, '_elementor_edit_mode', 'builder' );
+	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( eg_pub_template_ids( $elements ) ) ) );
+	if ( defined( 'ELEMENTOR_VERSION' ) ) {
+		update_post_meta( $id, '_elementor_version', ELEMENTOR_VERSION );
+	}
+	delete_post_meta( $id, '_elementor_css' );
+	delete_post_meta( $id, '_elementor_element_cache' );
+	return array( 'key' => $key, 'id' => (int) $id, 'created' => ! $found );
 }

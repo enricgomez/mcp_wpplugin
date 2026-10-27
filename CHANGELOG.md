@@ -10,7 +10,13 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.17.0 · pendiente de publicar · PR #39 (Claude)
+## 2.18.0 · 27/10/2026 · PR pendiente (Claude)
+
+- **Nuevo `POST /rocket`** (Gestión de la web, módulo `rendimiento`, `includes/rendimiento.php`): ajustes de WP Rocket sin entrar en wp-admin. `add`/`remove` añaden o quitan valores de las listas (`exclude_lazyload`, `cache_reject_uri`, `cache_reject_cookies`, `exclude_css`, `exclude_js`, `exclude_defer_js`, `delay_js_exclusions`) sin tocar el resto, y `set` cambia interruptores (`lazyload`, `async_css`, `remove_unused_css`, `delay_js`...). Por defecto solo previsualiza; `apply: true` guarda y vacía la caché. Sin parámetros devuelve los ajustes y si la licencia parece oficial (las GPL no tienen CSS no usado ni CSS crítico). Pide `manage_options` al autor configurado.
+- `/term`: el texto de debajo del listado (`bottom_description`) se puede editar también en wp-admin, en la pantalla de la categoría («Texto debajo del listado»). Sus preguntas frecuentes (h3 + respuesta bajo un h2 de preguntas frecuentes/FAQ) salen como schema `FAQPage` en el archivo de la categoría.
+- Webs: nilacakes.com (excluir del lazy load las imágenes de la primera pantalla, sacar `resumen-de-compra` de la caché y FAQ de la categoría Cookies). En las demás no cambia nada mientras no se use.
+
+## 2.17.0 · 27/10/2026 · PR #39 (Claude)
 
 - **Nuevo `POST /update`** (`includes/actualizar.php`): instala al momento la última release de GitHub, sin esperar a la actualización automática de WordPress (que mira GitHub cada 6 horas y se aplica en el cron). Está activo en todas las webs, sea cual sea su tipología, con la clave X-EG-Key de siempre, así que se llama desde el escenario de Make de cada web con `path: update`. `dry_run: true` solo devuelve la versión instalada y la última. Respeta «Mantener esta web en la versión». Deja el plugin activo (fuera del cron, WordPress lo desactiva al actualizarlo) y devuelve la versión que queda instalada.
 - Webs: todas. Esta versión llega a cada web por la actualización automática; desde entonces las siguientes se pueden instalar al momento con `/update`.

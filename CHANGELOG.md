@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.29.0 · 27/10/2026 · PR #57 (Claude)
+
+- `/cpt`: nuevo **`listings`** para crear o actualizar (por `key`) plantillas de listado de JetEngine hechas con Elementor para un CPT (`title`, `post_type`, `elements` con el JSON de Elementor y `settings` opcional). Devuelve el ID que va en el widget Listing Grid (`lisitng_id`). La lista de `dry_run` añade los listados existentes y `listing_legacy_disabled` (si es true, el Listing Grid ignora sus filtros propios y hay que filtrar con el Query Builder).
+- Webs: test-viajestauro.com.egserver.cloud (listado y página de eventos). En las demás no cambia nada mientras no se use.
+
 ## 2.28.1 · 27/10/2026 · PR #56 (Claude)
 
 - `/term`: con WPML, cambiar el nombre o la descripción de un término traducido (p. ej. una categoría en catalán) fallaba con «El slug … ya lo está utilizando otro término», porque WPML pasa la comprobación de slug al idioma principal. Ahora se cambia al idioma del término mientras se guarda. El texto de debajo y el SEO ya funcionaban.

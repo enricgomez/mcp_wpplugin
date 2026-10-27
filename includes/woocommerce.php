@@ -272,6 +272,11 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 			foreach ( $terms as list( $op, $tax, $term_ids ) ) {
 				'add' === $op ? wp_add_object_terms( $id, $term_ids, $tax ) : wp_remove_object_terms( $id, $term_ids, $tax );
 			}
+			if ( $terms && class_exists( 'WC_Cache_Helper' ) ) {
+				// wc_get_product_terms() guarda los términos del producto en la caché de objetos, que WooCommerce
+				// solo invalida al guardar el producto: sin esto, con Redis la ficha sigue mostrando los atributos de antes.
+				WC_Cache_Helper::invalidate_cache_group( 'product_' . $id );
+			}
 		}
 		$done[] = $row;
 	}

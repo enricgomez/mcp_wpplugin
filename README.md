@@ -122,6 +122,7 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 1. Cambia la versión en `eg-publicacion.php` (cabecera `Version:` y constante `EG_PUB_VERSION`) y añade la entrada en `CHANGELOG.md`.
 2. Haz commit y súbelo a `main` (por PR).
 3. La GitHub Action crea la release `vX.Y.Z` con el zip (si esa versión ya tenía release, no hace nada). Cada web la detecta en unas horas y se actualiza sola (o al momento con "Buscar actualizaciones" en la fila del plugin).
+4. Desde la v2.17.0 se puede instalar al momento desde Make: `POST /wp-json/eg/v1/update` (en el escenario de cada web, `path: update`, cuerpo `{}`). Con `{"dry_run": true}` solo dice la versión instalada (`installed`) y la última (`latest`). Está activo en todas las webs, sea cual sea su tipología, y respeta «Mantener esta web en la versión». Devuelve `updated`, `version` (la que queda instalada) y `active`.
 
 Si el repositorio es privado, cada web necesita en `wp-config.php`:
 

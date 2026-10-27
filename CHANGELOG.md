@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.17.0 · pendiente de publicar · PR pendiente (Claude)
+
+- **Nuevo `POST /update`** (`includes/actualizar.php`): instala al momento la última release de GitHub, sin esperar a la actualización automática de WordPress (que mira GitHub cada 6 horas y se aplica en el cron). Está activo en todas las webs, sea cual sea su tipología, con la clave X-EG-Key de siempre, así que se llama desde el escenario de Make de cada web con `path: update`. `dry_run: true` solo devuelve la versión instalada y la última. Respeta «Mantener esta web en la versión». Deja el plugin activo (fuera del cron, WordPress lo desactiva al actualizarlo) y devuelve la versión que queda instalada.
+- Webs: todas. Esta versión llega a cada web por la actualización automática; desde entonces las siguientes se pueden instalar al momento con `/update`.
+- Versión 2.17.0 porque el PR #38 (abierto) usa la 2.16.0.
+
 ## 2.15.0 · 26/10/2026 · PR pendiente (Claude)
 
 - **Nuevo `POST /term`** (Gestión de la web, `includes/terminos.php`): cambia el nombre, la descripción y el SEO (título, descripción y frase clave, en Rank Math o Yoast) de una categoría de productos o de otro término público, elegido por `slug` o `id`. Por defecto solo previsualiza; guarda con `apply: true`. No toca el slug. La descripción admite HTML de entradas (h2, h3, listas, enlaces).

@@ -193,3 +193,88 @@ add_action( 'woocommerce_after_shop_loop', function () {
 }, 20 );
 
 add_shortcode( 'eg_texto_categoria', 'eg_pub_term_bottom_html' );
+
+// Campo «Texto debajo del listado» en la pantalla de editar categoría, para cambiarlo también desde wp-admin.
+add_action( 'admin_init', function () {
+	foreach ( get_taxonomies( array( 'public' => true ) ) as $taxonomy ) {
+		add_action( $taxonomy . '_edit_form_fields', 'eg_pub_term_bottom_field', 20 );
+		add_action( 'edited_' . $taxonomy, 'eg_pub_term_bottom_field_save' );
+	}
+} );
+
+function eg_pub_term_bottom_field( $term ) {
+	?>
+	<tr class="form-field">
+		<th scope="row"><label for="eg_pub_bottom_description">Texto debajo del listado</label></th>
+		<td>
+			<?php
+			wp_nonce_field( 'eg_pub_term_bottom', 'eg_pub_term_bottom_nonce' );
+			wp_editor( (string) get_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, true ), 'eg_pub_bottom_description', array(
+				'textarea_name' => 'eg_pub_bottom_description',
+				'textarea_rows' => 12,
+				'media_buttons' => false,
+			) );
+			?>
+			<p class="description">EG Publicación: se muestra debajo de los productos de esta categoría. Las preguntas como «h3» seguidas de un párrafo, bajo un «h2» de preguntas frecuentes, salen también como schema FAQ.</p>
+		</td>
+	</tr>
+	<?php
+}
+
+function eg_pub_term_bottom_field_save( $term_id ) {
+	if ( ! isset( $_POST['eg_pub_term_bottom_nonce'], $_POST['eg_pub_bottom_description'] )
+		|| ! wp_verify_nonce( sanitize_key( $_POST['eg_pub_term_bottom_nonce'] ), 'eg_pub_term_bottom' )
+		|| ! current_user_can( 'edit_term', $term_id ) ) {
+		return;
+	}
+	$text = wp_kses_post( wp_unslash( $_POST['eg_pub_bottom_description'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	if ( '' === trim( $text ) ) {
+		delete_term_meta( $term_id, EG_PUB_META_TERM_BOTTOM );
+	} else {
+		update_term_meta( $term_id, EG_PUB_META_TERM_BOTTOM, wp_slash( $text ) );
+	}
+}
+
+/**
+ * Preguntas del texto de debajo: cada h3 seguido de su respuesta, desde el h2 de preguntas frecuentes
+ * (o FAQ) hasta el siguiente h2. Devuelve array( array( pregunta, respuesta ) ).
+ */
+function eg_pub_term_faqs( $html ) {
+	if ( ! preg_match( '#<h2[^>]*>[^<]*(preguntas|preguntes|faq|questions)[^<]*</h2>(.*?)(?=<h2|$)#is', $html, $m ) ) {
+		return array();
+	}
+	preg_match_all( '#<h3[^>]*>(.*?)</h3>(.*?)(?=<h3|$)#is', $m[2], $qa, PREG_SET_ORDER );
+	$faqs = array();
+	foreach ( $qa as $item ) {
+		$q = trim( wp_strip_all_tags( $item[1] ) );
+		$a = trim( wp_strip_all_tags( $item[2] ) );
+		if ( '' !== $q && '' !== $a ) {
+			$faqs[] = array( $q, $a );
+		}
+	}
+	return $faqs;
+}
+
+// Schema FAQPage en el archivo de la categoría con las preguntas del texto de debajo.
+add_action( 'wp_head', function () {
+	if ( ! ( is_tax() || is_category() || is_tag() ) || is_paged() ) {
+		return;
+	}
+	$term = get_queried_object();
+	$faqs = $term instanceof WP_Term ? eg_pub_term_faqs( (string) get_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, true ) ) : array();
+	if ( ! $faqs ) {
+		return;
+	}
+	$schema = array(
+		'@context'   => 'https://schema.org',
+		'@type'      => 'FAQPage',
+		'mainEntity' => array_map( function ( $f ) {
+			return array(
+				'@type'          => 'Question',
+				'name'           => $f[0],
+				'acceptedAnswer' => array( '@type' => 'Answer', 'text' => $f[1] ),
+			);
+		}, $faqs ),
+	);
+	echo '<script type="application/ld+json" class="eg-term-faq">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
+} );

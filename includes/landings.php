@@ -479,6 +479,8 @@ function eg_pub_landing_handle( WP_REST_Request $r ) {
  * Añade páginas a un menú de WordPress (por nombre o ID; con WPML, la traducción del menú en "lang").
  * Si la página ya está en el menú solo cambia su texto. "remove_titles" quita los elementos cuyo texto
  * contenga alguna de esas cadenas. Con "dry_run" lista los menús y los elementos del menú indicado.
+ * "labels" ({id de elemento: texto}) cambia solo el texto de elementos que ya están, sin moverlos, y con
+ * "keep_place" las páginas que ya están conservan su sitio y las nuevas van al final (o a su "position"/"parent").
  */
 function eg_pub_menu_handle( WP_REST_Request $r ) {
 	$p    = $r->get_params();
@@ -497,7 +499,7 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 	$items_of = function ( $menu_id ) {
 		$out = array();
 		foreach ( (array) wp_get_nav_menu_items( $menu_id, array( 'post_status' => 'any' ) ) as $it ) {
-			$out[] = array( 'id' => (int) $it->ID, 'title' => $it->title, 'object_id' => (int) $it->object_id, 'url' => $it->url );
+			$out[] = array( 'id' => (int) $it->ID, 'title' => $it->title, 'object_id' => (int) $it->object_id, 'url' => $it->url, 'parent' => (int) $it->menu_item_parent, 'order' => (int) $it->menu_order );
 		}
 		return $out;
 	};
@@ -537,9 +539,24 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 		}
 	}
 
-	$added  = array();
-	$notes  = array();
-	$pos    = 0;
+	$added   = array();
+	$notes   = array();
+	$labeled = array();
+	$own     = array_column( $existing, null, 'id' );
+	foreach ( (array) ( $p['labels'] ?? array() ) as $item_id => $label ) {
+		$item_id = (int) $item_id;
+		if ( ! isset( $own[ $item_id ] ) ) {
+			$notes[] = 'el elemento ' . $item_id . ' no es de este menú';
+			continue;
+		}
+		// El texto del elemento es su post_title; vacío, WordPress muestra el título de la página.
+		wp_update_post( array( 'ID' => $item_id, 'post_title' => wp_strip_all_tags( (string) $label ) ) );
+		$labeled[] = $item_id;
+	}
+
+	$keep = ! empty( $p['keep_place'] );
+	$last = $existing ? max( array_column( $existing, 'order' ) ) : 0;
+	$pos  = 0;
 	foreach ( (array) ( $p['items'] ?? array() ) as $item ) {
 		++$pos; // Las páginas quedan en el orden de "items" (con WPML el menú puede no listar sus elementos durante la petición).
 		$page_id = ! empty( $item['landing_id'] ) ? eg_pub_find_landing( $item['landing_id'] ) : (int) ( $item['page_id'] ?? 0 );
@@ -549,10 +566,17 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 		}
 		$title   = isset( $item['title'] ) ? wp_strip_all_tags( $item['title'] ) : get_the_title( $page_id );
 		$item_id = 0;
+		$place   = array( 'order' => $pos, 'parent' => 0 );
 		foreach ( $existing as $it ) {
 			if ( $it['object_id'] === $page_id ) {
 				$item_id = $it['id'];
+				if ( $keep ) {
+					$place = $it;
+				}
 			}
+		}
+		if ( $keep && ! $item_id ) {
+			$place['order'] = ++$last;
 		}
 		$res = wp_update_nav_menu_item( $menu->term_id, $item_id, array(
 			'menu-item-object-id' => $page_id,
@@ -560,7 +584,8 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 			'menu-item-type'      => 'post_type',
 			'menu-item-title'     => $title,
 			'menu-item-status'    => 'publish',
-			'menu-item-position'  => $pos,
+			'menu-item-position'  => isset( $item['position'] ) ? (int) $item['position'] : $place['order'],
+			'menu-item-parent-id' => isset( $item['parent'] ) ? (int) $item['parent'] : $place['parent'],
 		) );
 		if ( is_wp_error( $res ) ) {
 			$notes[] = $title . ': ' . $res->get_error_message();
@@ -572,6 +597,7 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 		'ok'      => true,
 		'menu'    => (int) $menu->term_id,
 		'added'   => $added,
+		'labeled' => $labeled,
 		'removed' => $removed,
 		'message' => implode( ' | ', $notes ),
 		'items'   => $items_of( $menu->term_id ),

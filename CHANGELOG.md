@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.22.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.23.0 · 27/10/2026 · PR pendiente (Claude)
+
+- `/menu`: **`labels`** (`{"id de elemento": "texto"}`) cambia solo el texto de elementos que ya están en el menú, sin tocar su posición ni su padre. Hasta ahora, cambiar el texto pasando la página en `items` la movía a la posición de la lista y la sacaba de su submenú. **`keep_place: true`** deja en su sitio las páginas que ya están y añade las nuevas al final. Cada elemento de `items` admite `position` y `parent`. `dry_run` devuelve también `parent` y `order`. Sin estos parámetros funciona igual que antes.
+- Webs: sonovet.net (textos cortos de los servicios en el menú y nuevo acceso «Per a clíniques veterinàries»). En las demás no cambia nada mientras no se use.
+
+## 2.22.0 · 27/10/2026 · PR #44 (Claude)
 
 - `/menu`: `create: true` crea el menú si no existe (con `menu` como nombre), para montar webs nuevas desde Make, y `location` lo asigna a una ubicación del tema (p. ej. `menu-1` en Hello Elementor). Sin estos parámetros funciona igual que antes.
 - Webs: test-viajestauro.com.egserver.cloud (menú principal y del pie). En las demás no cambia nada.

@@ -262,7 +262,9 @@ function eg_pub_ability_defs() {
 				'properties' => array(
 					'menu'    => array( 'type' => array( 'integer', 'string' ), 'description' => 'ID, slug o nombre del menú.' ),
 					'lang'    => eg_pub_prop( 'string', 'Idioma: se usa la traducción del menú en WPML.' ),
-					'items'   => eg_pub_prop( 'array', 'Páginas que añadir.' ),
+					'items'   => eg_pub_prop( 'array', 'Páginas que añadir ({page_id|landing_id, title, position, parent}).' ),
+					'labels'  => eg_pub_prop( 'object', 'Texto nuevo de elementos existentes: {id de elemento: texto}.' ),
+					'keep_place' => eg_pub_prop( 'boolean', 'Las páginas que ya están no se mueven y las nuevas van al final.' ),
 					'dry_run' => eg_pub_prop( 'boolean', 'Solo listar.' ),
 				),
 			),

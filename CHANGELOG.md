@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.28.1 · 27/10/2026 · PR pendiente (Claude)
+
+- `/term`: con WPML, cambiar el nombre o la descripción de un término traducido (p. ej. una categoría en catalán) fallaba con «El slug … ya lo está utilizando otro término», porque WPML pasa la comprobación de slug al idioma principal. Ahora se cambia al idioma del término mientras se guarda. El texto de debajo y el SEO ya funcionaban.
+- Webs: nilacakes.com (versión catalana). En las demás no cambia nada.
+
 ## 2.28.0 · 27/10/2026 · PR #55 (Claude)
 
 - `/cpt`: nuevo **`entries`** para crear o actualizar (por tipo y slug) entradas de un CPT de JetEngine con título, contenido, extracto, estado, orden, imagen destacada, términos y campos de JetEngine (`meta`). Las fechas en AAAA-MM-DD se guardan como timestamp si el campo lo es, las galerías como lista de IDs y los switcher como true/false. Los campos que no existen en el CPT se devuelven en `unknown_meta` sin guardarse.

@@ -138,7 +138,17 @@ function eg_pub_term_handle( WP_REST_Request $r ) {
 			if ( $kses ) {
 				remove_filter( 'pre_term_description', 'wp_filter_kses' );
 			}
+			// Con WPML, wp_update_term busca el slug duplicado con get_term_by, que WPML pasa al idioma actual:
+			// en un término traducido encuentra el del idioma principal y falla con «el slug ya lo está utilizando otro término».
+			$lang = apply_filters( 'wpml_element_language_code', null, array( 'element_id' => $term->term_taxonomy_id, 'element_type' => 'tax_' . $taxonomy ) );
+			$prev = $lang ? apply_filters( 'wpml_current_language', null ) : null;
+			if ( $lang && $prev !== $lang ) {
+				do_action( 'wpml_switch_language', $lang );
+			}
 			$done = wp_update_term( $term->term_id, $taxonomy, $args );
+			if ( $lang && $prev !== $lang ) {
+				do_action( 'wpml_switch_language', $prev );
+			}
 			if ( $kses ) {
 				add_filter( 'pre_term_description', 'wp_filter_kses' );
 			}

@@ -135,14 +135,16 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
  * (p. ej. la lista de enlaces del pie). `patch` = {"<id de elemento>": {ajustes que se sustituyen}}.
  * `replace` = {"<id de elemento>": {elemento completo}} cambia ese elemento entero, con sus hijos
  * (para reestructurar una sección sin reenviar toda la página); se aplica antes que `patch`.
- * Solo toca _elementor_data; el resto del documento queda igual.
+ * `remove` = ["<id de elemento>", …] quita esos elementos con sus hijos (también secciones de primer nivel).
+ * Solo toca _elementor_data (el anterior queda en _eg_pub_elementor_backup); el resto del documento queda igual.
  */
-function eg_pub_template_patch( $id, $patch, $replace = array() ) {
+function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array() ) {
 	$post    = get_post( $id );
 	$patch   = is_array( $patch ) ? $patch : array();
 	$replace = is_array( $replace ) ? array_filter( $replace, fn( $el ) => is_array( $el ) && ! empty( $el['elType'] ) ) : array();
-	if ( ! $post || ( ! $patch && ! $replace ) ) {
-		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}} o replace {"id de elemento": {elemento}}.' );
+	$remove  = array_values( array_filter( array_map( 'strval', (array) $remove ) ) );
+	if ( ! $post || ( ! $patch && ! $replace && ! $remove ) ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}}, replace {"id de elemento": {elemento}} o remove ["id de elemento"].' );
 	}
 	if ( ! current_user_can( 'edit_post', $id ) ) {
 		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );

@@ -6,13 +6,13 @@ Plugins para conectar con webs en WordPress via MCP
 
 Plugin de WordPress de enricgomez Studio. Expone `/wp-json/eg/v1/publish`, que usa el escenario de Make "Blogs clientes: Notion → WordPress" para publicar los posts de blog de los clientes (idioma y traducción WPML, categoría, SEO de Rank Math, imagen destacada, imagen dentro del contenido y aviso por email).
 
-### Cómo trabajamos en este repositorio (Claude y ChatGPT)
+### Cómo trabajamos en este repositorio
 
-Claude y ChatGPT modifican este plugin en paralelo. Para no pisarse ni decidir sobre una versión que ya no es la actual:
+Varias sesiones de Claude pueden modificar este plugin en paralelo. Para no pisarse ni decidir sobre una versión que ya no es la actual:
 
 1. **Antes de cambiar o decidir nada**: `git pull` de `main`, mira la [última release](https://github.com/enricgomez/mcp_wpplugin/releases/latest), los PR abiertos y el [CHANGELOG.md](CHANGELOG.md). Parte siempre de `main` actualizado, nunca de una copia antigua.
 2. **Cada cambio en el código del plugin** (`eg-publicacion.php` o `includes/`) sube la versión en el mismo PR: cabecera `Version:` y `EG_PUB_VERSION`, iguales (si no coinciden, la Action falla). Si no se sube, el merge no genera release y el cambio queda en `main` sin llegar a las webs hasta la siguiente versión.
-3. **Cada cambio añade su entrada en [CHANGELOG.md](CHANGELOG.md)** en el mismo PR, arriba del todo: versión, fecha, PR, quién lo hace (Claude o ChatGPT), qué cambia y qué tipología, módulo y webs afecta. Un cambio solo de documentación no sube versión.
+3. **Cada cambio añade su entrada en [CHANGELOG.md](CHANGELOG.md)** en el mismo PR, arriba del todo: versión, fecha, PR, quién lo hace, qué cambia y qué tipología, módulo y webs afecta. Un cambio solo de documentación no sube versión.
 4. Un PR por cambio, sin fusionar sin el OK de Enric. Después de fusionar, la rama de trabajo se reinicia desde `origin/main` antes del siguiente cambio.
 
 ### Borradores y Yoast (desde la v2.9.4)

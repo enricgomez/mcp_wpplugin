@@ -1,6 +1,6 @@
 # Registro de cambios de EG Publicación
 
-Historial del plugin EG Publicación, de lo más nuevo a lo más antiguo. Es el registro común de **Claude y ChatGPT**, que modifican este repositorio en paralelo: antes de cambiar o decidir nada sobre el plugin, léelo junto con la [última release](https://github.com/enricgomez/mcp_wpplugin/releases/latest), y añade aquí tu cambio en el mismo PR (ver «Cómo trabajamos en este repositorio» en el [README](README.md)).
+Historial del plugin EG Publicación, de lo más nuevo a lo más antiguo. Es el registro común de los cambios del repositorio: antes de cambiar o decidir nada sobre el plugin, léelo junto con la [última release](https://github.com/enricgomez/mcp_wpplugin/releases/latest), y añade aquí tu cambio en el mismo PR (ver «Cómo trabajamos en este repositorio» en el [README](README.md)).
 
 Cada entrada indica la versión, la fecha en que se publicó la release (UTC), el PR, qué cambia y a qué tipología, módulo y webs afecta. Las versiones siguen `MAYOR.MENOR.PARCHE`: parche para correcciones, menor para funciones nuevas compatibles, mayor si algo deja de funcionar como antes.
 

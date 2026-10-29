@@ -8,7 +8,8 @@
  * galerías se convierten en el shortcode [gallery] con las imágenes nuevas. Un post que ya existe (mismo slug) se
  * actualiza; las imágenes ya subidas no se duplican.
  * Por tandas: `page` y `per_page` (3 por defecto). `slugs` limita a esos posts. `status` (publish o draft) fija el
- * estado; sin él se publican. `dry_run` solo lista los posts del origen.
+ * estado; sin él se publican. `lang` (origen con WPML) trae solo los posts de ese idioma. `dry_run` solo lista los
+ * posts del origen.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -256,11 +257,14 @@ function eg_pub_import_handle( WP_REST_Request $r ) {
 		'orderby'  => 'date',
 		'order'    => 'asc',
 	);
+	if ( ! empty( $p['lang'] ) ) {
+		$args['lang'] = sanitize_key( $p['lang'] ); // Origen con WPML: solo los posts de ese idioma.
+	}
 	if ( ! empty( $p['slugs'] ) ) {
 		$args['slug'] = implode( ',', array_map( 'sanitize_title', (array) $p['slugs'] ) );
 	}
 	if ( ! empty( $p['dry_run'] ) ) {
-		$args['_fields']  = 'id,slug,date,title,featured_media,categories';
+		$args['_fields']  = 'id,slug,date,title,featured_media,categories,wpml_current_locale,lang';
 		$args['per_page'] = 100;
 	} else {
 		$args['_embed'] = 'wp:featuredmedia,wp:term';
@@ -272,7 +276,7 @@ function eg_pub_import_handle( WP_REST_Request $r ) {
 	list( $posts, $pages ) = $got;
 	if ( ! empty( $p['dry_run'] ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true, 'pages' => $pages, 'posts' => array_map( function ( $x ) {
-			return array( 'id' => $x['id'], 'slug' => $x['slug'], 'date' => $x['date'], 'title' => html_entity_decode( $x['title']['rendered'] ?? '' ), 'featured_media' => $x['featured_media'] );
+			return array( 'id' => $x['id'], 'slug' => $x['slug'], 'date' => $x['date'], 'title' => html_entity_decode( $x['title']['rendered'] ?? '' ), 'featured_media' => $x['featured_media'], 'lang' => $x['wpml_current_locale'] ?? ( $x['lang'] ?? '' ) );
 		}, $posts ) ) );
 	}
 

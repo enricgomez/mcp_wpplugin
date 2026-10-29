@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.31.0 · 29/10/2026 · PR pendiente (Claude)
+
+- `/template`: nuevo `patch_widgets` (`{"<tipo de widget>": {ajustes}}`) con `ids` (lista de páginas o plantillas) o `id`: cambia esos ajustes en todos los widgets de ese tipo de cada página, sin saber sus ids de elemento. Guarda la copia en `_eg_pub_elementor_backup`, borra el CSS de Elementor y vacía la caché de WP Rocket de cada página. Devuelve un resultado por página.
+- Webs: taxi-calella.com (los carruseles de imágenes de los traslados salían rotos en público: el lazy load del carrusel de Elementor choca con las etiquetas `<picture>` de Imagify; se apaga con `{"image-carousel": {"lazyload": ""}}`). En las demás no cambia nada mientras no se use.
+
 ## 2.30.0 · 27/10/2026 · PR #58 (Claude)
 
 - `/item`: nuevo `set.parent` para cambiar la página superior de una página (o de otro tipo jerárquico). `0` la deja sin superior. Rechaza tipos no jerárquicos, la propia entrada, otro tipo o una entrada que cuelgue de ella. El slug se recalcula con la nueva superior.

@@ -1,6 +1,6 @@
 # Registro de cambios de EG Publicación
 
-Historial del plugin EG Publicación, de lo más nuevo a lo más antiguo. Es el registro común de **Claude y ChatGPT**, que modifican este repositorio en paralelo: antes de cambiar o decidir nada sobre el plugin, léelo junto con la [última release](https://github.com/enricgomez/mcp_wpplugin/releases/latest), y añade aquí tu cambio en el mismo PR (ver «Cómo trabajamos en este repositorio» en el [README](README.md)).
+Historial del plugin EG Publicación, de lo más nuevo a lo más antiguo. Es el registro común de los cambios del repositorio: antes de cambiar o decidir nada sobre el plugin, léelo junto con la [última release](https://github.com/enricgomez/mcp_wpplugin/releases/latest), y añade aquí tu cambio en el mismo PR (ver «Cómo trabajamos en este repositorio» en el [README](README.md)).
 
 Cada entrada indica la versión, la fecha en que se publicó la release (UTC), el PR, qué cambia y a qué tipología, módulo y webs afecta. Las versiones siguen `MAYOR.MENOR.PARCHE`: parche para correcciones, menor para funciones nuevas compatibles, mayor si algo deja de funcionar como antes.
 
@@ -9,6 +9,31 @@ Cada entrada indica la versión, la fecha en que se publicó la release (UTC), e
 Cambios ya fusionados en `main` que aún no tienen release (no han subido la versión). Al publicar la siguiente versión, se mueven a su entrada.
 
 - Nada por ahora.
+
+## 2.32.2 · 29/10/2026 · PR #63 (Claude)
+
+- `/publish`: el ID de Notion se busca con y sin guiones. Una traducción enviada por Make (ID con guiones) no encontraba el original publicado con una llamada directa (ID sin guiones) y daba «El post original en castellano todavía no está en WordPress» (409). Lo mismo al volver a publicar un post: ahora se actualiza en vez de duplicarse.
+- Webs: taxi-calella.com (traducciones de La Roca Village). En las demás solo cambia la búsqueda.
+
+## 2.32.1 · 29/10/2026 · PR #62 (Claude)
+
+- `/item`: nuevo `set.author` (ID, usuario o email de un usuario que pueda escribir entradas) para cambiar quién firma una entrada ya publicada sin reenviarla; el estado (`dry_run`) devuelve `author`.
+- Webs: taxi-calella.com (los posts ya publicados pasan a «Taxi Calella»). En las demás no cambia nada mientras no se use.
+
+## 2.32.0 · 29/10/2026 · PR #61 (Claude)
+
+- `/publish`: nuevo `author` (ID, nombre de usuario o email de un usuario que pueda escribir entradas) para que los posts del blog los firme ese usuario, con su avatar. Queda guardado en la web (opción `eg_pub_blog_author`) y se aplica también a los posts que llegan sin el parámetro (escenario de Notion) y a los que se vuelven a publicar. El plugin sigue actuando con el usuario configurado en Ajustes, así que los demás endpoints no cambian de permisos. La respuesta devuelve `author`.
+- Webs: taxi-calella.com (posts firmados por «Taxi Calella»). En las demás no cambia nada mientras no se use.
+
+## 2.31.0 · 29/10/2026 · PR #60 (Claude)
+
+- `/template`: nuevo `patch_widgets` (`{"<tipo de widget>": {ajustes}}`) con `ids` (lista de páginas o plantillas) o `id`: cambia esos ajustes en todos los widgets de ese tipo de cada página, sin saber sus ids de elemento. Guarda la copia en `_eg_pub_elementor_backup`, borra el CSS de Elementor y vacía la caché de WP Rocket de cada página. Devuelve un resultado por página.
+- Webs: taxi-calella.com (los carruseles de imágenes de los traslados salían rotos en público: el lazy load del carrusel de Elementor choca con las etiquetas `<picture>` de Imagify; se apaga con `{"image-carousel": {"lazyload": ""}}`). En las demás no cambia nada mientras no se use.
+
+## 2.30.0 · 27/10/2026 · PR #58 (Claude)
+
+- `/item`: nuevo `set.parent` para cambiar la página superior de una página (o de otro tipo jerárquico). `0` la deja sin superior. Rechaza tipos no jerárquicos, la propia entrada, otro tipo o una entrada que cuelgue de ella. El slug se recalcula con la nueva superior.
+- Webs: test-neptunoapartments.com.egserver.cloud (Shama Spa y Gastronomía pasan a colgar de Instalaciones, como en las URLs de GNA). En las demás no cambia nada mientras no se use.
 
 ## 2.29.0 · 27/10/2026 · PR #57 (Claude)
 
@@ -55,7 +80,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 - Nuevo endpoint **`/item`** (módulo «Fichas», tipología Gestión de la web): edita una entrada existente de cualquier tipo y sus campos de ACF. `dry_run` lista los campos con su tipo y valor; `set` cambia título, slug, extracto, contenido, estado u orden; `acf` cambia campos (imágenes y galerías por ID, URL o `{"url","alt"}`, sin duplicar subidas); `featured_image` pone la destacada. Guarda sin `wp_update_post` para que WPML no traduzca solo.
 - Webs: test-neptunoapartments.com (convertir las fichas de habitaciones del hotel en los 8 apartamentos). En las demás no cambia nada mientras no se use.
 
-## 2.24.1 · 27/10/2026 · PR pendiente (Claude)
+## 2.24.1 · 27/10/2026 · PR #60 (Claude)
 
 - `/product`: al quitar o añadir términos (`remove_terms`, `add_terms`) invalida la caché de términos del producto en WooCommerce. Con Redis u otra caché de objetos, la ficha seguía mostrando los atributos de antes (p. ej. un alérgeno quitado) hasta vaciar la caché a mano.
 - Webs: las que usan `/product` con caché de objetos (nilacakes.com). Corrección, no cambia nada más.
@@ -65,7 +90,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 - `/product`: nuevo campo **`slug`** en `set` o `langs`. Cambia la URL del producto (con `wp_unique_post_slug`, así nunca choca con otra) y guarda la anterior en `_wp_old_slug`, como hace el editor de WordPress: la URL vieja redirige con un 301 a la nueva. `dry_run` muestra el cambio en `post_name`.
 - Webs: nilacakes.com (slugs descriptivos para los productos con nombres genéricos, p. ej. `/producto/pistacho/` → `/producto/cookie-pistacho/`). En las demás no cambia nada mientras no se use.
 
-## 2.23.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.23.0 · 27/10/2026 · PR #60 (Claude)
 
 - `/menu`: **`labels`** (`{"id de elemento": "texto"}`) cambia solo el texto de elementos que ya están en el menú, sin tocar su posición ni su padre. Hasta ahora, cambiar el texto pasando la página en `items` la movía a la posición de la lista y la sacaba de su submenú. **`keep_place: true`** deja en su sitio las páginas que ya están y añade las nuevas al final. Cada elemento de `items` admite `position` y `parent`. `dry_run` devuelve también `parent` y `order`. Sin estos parámetros funciona igual que antes.
 - Webs: sonovet.net (textos cortos de los servicios en el menú y nuevo acceso «Per a clíniques veterinàries»). En las demás no cambia nada mientras no se use.
@@ -81,7 +106,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 - **Nuevo `POST /media`** (mismo módulo): `items` (`[{"url", "alt", "title", "key"}]`) descarga imágenes a la biblioteca y devuelve `id` y `src`, para usarlas en el JSON de `/template` y `/landing`. Con `key`, repetir la llamada devuelve la imagen ya subida en lugar de duplicarla. Pide `upload_files`.
 - Webs: test-viajestauro.com.egserver.cloud (montaje de la web nueva). En las demás no cambia nada mientras no se use.
 
-## 2.20.0 · 27/10/2026 · PR pendiente (Claude)
+## 2.20.0 · 27/10/2026 · PR #60 (Claude)
 
 - `/template` con `id` admite **`copy_from`**: copia a la página `id` el JSON de Elementor, sus ajustes, la plantilla de página y el SEO (título, descripción y frase clave de Yoast o Rank Math) de otra página, sin tocar su URL, su slug ni su idioma en WPML. Con `copy_title: true` copia también el título. Antes guarda el JSON anterior en `_eg_pub_elementor_backup` y después vacía la caché de Elementor y la de esa página en WP Rocket.
 - Webs: sonovet.net (sustituir las páginas publicadas por los borradores revisados del Plan SEO). En las demás no cambia nada mientras no se use.

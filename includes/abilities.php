@@ -126,6 +126,7 @@ function eg_pub_ability_defs() {
 					'faqs'                  => array( 'description' => '"auto" convierte la sección con H2 «Preguntas frecuentes» y preguntas en H3 en desplegables con schema FAQPage; también una lista [{q, a}] o false.' ),
 					'faq_title'             => eg_pub_prop( 'string', 'Título H2 de la sección de preguntas frecuentes.' ),
 					'faqs_default'          => eg_pub_prop( 'boolean', 'Convertir las FAQ de todos los posts de la web aunque no lleven faqs (se activa solo al usar faqs).' ),
+					'author'                => eg_pub_prop( 'string', 'Autor que firma los posts (ID, usuario o email); queda guardado para los siguientes.' ),
 				),
 			),
 			'execute'     => function ( $input = null ) {

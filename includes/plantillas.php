@@ -67,7 +67,7 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 		$results = array();
 		foreach ( array_unique( array_map( 'intval', (array) ( $p['ids'] ?? $p['id'] ) ) ) as $one ) {
 			$res       = eg_pub_template_patch( $one, array(), array(), array(), $p['patch_widgets'] );
-			$results[] = is_wp_error( $res ) ? array( 'ok' => false, 'id' => $one, 'error' => $res->get_error_message() ) : $res->get_data();
+			$results[] = array( 'id' => $one ) + (array) $res->get_data();
 		}
 		return new WP_REST_Response( array( 'ok' => true, 'results' => $results ), 200 );
 	}

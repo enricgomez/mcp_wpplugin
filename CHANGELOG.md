@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.33.3 · 29/10/2026 · PR #67 (Claude)
+
+- `/import-wp`: reconoce las imágenes del origen con y sin `www` (en viajestauro.com las galerías no se trasladaban porque las imágenes iban con www). Quita el CSS de galería que imprime el origen y los `class=""` vacíos, y crea los posts con los comentarios cerrados.
+- Webs: test-viajestauro.com.egserver.cloud.
+
 ## 2.33.2 · 29/10/2026 · PR #66 (Claude)
 
 - `/import-wp`: nuevos `include` y `exclude` (IDs de los posts en el origen) para elegir o descartar posts, p. ej. versiones duplicadas de un post con el mismo slug.

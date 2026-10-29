@@ -202,11 +202,16 @@ function eg_pub_find_by_notion( $notion_id ) {
 	if ( '' === $notion_id ) {
 		return 0;
 	}
+	// El mismo ID de Notion puede llegar con guiones (Make) o sin ellos (llamadas directas).
+	$bare     = strtolower( str_replace( '-', '', $notion_id ) );
+	$variants = array( $notion_id, $bare );
+	if ( preg_match( '/^[0-9a-f]{32}$/', $bare ) ) {
+		$variants[] = substr( $bare, 0, 8 ) . '-' . substr( $bare, 8, 4 ) . '-' . substr( $bare, 12, 4 ) . '-' . substr( $bare, 16, 4 ) . '-' . substr( $bare, 20 );
+	}
 	$ids = get_posts( array(
 		'post_type'        => 'post',
 		'post_status'      => 'any',
-		'meta_key'         => EG_PUB_META_NOTION,
-		'meta_value'       => $notion_id,
+		'meta_query'       => array( array( 'key' => EG_PUB_META_NOTION, 'value' => array_values( array_unique( $variants ) ), 'compare' => 'IN' ) ),
 		'fields'           => 'ids',
 		'numberposts'      => 1,
 		'suppress_filters' => true, // WPML: buscar en todos los idiomas.

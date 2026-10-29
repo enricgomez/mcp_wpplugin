@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.32.2 · 29/10/2026 · PR #63 (Claude)
+
+- `/publish`: el ID de Notion se busca con y sin guiones. Una traducción enviada por Make (ID con guiones) no encontraba el original publicado con una llamada directa (ID sin guiones) y daba «El post original en castellano todavía no está en WordPress» (409). Lo mismo al volver a publicar un post: ahora se actualiza en vez de duplicarse.
+- Webs: taxi-calella.com (traducciones de La Roca Village). En las demás solo cambia la búsqueda.
+
 ## 2.32.1 · 29/10/2026 · PR #62 (Claude)
 
 - `/item`: nuevo `set.author` (ID, usuario o email de un usuario que pueda escribir entradas) para cambiar quién firma una entrada ya publicada sin reenviarla; el estado (`dry_run`) devuelve `author`.

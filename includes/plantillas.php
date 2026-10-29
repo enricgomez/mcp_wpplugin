@@ -63,6 +63,14 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	if ( ! empty( $p['id'] ) && ! empty( $p['copy_from'] ) ) {
 		return eg_pub_template_copy( (int) $p['id'], (int) $p['copy_from'], ! empty( $p['copy_title'] ) );
 	}
+	if ( ! empty( $p['patch_widgets'] ) && is_array( $p['patch_widgets'] ) && ( ! empty( $p['ids'] ) || ! empty( $p['id'] ) ) ) {
+		$results = array();
+		foreach ( array_unique( array_map( 'intval', (array) ( $p['ids'] ?? $p['id'] ) ) ) as $one ) {
+			$res       = eg_pub_template_patch( $one, array(), array(), array(), $p['patch_widgets'] );
+			$results[] = array( 'id' => $one ) + (array) $res->get_data();
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'results' => $results ), 200 );
+	}
 	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) ) ) {
 		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array() );
 	}
@@ -138,12 +146,13 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
  * `remove` = ["<id de elemento>", …] quita esos elementos con sus hijos (también secciones de primer nivel).
  * Solo toca _elementor_data (el anterior queda en _eg_pub_elementor_backup); el resto del documento queda igual.
  */
-function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array() ) {
+function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array(), $widgets = array() ) {
 	$post    = get_post( $id );
 	$patch   = is_array( $patch ) ? $patch : array();
+	$widgets = is_array( $widgets ) ? array_filter( $widgets, 'is_array' ) : array();
 	$replace = is_array( $replace ) ? array_filter( $replace, fn( $el ) => is_array( $el ) && ! empty( $el['elType'] ) ) : array();
 	$remove  = array_values( array_filter( array_map( 'strval', (array) $remove ) ) );
-	if ( ! $post || ( ! $patch && ! $replace && ! $remove ) ) {
+	if ( ! $post || ( ! $patch && ! $replace && ! $remove && ! $widgets ) ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}}, replace {"id de elemento": {elemento}} o remove ["id de elemento"].' );
 	}
 	if ( ! current_user_can( 'edit_post', $id ) ) {
@@ -156,7 +165,7 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 	$found    = array();
 	$replaced = array();
 	$removed  = array();
-	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, $remove, &$found, &$replaced, &$removed ) {
+	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, $remove, $widgets, &$found, &$replaced, &$removed ) {
 		foreach ( $elements as $i => &$el ) {
 			$eid = (string) ( $el['id'] ?? '' );
 			if ( in_array( $eid, $remove, true ) ) {
@@ -172,6 +181,11 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 				$el['settings'] = array_merge( (array) ( $el['settings'] ?? array() ), $patch[ $eid ] );
 				$found[]        = $eid;
 			}
+			$wtype = (string) ( $el['widgetType'] ?? '' );
+			if ( '' !== $wtype && isset( $widgets[ $wtype ] ) ) {
+				$el['settings'] = array_merge( (array) ( $el['settings'] ?? array() ), $widgets[ $wtype ] );
+				$found[]        = $eid;
+			}
 			if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
 				$el['elements'] = $walk( $el['elements'] );
 			}
@@ -183,7 +197,7 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 	$data    = $walk( $data );
 	$missing = array_values( array_diff( array_map( 'strval', array_merge( array_keys( $patch ), array_keys( $replace ), $remove ) ), $found, $replaced, $removed ) );
 	if ( ! $found && ! $replaced && ! $removed ) {
-		return eg_pub_error( 'eg_not_found', 'No se encontró ningún elemento con esos ids.', 404 );
+		return eg_pub_error( 'eg_not_found', 'No se encontró ningún elemento con esos ids o tipos de widget.', 404 );
 	}
 	update_post_meta( $id, '_eg_pub_elementor_backup', wp_slash( wp_json_encode( array( 'time' => time(), 'title' => $post->post_title, 'data' => $old ) ) ) );
 	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( $data ) ) );

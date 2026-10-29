@@ -8,7 +8,7 @@
  * galerías se convierten en el shortcode [gallery] con las imágenes nuevas. Un post que ya existe (mismo slug) se
  * actualiza; las imágenes ya subidas no se duplican.
  * Por tandas: `page` y `per_page` (3 por defecto). `slugs` limita a esos posts. `status` (publish o draft) fija el
- * estado; sin él se publican. `lang` (origen con WPML) trae solo los posts de ese idioma. `dry_run` solo lista los
+ * estado; sin él se publican. `include` / `exclude` (IDs del origen) eligen o descartan posts. `lang` (origen con WPML) trae solo los posts de ese idioma. `dry_run` solo lista los
  * posts del origen.
  */
 
@@ -259,6 +259,11 @@ function eg_pub_import_handle( WP_REST_Request $r ) {
 	);
 	if ( ! empty( $p['lang'] ) ) {
 		$args['lang'] = sanitize_key( $p['lang'] ); // Origen con WPML: solo los posts de ese idioma.
+	}
+	foreach ( array( 'include', 'exclude' ) as $key ) {
+		if ( ! empty( $p[ $key ] ) ) {
+			$args[ $key ] = implode( ',', array_map( 'absint', (array) $p[ $key ] ) ); // IDs de los posts en el origen.
+		}
 	}
 	if ( ! empty( $p['slugs'] ) ) {
 		$args['slug'] = implode( ',', array_map( 'sanitize_title', (array) $p['slugs'] ) );

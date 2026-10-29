@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.33.2 · 29/10/2026 · PR #66 (Claude)
+
+- `/import-wp`: nuevos `include` y `exclude` (IDs de los posts en el origen) para elegir o descartar posts, p. ej. versiones duplicadas de un post con el mismo slug.
+- Webs: test-viajestauro.com.egserver.cloud.
+
 ## 2.33.1 · 29/10/2026 · PR #65 (Claude)
 
 - `/import-wp`: nuevo `lang` para orígenes con WPML (solo trae los posts de ese idioma; sin él, la API devuelve todos los idiomas y las traducciones con el mismo slug se pisaban). `dry_run` devuelve el idioma de cada post.

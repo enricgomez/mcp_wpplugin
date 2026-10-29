@@ -559,6 +559,40 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 	$pos  = 0;
 	foreach ( (array) ( $p['items'] ?? array() ) as $item ) {
 		++$pos; // Las páginas quedan en el orden de "items" (con WPML el menú puede no listar sus elementos durante la petición).
+		if ( ! empty( $item['url'] ) ) {
+			// Enlace personalizado (p. ej. un ancla de una página): se reconoce por su URL.
+			$url     = esc_url_raw( (string) $item['url'] );
+			$title   = wp_strip_all_tags( (string) ( $item['title'] ?? '' ) );
+			$item_id = 0;
+			$place   = array( 'order' => $pos, 'parent' => 0 );
+			if ( '' === $url || '' === $title ) {
+				$notes[] = 'un enlace necesita url y title';
+				continue;
+			}
+			foreach ( $existing as $it ) {
+				if ( $it['url'] === $url ) {
+					$item_id = $it['id'];
+					$place   = $keep ? $it : $place;
+				}
+			}
+			if ( $keep && ! $item_id ) {
+				$place['order'] = ++$last;
+			}
+			$res = wp_update_nav_menu_item( $menu->term_id, $item_id, array(
+				'menu-item-type'      => 'custom',
+				'menu-item-url'       => $url,
+				'menu-item-title'     => $title,
+				'menu-item-status'    => 'publish',
+				'menu-item-position'  => isset( $item['position'] ) ? (int) $item['position'] : $place['order'],
+				'menu-item-parent-id' => isset( $item['parent'] ) ? (int) $item['parent'] : $place['parent'],
+			) );
+			if ( is_wp_error( $res ) ) {
+				$notes[] = $title . ': ' . $res->get_error_message();
+			} else {
+				$added[] = $title;
+			}
+			continue;
+		}
 		$page_id = ! empty( $item['landing_id'] ) ? eg_pub_find_landing( $item['landing_id'] ) : (int) ( $item['page_id'] ?? 0 );
 		if ( ! $page_id || 'page' !== get_post_type( $page_id ) ) {
 			$notes[] = 'no encuentro la página ' . ( $item['landing_id'] ?? ( $item['page_id'] ?? '' ) );

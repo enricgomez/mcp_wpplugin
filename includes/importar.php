@@ -47,6 +47,11 @@ function eg_pub_import_get( $source, $path, $args ) {
 	return array( $data, (int) wp_remote_retrieve_header( $res, 'x-wp-totalpages' ) );
 }
 
+/** Dominio sin www (las imágenes del origen pueden venir con o sin www). */
+function eg_pub_import_bare_host( $host ) {
+	return preg_replace( '/^www\./i', '', strtolower( $host ) );
+}
+
 /** URL del archivo original de una imagen subida (sin el sufijo de tamaño -150x150). */
 function eg_pub_import_original( $url ) {
 	return preg_replace( '/-\d+x\d+(\.(?:jpe?g|png|webp|gif|avif))$/i', '$1', strtok( $url, '?' ) );
@@ -69,9 +74,12 @@ function eg_pub_import_image( $post_id, $url, $alt, &$notes ) {
  */
 function eg_pub_import_content( $html, $post_id, $host, &$notes, &$images ) {
 	$is_source = function ( $url ) use ( $host ) {
-		return false !== strpos( $url, '/wp-content/uploads/' ) && $host === wp_parse_url( $url, PHP_URL_HOST );
+		return false !== strpos( $url, '/wp-content/uploads/' ) && eg_pub_import_bare_host( $host ) === eg_pub_import_bare_host( (string) wp_parse_url( $url, PHP_URL_HOST ) );
 	};
 	$html = preg_replace( '/\sdata-(?:start|end)="\d+"/', '', $html );
+	$html = str_replace( ' class=""', '', $html );
+	// El CSS que imprime gallery_shortcode() del origen: [gallery] lo vuelve a poner.
+	$html = preg_replace( '#<style[^>]*>(?:(?!</style>).)*gallery_shortcode(?:(?!</style>).)*</style>\s*#is', '', $html );
 
 	// Galerías (cualquier tema): un div con clase «gallery», hasta su cierre, que contiene imágenes del origen.
 	$offset = 0;
@@ -189,6 +197,7 @@ function eg_pub_import_post( $src, $source, $status ) {
 		'post_name'     => $slug,
 		'post_excerpt'  => trim( wp_strip_all_tags( html_entity_decode( $src['excerpt']['rendered'] ?? '', ENT_QUOTES ) ) ),
 		'post_status'   => $status,
+		'comment_status' => 'closed',
 		'post_date'     => str_replace( 'T', ' ', $src['date'] ),
 		'post_date_gmt' => str_replace( 'T', ' ', $src['date_gmt'] ),
 	);
@@ -230,7 +239,7 @@ function eg_pub_import_post( $src, $source, $status ) {
 	}
 
 	// Lo que siga apuntando a imágenes del origen después del traslado.
-	preg_match_all( '#https?://' . preg_quote( $host, '#' ) . '/wp-content/uploads/[^\s\'"<>)]+#i', $content, $left );
+	preg_match_all( '#https?://(?:www\.)?' . preg_quote( eg_pub_import_bare_host( $host ), '#' ) . '/wp-content/uploads/[^\s\'"<>)]+#i', $content, $left );
 	return array(
 		'slug'      => $slug,
 		'id'        => (int) $id,

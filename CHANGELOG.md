@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.32.0 · 29/10/2026 · PR #61 (Claude)
+
+- `/publish`: nuevo `author` (ID, nombre de usuario o email de un usuario que pueda escribir entradas) para que los posts del blog los firme ese usuario, con su avatar. Queda guardado en la web (opción `eg_pub_blog_author`) y se aplica también a los posts que llegan sin el parámetro (escenario de Notion) y a los que se vuelven a publicar. El plugin sigue actuando con el usuario configurado en Ajustes, así que los demás endpoints no cambian de permisos. La respuesta devuelve `author`.
+- Webs: taxi-calella.com (posts firmados por «Taxi Calella»). En las demás no cambia nada mientras no se use.
+
 ## 2.31.0 · 29/10/2026 · PR #60 (Claude)
 
 - `/template`: nuevo `patch_widgets` (`{"<tipo de widget>": {ajustes}}`) con `ids` (lista de páginas o plantillas) o `id`: cambia esos ajustes en todos los widgets de ese tipo de cada página, sin saber sus ids de elemento. Guarda la copia en `_eg_pub_elementor_backup`, borra el CSS de Elementor y vacía la caché de WP Rocket de cada página. Devuelve un resultado por página.

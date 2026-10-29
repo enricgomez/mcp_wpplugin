@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_OPTION_KEY  = 'eg_pub_api_key';
 const EG_PUB_OPTION_USER = 'eg_pub_author_id';
+const EG_PUB_OPTION_BLOG_AUTHOR = 'eg_pub_blog_author';
 const EG_PUB_META_NOTION = '_eg_notion_id';
 const EG_PUB_OPTION_MAIL = 'eg_pub_notify_email';
 const EG_PUB_DEFAULT_MAIL = 'enric@enricgomez.com';
@@ -291,11 +292,16 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		$postarr['post_date_gmt'] = get_gmt_from_date( $post_date );
 		$postarr['edit_date']     = true;
 	}
+	$author_notes = array();
+	$blog_author = eg_pub_blog_author( $p, $author_notes );
+	if ( $blog_author ) {
+		$postarr['post_author'] = $blog_author;
+	}
 	if ( $existing ) {
 		$postarr['ID'] = $existing;
 		$post_id       = wp_update_post( wp_slash( $postarr ), true );
 	} else {
-		$postarr['post_author'] = get_current_user_id();
+		$postarr['post_author'] = $blog_author ? $blog_author : get_current_user_id();
 		$post_id                = wp_insert_post( wp_slash( $postarr ), true );
 	}
 	if ( is_wp_error( $post_id ) ) {
@@ -339,7 +345,7 @@ function eg_pub_handle( WP_REST_Request $r ) {
 	eg_pub_seo_save( $post_id, $p );
 
 	// --- Imagen destacada ---------------------------------------------------
-	$notes   = array();
+	$notes   = $author_notes;
 	$img_url = isset( $p['image_url'] ) ? trim( (string) $p['image_url'] ) : '';
 	$img_b64 = isset( $p['image_base64'] ) ? trim( (string) $p['image_base64'] ) : '';
 	if ( '' !== $img_url || '' !== $img_b64 ) {
@@ -425,8 +431,28 @@ function eg_pub_handle( WP_REST_Request $r ) {
 		'lang'       => $lang,
 		'image_note' => $image_note,
 		'faqs'       => is_int( $faq ) ? $faq : 0,
+		'author'     => get_the_author_meta( 'display_name', (int) get_post_field( 'post_author', $post_id ) ),
 		'message'    => '' === $image_note ? '' : 'Post guardado, pero falló: ' . $image_note,
 	), 200 );
+}
+
+/**
+ * Autor que firma los posts del blog. `author` (ID, usuario o email de un usuario que pueda escribir entradas)
+ * lo cambia y queda guardado para los siguientes posts de la web; sin él se usa el guardado. 0 = sin autor fijo
+ * (firma el usuario con el que actúa el plugin). Un autor que no existe se anota en $notes y no cambia nada.
+ */
+function eg_pub_blog_author( $p, &$notes ) {
+	if ( isset( $p['author'] ) && '' !== (string) $p['author'] ) {
+		$ref  = (string) $p['author'];
+		$user = ctype_digit( $ref ) ? get_userdata( (int) $ref ) : ( get_user_by( 'login', $ref ) ?: get_user_by( 'email', $ref ) );
+		if ( $user && user_can( $user, 'edit_posts' ) ) {
+			update_option( EG_PUB_OPTION_BLOG_AUTHOR, (int) $user->ID, false );
+			return (int) $user->ID;
+		}
+		$notes[] = 'autor «' . $ref . '» no encontrado o sin permiso para escribir entradas';
+	}
+	$saved = (int) get_option( EG_PUB_OPTION_BLOG_AUTHOR );
+	return ( $saved && get_userdata( $saved ) ) ? $saved : 0;
 }
 
 /**

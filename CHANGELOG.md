@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.33.1 · 29/10/2026 · PR #65 (Claude)
+
+- `/import-wp`: nuevo `lang` para orígenes con WPML (solo trae los posts de ese idioma; sin él, la API devuelve todos los idiomas y las traducciones con el mismo slug se pisaban). `dry_run` devuelve el idioma de cada post.
+- Webs: test-viajestauro.com.egserver.cloud.
+
 ## 2.33.0 · 29/10/2026 · PR #64 (Claude)
 
 - Nuevo endpoint **`/import-wp`** (módulo «Importar blog», tipología Gestión de la web): traslada los posts publicados de otra web WordPress (`source`) leyendo su API pública. Mantiene slug, fecha, título, extracto, categorías, etiquetas y la meta descripción de Yoast; sube a la biblioteca la imagen destacada y las imágenes del texto (el archivo original, sin el sufijo de tamaño) y cambia el texto para que apunte a ellas; las galerías pasan a `[gallery]` con las imágenes nuevas. Quita los `data-start`/`data-end` de los textos pegados de ChatGPT. Por tandas (`page`, `per_page`, 3 por defecto; devuelve `next_page`), `slugs` para posts concretos, `status` y `dry_run` para listar. Repetirlo actualiza los posts sin duplicar imágenes. Cada post devuelve `left_urls` con lo que aún apunte a imágenes del origen.

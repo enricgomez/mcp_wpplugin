@@ -94,6 +94,7 @@ function eg_pub_item_state( $post_id ) {
 		'status'         => $post->post_status,
 		'excerpt'        => $post->post_excerpt,
 		'menu_order'     => (int) $post->menu_order,
+		'author'         => (int) $post->post_author,
 		'url'            => get_permalink( $post_id ),
 		'featured_image' => (int) get_post_thumbnail_id( $post_id ),
 		'acf'            => eg_pub_item_acf_state( $post_id ),
@@ -148,6 +149,14 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 			return eg_pub_error( 'eg_parent', 'parent debe ser 0 u otra entrada del mismo tipo que no cuelgue de esta.' );
 		}
 		$row['post_parent'] = $parent;
+	}
+	if ( isset( $set['author'] ) ) {
+		$ref  = (string) $set['author'];
+		$user = ctype_digit( $ref ) ? get_userdata( (int) $ref ) : ( get_user_by( 'login', $ref ) ?: get_user_by( 'email', $ref ) );
+		if ( ! $user || ! user_can( $user, 'edit_posts' ) ) {
+			return eg_pub_error( 'eg_author', 'author debe ser el ID, usuario o email de un usuario que pueda escribir entradas.' );
+		}
+		$row['post_author'] = (int) $user->ID;
 	}
 	if ( ! empty( $set['slug'] ) || isset( $row['post_parent'] ) ) {
 		$row['post_name'] = wp_unique_post_slug( sanitize_title( $set['slug'] ?? $post->post_name ), $post_id, $row['post_status'] ?? $post->post_status, $post->post_type, $row['post_parent'] ?? $post->post_parent );

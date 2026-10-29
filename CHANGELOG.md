@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.32.1 · 29/10/2026 · PR #62 (Claude)
+
+- `/item`: nuevo `set.author` (ID, usuario o email de un usuario que pueda escribir entradas) para cambiar quién firma una entrada ya publicada sin reenviarla; el estado (`dry_run`) devuelve `author`.
+- Webs: taxi-calella.com (los posts ya publicados pasan a «Taxi Calella»). En las demás no cambia nada mientras no se use.
+
 ## 2.32.0 · 29/10/2026 · PR #61 (Claude)
 
 - `/publish`: nuevo `author` (ID, nombre de usuario o email de un usuario que pueda escribir entradas) para que los posts del blog los firme ese usuario, con su avatar. Queda guardado en la web (opción `eg_pub_blog_author`) y se aplica también a los posts que llegan sin el parámetro (escenario de Notion) y a los que se vuelven a publicar. El plugin sigue actuando con el usuario configurado en Ajustes, así que los demás endpoints no cambian de permisos. La respuesta devuelve `author`.

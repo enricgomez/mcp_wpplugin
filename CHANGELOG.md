@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.34.0 · 29/10/2026 · PR pendiente (Claude)
+## 2.34.0 · 29/10/2026 · PR #68 (Claude)
 
 - `/menu`: `items` acepta también enlaces personalizados `{url, title, position?, parent?}`, p. ej. el ancla de una sección de una página. Se reconocen por su URL: si ya existe uno con esa URL, se actualiza en vez de duplicarse. Antes solo se podían añadir páginas, y una misma página no podía estar dos veces en el menú.
 - Webs: sonovet.net (elemento «Per a clíniques veterinàries / Para clínicas veterinarias» al apartado de clínicas de Contacte). En las demás no cambia nada mientras no se use.

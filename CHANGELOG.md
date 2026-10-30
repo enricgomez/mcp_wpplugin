@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.34.1 · 30/10/2026 · PR pendiente (Claude)
+## 2.34.1 · 30/10/2026 · PR #69 (Claude)
 
 - Preguntas frecuentes (tipología Blog): más margen entre el título «Preguntas frecuentes» y el primer desplegable (1,5em), en el estilo por defecto y también cuando la web tiene su propio CSS (`faq_css`). Antes el título quedaba pegado al acordeón.
 - Webs: taxi-santasusanna.com y taxi-calella.com (posts del blog con FAQ). En las demás solo cambia el espacio de las FAQ si las usan.

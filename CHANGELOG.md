@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.43.0 · 30/10/2026 · PR pendiente (Claude)
+## 2.43.0 · 30/10/2026 · PR #90 (Claude)
 
 - `/perf` (módulo nuevo «Perfil», tipología Gestión de la web): mide en el propio servidor qué plugin se come el tiempo de cada página pública o del admin, sin caché: carga de cada plugin, funciones enganchadas por plugin, las más lentas, SQL, llamadas HTTP externas y memoria. Instala el mu-plugin `eg-pub-perfil.php`, inerte salvo con el token de un solo uso que genera el endpoint; `uninstall: true` lo quita.
 - Webs: miriamtirado.com (páginas sin caché de 3 a 8 s y admin lento). En las demás no cambia nada mientras no se use.

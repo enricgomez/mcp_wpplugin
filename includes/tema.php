@@ -9,7 +9,9 @@
  *   labels   {"Out Of Stock": "Muy pronto"} cambia un texto fijo del tema o de los plugins (el original en
  *            inglés, tal cual sale en el código); "" o null lo devuelve al original. Se aplica con gettext,
  *            así que al desactivar el plugin todo vuelve a como estaba.
- * Como /seo, solo previsualiza; guarda con apply:true y vacía la caché de WP Rocket.
+ *   sg_exclude {"minify": ["sr7", "tp-tools"], "combine": [...], "defer": [...]} añade handles de scripts a las
+ *            exclusiones de SiteGround Optimizer (minificar, combinar y cargar en diferido); "remove" los quita.
+ * Como /seo, solo previsualiza; guarda con apply:true y vacía la caché de WP Rocket y de SiteGround.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -17,6 +19,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 const EG_PUB_LABELS_OPT = 'eg_pub_labels';
+const EG_PUB_SG_EXCLUDE = array(
+	'minify'  => 'siteground_optimizer_minify_javascript_exclude',
+	'combine' => 'siteground_optimizer_combine_javascript_exclude',
+	'defer'   => 'siteground_optimizer_async_javascript_exclude',
+);
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['tema'] = array( 'type' => 'gestion', 'routes' => array( 'theme' ) );
@@ -87,7 +94,27 @@ function eg_pub_theme_handle( WP_REST_Request $r ) {
 		}
 	}
 
+	$sg_new = array();
+	foreach ( EG_PUB_SG_EXCLUDE as $kind => $option ) {
+		$list = array_values( (array) get_option( $option, array() ) );
+		$add  = array_map( 'sanitize_text_field', (array) ( $p['sg_exclude'][ $kind ] ?? array() ) );
+		$del  = array_map( 'sanitize_text_field', (array) ( $p['sg_exclude']['remove'][ $kind ] ?? array() ) );
+		$new  = array_values( array_unique( array_diff( array_merge( $list, $add ), $del ) ) );
+		if ( $new !== $list ) {
+			$changes[] = 'sg_exclude.' . $kind;
+		}
+		$sg_new[ $kind ] = $new;
+	}
+
 	if ( $apply && $changes ) {
+		foreach ( EG_PUB_SG_EXCLUDE as $kind => $option ) {
+			if ( in_array( 'sg_exclude.' . $kind, $changes, true ) ) {
+				update_option( $option, $sg_new[ $kind ] );
+			}
+		}
+		if ( function_exists( 'sg_cachepress_purge_everything' ) ) {
+			sg_cachepress_purge_everything();
+		}
 		if ( $name ) {
 			update_option( $name, $opts );
 		}
@@ -123,5 +150,7 @@ function eg_pub_theme_handle( WP_REST_Request $r ) {
 		'option_count' => count( $opts ),
 		'options'      => $found,
 		'labels'       => $labels,
+		'sg_exclude'   => $sg_new,
+		'sg_optimizer' => defined( 'SiteGround_Optimizer\VERSION' ) || function_exists( 'sg_cachepress_purge_everything' ),
 	), 200 );
 }

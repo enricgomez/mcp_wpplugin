@@ -13,6 +13,7 @@
  *   add_terms, remove_terms      {"product_cat": ["preventa"]}: slugs en cualquier idioma; se usa el término
  *                                del idioma de cada producto
  *   regular_price, sale_price    precio normal y rebajado ("" quita la rebaja)
+ *   sale_from, sale_to           fechas de la rebaja (AAAA-MM-DD o AAAA-MM-DD HH:MM, hora de la web; "" la quita)
  *   sku, weight, stock_status    SKU, peso (en la unidad de la tienda) e instock/outofstock/onbackorder
  *   status                       publish, draft, private o pending (también saca el producto de la papelera)
  *   image, gallery               imagen principal y galería: ID de la biblioteca, URL o {"url", "alt"}
@@ -406,6 +407,10 @@ function eg_pub_product_list() {
 			'type'          => $product->get_type(),
 			'regular_price' => $product->get_regular_price(),
 			'sale_price'    => $product->get_sale_price(),
+			'sale_from'     => $product->get_date_on_sale_from() ? $product->get_date_on_sale_from()->date( 'Y-m-d H:i' ) : '',
+			'sale_to'       => $product->get_date_on_sale_to() ? $product->get_date_on_sale_to()->date( 'Y-m-d H:i' ) : '',
+			'on_sale'       => $product->is_on_sale(),
+			'price'         => $product->get_price(),
 			'weight'        => $product->get_weight(),
 			'stock_status'  => $product->get_stock_status(),
 			'categories'    => wp_get_post_terms( $id, 'product_cat', array( 'fields' => 'slugs' ) ),
@@ -464,7 +469,7 @@ function eg_pub_product_create( $create, $dry_run ) {
 
 /** Aplica al producto (sin guardarlo) los campos de WooCommerce de $c y devuelve el producto y los cambios. */
 function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
-	$keys = array( 'regular_price', 'sale_price', 'sku', 'weight', 'stock_status', 'image', 'gallery' );
+	$keys = array( 'regular_price', 'sale_price', 'sale_from', 'sale_to', 'sku', 'weight', 'stock_status', 'image', 'gallery' );
 	if ( ! array_intersect( $keys, array_keys( $c ) ) ) {
 		return array( 'product' => null, 'changes' => array() );
 	}
@@ -491,6 +496,29 @@ function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
 		$changes[ $key ] = array( 'before' => $old, 'after' => $value );
 		if ( ! $dry_run ) {
 			$product->{'set_' . $key}( $value );
+		}
+	}
+	foreach ( array( 'sale_from' => 'date_on_sale_from', 'sale_to' => 'date_on_sale_to' ) as $key => $prop ) {
+		if ( ! array_key_exists( $key, $c ) ) {
+			continue;
+		}
+		$date  = $product->{'get_' . $prop}( 'edit' );
+		$old   = $date ? $date->date( 'Y-m-d H:i' ) : '';
+		$value = trim( sanitize_text_field( (string) $c[ $key ] ) );
+		if ( '' !== $value && ! preg_match( '~^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$~', $value ) ) {
+			$notes[] = $id . ': fecha no válida en ' . $key . ': ' . $value;
+			continue;
+		}
+		if ( '' !== $value && 10 === strlen( $value ) ) {
+			// Como el editor de WooCommerce: la rebaja empieza a las 00:00 y acaba a las 23:59 de ese día.
+			$value .= 'sale_from' === $key ? ' 00:00' : ' 23:59';
+		}
+		if ( $old === $value ) {
+			continue;
+		}
+		$changes[ $key ] = array( 'before' => $old, 'after' => $value );
+		if ( ! $dry_run ) {
+			$product->{'set_' . $prop}( '' === $value ? null : $value );
 		}
 	}
 	if ( array_key_exists( 'image', $c ) ) {

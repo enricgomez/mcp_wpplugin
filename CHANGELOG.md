@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.44.0 · 30/10/2026 · PR (Claude)
+
+- `/perf` `fixes`: ajustes de rendimiento del servidor que se activan o quitan desde el endpoint (opción `eg_pub_perf_fixes`). El primero, `jet_validator`: JetElements 2.9.2.7 vuelve a montar la lista completa de controles de cada elemento de Elementor (con los registros de iconos y animaciones) al pintarlo, al generar su CSS y al cargar cada documento. El ajuste cambia esos tres ganchos por los mismos pasos con la lista guardada por tipo de elemento durante la petición. Si no encuentra los tres ganchos (otra versión de JetElements), no toca nada y lo dice en `fixes.jet_validator.active`.
+- Webs: miriamtirado.com (0,7 s por página sin caché, 2 s en frío). En las demás no cambia nada mientras no se active.
+
 ## 2.43.1 · 30/10/2026 · PR #91 (Claude)
 
 - `/perf`: `wait: false` lanza las páginas sin esperarlas (para las que tardan más de un minuto, como el carrito de miriamtirado.com) y `results: true` recoge después los perfiles guardados. El mu-plugin sigue midiendo aunque se corte la conexión.

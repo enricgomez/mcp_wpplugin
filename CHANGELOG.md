@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.38.0 · 30/10/2026 · PR pendiente (Claude)
+## 2.38.0 · 30/10/2026 · PR #78 (Claude)
 
 - Nuevo `POST /seo-tech` (módulo «SEO técnico», tipología Gestión de la web): `inspect` lee el HTML de URLs de la propia web y resume canonical, hreflang, meta robots, JSON-LD, preloads e imágenes iniciales (`loading`, `fetchpriority`), y con `robots_txt` el robots.txt; `business` guarda el negocio local (p. ej. `VeterinaryCare` con dirección, teléfono y horarios), que con Yoast se fusiona en su Organization; `robots` añade líneas al robots.txt virtual (p. ej. bots de IA); `hreflang` activa los idiomas alternativos de WPML en el `<head>`. Previsualiza salvo `apply: true`.
 - Webs: sonovet.net (parte técnica del Plan SEO). En las demás no cambia nada mientras no se use.

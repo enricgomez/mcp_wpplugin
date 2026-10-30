@@ -8,6 +8,8 @@
  *   set            {"async_css": 0, "lazyload_iframes": 1}  interruptores (0/1)
  *   elementor      {"css_print_method": "internal", "font_icon_svg": "active"}  ajustes de rendimiento de Elementor
  *                  (ver EG_PUB_ELEMENTOR_PERF); al guardar se rehace el CSS de Elementor
+ *   clear          true vacía la caché de WP Rocket como su botón «Vaciar caché»: también purga Cloudflare
+ *                  si su complemento está activo (vaciar los ficheros por SSH no lo hace)
  * Como /seo y /term, por defecto solo previsualiza; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -135,9 +137,17 @@ function eg_pub_rocket_handle( WP_REST_Request $r ) {
 		}
 	}
 
+	$cleared = false;
+	if ( ! empty( $p['clear'] ) && function_exists( 'rocket_clean_domain' ) && ! ( $apply && $changes ) ) {
+		// after_rocket_clean_domain es lo que escucha el complemento de Cloudflare para purgar.
+		rocket_clean_domain();
+		$cleared = true;
+	}
+
 	return new WP_REST_Response( array(
 		'ok'       => true,
 		'applied'  => $apply && (bool) $changes,
+		'cleared'  => $cleared || ( $apply && $changes ),
 		'version'  => WP_ROCKET_VERSION,
 		'settings' => eg_pub_rocket_view( $apply ? $new : $opts ),
 		'elementor' => array_map( fn( $def ) => get_option( $def[0], null ), EG_PUB_ELEMENTOR_PERF ),

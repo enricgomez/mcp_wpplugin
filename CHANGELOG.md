@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.41.1 · 30/10/2026 · PR pendiente (Claude)
+## 2.41.1 · 30/10/2026 · PR #86 (Claude)
 
 - `/seo-tech` `inspect`: cada página trae `cache` con las cabeceras `cf-cache-status`, `cache-control`, `age`, `server` y `x-powered-by`, si el HTML lo ha servido WP Rocket (`rocket`) y los segundos que tardó (`seconds`). Para comprobar la caché de Cloudflare y de WP Rocket sin salir del servidor.
 - Webs: sonovet.net (Cloudflare). En las demás no cambia nada mientras no se use.

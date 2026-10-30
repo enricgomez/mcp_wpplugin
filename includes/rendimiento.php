@@ -6,6 +6,8 @@
  *   add / remove   {"exclude_lazyload": ["montaje-cookies"], "cache_reject_uri": ["/resumen-de-compra/(.*)"]}
  *                  añade o quita valores de las listas (sin duplicar ni tocar el resto de la lista)
  *   set            {"async_css": 0, "lazyload_iframes": 1}  interruptores (0/1)
+ *   elementor      {"css_print_method": "internal", "font_icon_svg": "active"}  ajustes de rendimiento de Elementor
+ *                  (ver EG_PUB_ELEMENTOR_PERF); al guardar se rehace el CSS de Elementor
  * Como /seo y /term, por defecto solo previsualiza; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -15,6 +17,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_ROCKET_LISTS    = array( 'exclude_lazyload', 'cache_reject_uri', 'cache_reject_cookies', 'exclude_css', 'exclude_js', 'exclude_defer_js', 'delay_js_exclusions' );
 const EG_PUB_ROCKET_SWITCHES = array( 'lazyload', 'lazyload_iframes', 'lazyload_css_bg_img', 'remove_unused_css', 'async_css', 'delay_js', 'defer_all_js', 'minify_css', 'minify_js', 'image_dimensions', 'cache_mobile', 'do_caching_mobile_files' );
+
+// Ajustes de rendimiento de Elementor: clave de /rocket => array( opción de WordPress, valores admitidos ).
+const EG_PUB_ELEMENTOR_PERF = array(
+	'css_print_method'      => array( 'elementor_css_print_method', array( 'external', 'internal' ) ),
+	'font_icon_svg'         => array( 'elementor_experiment-e_font_icon_svg', array( 'active', 'inactive', 'default' ) ),
+	'optimized_css_loading' => array( 'elementor_experiment-e_optimized_css_loading', array( 'active', 'inactive', 'default' ) ),
+	'fa4_shim'              => array( 'elementor_load_fa4_shim', array( 'yes', '' ) ),
+	'font_display'          => array( 'elementor_font_display', array( 'auto', 'block', 'swap', 'fallback', 'optional' ) ),
+);
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['rendimiento'] = array( 'type' => 'gestion', 'routes' => array( 'rocket' ) );
@@ -79,7 +90,25 @@ function eg_pub_rocket_handle( WP_REST_Request $r ) {
 		$new[ $key ] = $value ? 1 : 0;
 	}
 
+	$elementor = array();
+	foreach ( (array) ( $p['elementor'] ?? array() ) as $key => $value ) {
+		if ( ! isset( EG_PUB_ELEMENTOR_PERF[ $key ] ) ) {
+			return eg_pub_error( 'eg_rocket_key', 'Ajuste de Elementor no admitido: ' . $key . '. Admitidos: ' . implode( ', ', array_keys( EG_PUB_ELEMENTOR_PERF ) ) . '.' );
+		}
+		list( , $allowed ) = EG_PUB_ELEMENTOR_PERF[ $key ];
+		if ( ! in_array( (string) $value, $allowed, true ) ) {
+			return eg_pub_error( 'eg_rocket_value', 'Valor no admitido para ' . $key . '. Admitidos: ' . implode( ', ', array_map( fn( $v ) => '' === $v ? '""' : $v, $allowed ) ) . '.' );
+		}
+		$elementor[ $key ] = (string) $value;
+	}
+
 	$changes = array();
+	foreach ( $elementor as $key => $value ) {
+		$before = (string) get_option( EG_PUB_ELEMENTOR_PERF[ $key ][0], '' );
+		if ( $before !== $value ) {
+			$changes[ 'elementor.' . $key ] = array( 'before' => $before, 'after' => $value );
+		}
+	}
 	foreach ( array_merge( EG_PUB_ROCKET_LISTS, EG_PUB_ROCKET_SWITCHES ) as $key ) {
 		$before = $opts[ $key ] ?? null;
 		$after  = $new[ $key ] ?? null;
@@ -89,6 +118,16 @@ function eg_pub_rocket_handle( WP_REST_Request $r ) {
 	}
 
 	if ( $apply && $changes ) {
+		$elementor_changed = false;
+		foreach ( $elementor as $key => $value ) {
+			if ( isset( $changes[ 'elementor.' . $key ] ) ) {
+				update_option( EG_PUB_ELEMENTOR_PERF[ $key ][0], $value );
+				$elementor_changed = true;
+			}
+		}
+		if ( $elementor_changed && class_exists( '\\Elementor\\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
+			\Elementor\Plugin::$instance->files_manager->clear_cache();
+		}
 		// WP Rocket escucha este update_option: rehace su fichero de configuración.
 		update_option( 'wp_rocket_settings', $new );
 		if ( function_exists( 'rocket_clean_domain' ) ) {
@@ -101,6 +140,7 @@ function eg_pub_rocket_handle( WP_REST_Request $r ) {
 		'applied'  => $apply && (bool) $changes,
 		'version'  => WP_ROCKET_VERSION,
 		'settings' => eg_pub_rocket_view( $apply ? $new : $opts ),
+		'elementor' => array_map( fn( $def ) => get_option( $def[0], null ), EG_PUB_ELEMENTOR_PERF ),
 		'changes'  => $changes,
 	), 200 );
 }

@@ -112,7 +112,12 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 	$acf     = (array) ( $p['acf'] ?? array() );
 	$dry_run = ! empty( $p['dry_run'] );
 	if ( $dry_run || ( ! $set && ! $acf && ! isset( $p['featured_image'] ) ) ) {
-		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + eg_pub_item_state( $post_id ), 200 );
+		$state = eg_pub_item_state( $post_id );
+		if ( ! empty( $p['with_content'] ) ) {
+			// El contenido completo, tal cual (shortcodes de WPBakery incluidos), para preparar un /text exacto.
+			$state['content'] = $post->post_content;
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $state, 200 );
 	}
 
 	$changes = array();
@@ -129,6 +134,20 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 	}
 	if ( isset( $set['content'] ) ) {
 		$row['post_content'] = wp_kses_post( (string) $set['content'] );
+	}
+	if ( ! empty( $set['content_replace'] ) && is_array( $set['content_replace'] ) ) {
+		// Sustituciones exactas en el contenido tal cual (shortcodes y HTML incluidos), p. ej. páginas de WPBakery.
+		// Cada «from» debe salir una sola vez; solo se filtra lo que entra («to»), el resto no se toca.
+		$content = $row['post_content'] ?? $post->post_content;
+		foreach ( $set['content_replace'] as $i => $pair ) {
+			$from = (string) ( $pair['from'] ?? '' );
+			$hits = '' === $from ? 0 : substr_count( $content, $from );
+			if ( 1 !== $hits ) {
+				return eg_pub_error( 'eg_replace', 'content_replace[' . $i . ']: «from» aparece ' . $hits . ' veces; debe salir exactamente una.' );
+			}
+			$content = str_replace( $from, wp_kses_post( (string) ( $pair['to'] ?? '' ) ), $content );
+		}
+		$row['post_content'] = $content;
 	}
 	if ( isset( $set['menu_order'] ) ) {
 		$row['menu_order'] = (int) $set['menu_order'];

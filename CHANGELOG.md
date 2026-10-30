@@ -15,6 +15,16 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 - `/rocket`: nuevo `elementor` para los ajustes de rendimiento de Elementor que no se pueden tocar sin wp-admin: cómo se imprime el CSS (`css_print_method`: `internal` lo mete en el HTML y ahorra peticiones), iconos como SVG en lugar de las fuentes de Font Awesome (`font_icon_svg`), carga de CSS optimizada, compatibilidad con Font Awesome 4 y `font_display`. Previsualiza salvo `apply: true`; al guardar rehace el CSS de Elementor y vacía la caché de WP Rocket. La respuesta incluye los valores actuales en `elementor`.
 - Webs: sonovet.net (LCP en móvil). En las demás no cambia nada mientras no se use.
 
+## 2.38.3 · 30/10/2026 · PR #81 (Claude)
+
+- `/item`: `set.content_replace` (`[{"from", "to"}]`) cambia trozos exactos del contenido tal cual, shortcodes y HTML incluidos, sin reenviar ni volver a filtrar la página entera. Cada `from` tiene que salir exactamente una vez. Para páginas de WPBakery, donde `/text` no llega porque solo cambia el texto visible.
+- Webs: dulcelucca.com (ventanas «+ info» de la home). En las demás no cambia nada mientras no se use.
+
+## 2.38.2 · 30/10/2026 · PR #80 (Claude)
+
+- `/item`: `with_content: true` en la lectura (`dry_run` o sin cambios) devuelve el contenido completo de la entrada tal cual, shortcodes incluidos. Hace falta para preparar sustituciones exactas con `/text` en páginas de WPBakery.
+- Webs: dulcelucca.com (ventanas «+ info» de la home). En las demás no cambia nada mientras no se use.
+
 ## 2.38.1 · 30/10/2026 · PR #79 (Claude)
 
 - `/product` (`image`, `gallery`), `/item` (imágenes de ACF y `featured_image`) y `/media` aceptan la imagen en base64 (`{"b64": "…", "filename": "…", "alt": "…"}`), para subir fotos ya optimizadas que no están en ninguna URL pública (p. ej. las de Drive del cliente). La misma imagen no se sube dos veces.

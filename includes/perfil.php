@@ -9,6 +9,9 @@
  *               resultados se recogen después con results
  *   results     true devuelve (y borra) los perfiles guardados que nadie ha recogido todavía
  *   uninstall   true quita el mu-plugin de perfil y sus opciones
+ *   fixes       {"jet_validator": true}  activa (o con false quita) ajustes de rendimiento del servidor (ver
+ *               includes/perfil-ajustes.php); {} solo enseña cuáles están activos. Se puede combinar con urls para
+ *               medir el efecto en la misma llamada (los ajustes se guardan antes de medir)
  * La primera llamada instala el mu-plugin `eg-pub-perfil.php` (copia de includes/perfil-mu.php), que no hace nada
  * salvo en las peticiones que lanza este endpoint con un token de un solo uso que caduca a los 5 minutos. Cada página
  * se pide al propio servidor saltándose la caché de WP Rocket y devuelve: tiempo total, momento de cada fase de
@@ -92,6 +95,20 @@ function eg_pub_perf_top( $r ) {
 
 function eg_pub_perf_handle( WP_REST_Request $request ) {
 	$p = (array) $request->get_json_params();
+	$fixes_state = null;
+	if ( array_key_exists( 'fixes', $p ) ) {
+		$fixes = eg_pub_perf_fixes();
+		foreach ( (array) $p['fixes'] as $fix => $on ) {
+			if ( in_array( $fix, EG_PUB_PERF_FIXES, true ) ) {
+				$fixes[ $fix ] = (bool) $on;
+			}
+		}
+		update_option( 'eg_pub_perf_fixes', array_filter( $fixes ), true );
+		$fixes_state = eg_pub_perf_fixes_state();
+		if ( empty( $p['urls'] ) && empty( $p['admin_urls'] ) ) {
+			return new WP_REST_Response( array( 'ok' => true, 'fixes' => $fixes_state ), 200 );
+		}
+	}
 	if ( ! empty( $p['uninstall'] ) ) {
 		return new WP_REST_Response( array( 'ok' => eg_pub_perf_uninstall(), 'uninstalled' => true ), 200 );
 	}
@@ -192,5 +209,9 @@ function eg_pub_perf_handle( WP_REST_Request $request ) {
 	if ( $session && $wait ) {
 		WP_Session_Tokens::get_instance( $uid )->destroy( $session );
 	}
-	return new WP_REST_Response( array( 'ok' => true, 'pages' => $pages ), 200 );
+	$out = array( 'ok' => true, 'pages' => $pages );
+	if ( null !== $fixes_state ) {
+		$out['fixes'] = $fixes_state;
+	}
+	return new WP_REST_Response( $out, 200 );
 }

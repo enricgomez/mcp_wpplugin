@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.37.1 · 30/10/2026 · PR #77 (Claude)
+
+- `/product`: `sale_from` y `sale_to` programan o quitan las fechas de la rebaja, y `list` devuelve esas fechas, si está rebajado ahora (`on_sale`) y el precio que se cobra (`price`). Hacía falta para saber si las rebajas de 2025 siguen activas.
+- Webs: dulcelucca.com.
+
 ## 2.37.0 · 30/10/2026 · PR #76 (Claude)
 
 - `/seo`: nuevo `indexar` para el ajuste global de Yoast que decide si las entradas, páginas, categorías u otros tipos salen en Google (`noindex-*` de `wpseo_titles`). Previsualiza por defecto; guarda con `apply: true` y vacía la caché de WP Rocket.

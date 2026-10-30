@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.41.1 · 30/10/2026 · PR #86 (Claude)
+
+- `/seo-tech` `inspect`: cada página trae `cache` con las cabeceras `cf-cache-status`, `cache-control`, `age`, `server` y `x-powered-by`, si el HTML lo ha servido WP Rocket (`rocket`) y los segundos que tardó (`seconds`). Para comprobar la caché de Cloudflare y de WP Rocket sin salir del servidor.
+- Webs: sonovet.net (Cloudflare). En las demás no cambia nada mientras no se use.
+
 ## 2.41.0 · 30/10/2026 · PR #85 (Claude)
 
 - `/theme`: `sg_exclude` (`{"minify": [...], "combine": [...], "defer": [...]}`, y `remove` con la misma forma) añade o quita handles de scripts de las exclusiones de SiteGround Optimizer y, al guardar, vacía su caché. La respuesta trae las listas actuales. Para scripts que dejan de funcionar al volver a minificarlos, como los de Slider Revolution (`sr7`, `tp-tools`).

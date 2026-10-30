@@ -105,6 +105,7 @@ add_filter( 'robots_txt', function ( $output ) {
 
 /** Lee una URL de la propia web y resume lo que importa para el SEO técnico. */
 function eg_pub_seo_tech_inspect_url( $url ) {
+	$started = microtime( true );
 	$res = wp_remote_get( $url, array( 'timeout' => 20, 'redirection' => 0, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (Linux; Android 12) EG-Publicacion/' . EG_PUB_VERSION ) ) );
 	if ( is_wp_error( $res ) ) {
 		return array( 'url' => $url, 'error' => $res->get_error_message() );
@@ -144,6 +145,16 @@ function eg_pub_seo_tech_inspect_url( $url ) {
 		}
 	}
 	$out['x_robots_tag'] = wp_remote_retrieve_header( $res, 'x-robots-tag' ) ? wp_remote_retrieve_header( $res, 'x-robots-tag' ) : null;
+	// Cabeceras de caché: dicen si la página sale de Cloudflare, de WP Rocket o de PHP, y cuánto tarda el servidor.
+	$out['cache'] = array();
+	foreach ( array( 'cf-cache-status', 'cache-control', 'age', 'server', 'x-powered-by' ) as $h ) {
+		$v = wp_remote_retrieve_header( $res, $h );
+		if ( $v ) {
+			$out['cache'][ $h ] = is_array( $v ) ? implode( ', ', $v ) : $v;
+		}
+	}
+	$out['cache']['rocket'] = false !== strpos( $html, 'This website is like a Rocket' );
+	$out['cache']['seconds'] = round( microtime( true ) - $started, 2 );
 	$out['jsonld'] = array();
 	preg_match_all( '#<script[^>]+application/ld\+json[^>]*>(.*?)</script>#is', $html, $scripts );
 	foreach ( $scripts[1] as $json ) {

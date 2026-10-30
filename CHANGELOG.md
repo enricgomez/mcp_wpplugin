@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.38.2 · 30/10/2026 · PR #80 (Claude)
+
+- `/item`: `with_content: true` en la lectura (`dry_run` o sin cambios) devuelve el contenido completo de la entrada tal cual, shortcodes incluidos. Hace falta para preparar sustituciones exactas con `/text` en páginas de WPBakery.
+- Webs: dulcelucca.com (ventanas «+ info» de la home). En las demás no cambia nada mientras no se use.
+
 ## 2.38.1 · 30/10/2026 · PR #79 (Claude)
 
 - `/product` (`image`, `gallery`), `/item` (imágenes de ACF y `featured_image`) y `/media` aceptan la imagen en base64 (`{"b64": "…", "filename": "…", "alt": "…"}`), para subir fotos ya optimizadas que no están en ninguna URL pública (p. ej. las de Drive del cliente). La misma imagen no se sube dos veces.

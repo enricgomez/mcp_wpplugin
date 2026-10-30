@@ -112,7 +112,12 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 	$acf     = (array) ( $p['acf'] ?? array() );
 	$dry_run = ! empty( $p['dry_run'] );
 	if ( $dry_run || ( ! $set && ! $acf && ! isset( $p['featured_image'] ) ) ) {
-		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + eg_pub_item_state( $post_id ), 200 );
+		$state = eg_pub_item_state( $post_id );
+		if ( ! empty( $p['with_content'] ) ) {
+			// El contenido completo, tal cual (shortcodes de WPBakery incluidos), para preparar un /text exacto.
+			$state['content'] = $post->post_content;
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $state, 200 );
 	}
 
 	$changes = array();

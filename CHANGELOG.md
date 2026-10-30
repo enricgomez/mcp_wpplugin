@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.41.0 · 30/10/2026 · PR #85 (Claude)
+
+- `/theme`: `sg_exclude` (`{"minify": [...], "combine": [...], "defer": [...]}`, y `remove` con la misma forma) añade o quita handles de scripts de las exclusiones de SiteGround Optimizer y, al guardar, vacía su caché. La respuesta trae las listas actuales. Para scripts que dejan de funcionar al volver a minificarlos, como los de Slider Revolution (`sr7`, `tp-tools`).
+- Webs: dulcelucca.com (slider de la home que se quedaba cargando). En las demás no cambia nada mientras no se use.
+
 ## 2.40.1 · 30/10/2026 · PR #84 (Claude)
 
 - `/item`: `meta` no se leía de la petición en la 2.40.0, así que la llamada se quedaba en lectura sin cambiar nada. Corregido.

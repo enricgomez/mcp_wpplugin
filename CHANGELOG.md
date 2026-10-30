@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.39.0 · 30/10/2026 · PR pendiente (Claude)
+## 2.39.0 · 30/10/2026 · PR #82 (Claude)
 
 - `/rocket`: nuevo `elementor` para los ajustes de rendimiento de Elementor que no se pueden tocar sin wp-admin: cómo se imprime el CSS (`css_print_method`: `internal` lo mete en el HTML y ahorra peticiones), iconos como SVG en lugar de las fuentes de Font Awesome (`font_icon_svg`), carga de CSS optimizada, compatibilidad con Font Awesome 4 y `font_display`. Previsualiza salvo `apply: true`; al guardar rehace el CSS de Elementor y vacía la caché de WP Rocket. La respuesta incluye los valores actuales en `elementor`.
 - Webs: sonovet.net (LCP en móvil). En las demás no cambia nada mientras no se use.

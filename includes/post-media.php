@@ -118,12 +118,19 @@ function eg_pub_post_media_swap_content( WP_Post $post, $new_id, $dry_run, $alt 
     if ( $dry_run || $block === $m[0] ) {
         return $result;
     }
-    $saved = wp_update_post( wp_slash( array(
-        'ID' => $post->ID,
+    // Sin wp_update_post: así WPML no relanza la traducción automática de la entrada.
+    global $wpdb;
+    $saved = $wpdb->update( $wpdb->posts, array(
         'post_content' => str_replace( $m[0], $block, $content ),
-    ) ), true );
-    if ( is_wp_error( $saved ) ) {
-        return $saved;
+        'post_modified' => current_time( 'mysql' ),
+        'post_modified_gmt' => current_time( 'mysql', true ),
+    ), array( 'ID' => $post->ID ) );
+    if ( false === $saved ) {
+        return new WP_Error( 'eg_save_failed', 'No se ha podido guardar el contenido.', array( 'status' => 500 ) );
+    }
+    clean_post_cache( $post->ID );
+    if ( function_exists( 'rocket_clean_post' ) ) {
+        rocket_clean_post( $post->ID );
     }
     update_post_meta( $post->ID, '_eg_content_image_id', $new_id );
     if ( null !== $alt && $update_attachment_alt ) {

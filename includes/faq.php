@@ -287,7 +287,7 @@ add_action( 'wp_head', function () {
  * El margen entre el título «Preguntas frecuentes» y el primer desplegable va siempre, también con un CSS de marca.
  */
 function eg_pub_faq_css() {
-	$spacing = '.eg-faq h2{margin:0 0 1.5em}.eg-faq h2+.eg-faq-item{margin-top:1.5em}';
+	$spacing = '.eg-faq h2{margin:0 0 .75em}.eg-faq h2+.eg-faq-item{margin-top:.75em}';
 	$custom  = (string) get_option( EG_PUB_OPTION_FAQ_CSS, '' );
 	if ( '' !== $custom ) {
 		return $custom . $spacing;

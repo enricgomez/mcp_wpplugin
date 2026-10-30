@@ -112,6 +112,7 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 	}
 	$set     = (array) ( $p['set'] ?? array() );
 	$acf     = (array) ( $p['acf'] ?? array() );
+	$meta    = (array) ( $p['meta'] ?? array() );
 	$dry_run = ! empty( $p['dry_run'] );
 	if ( $dry_run || ( ! $set && ! $acf && ! $meta && ! isset( $p['featured_image'] ) ) ) {
 		$state = eg_pub_item_state( $post_id );

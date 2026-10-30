@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.40.1 · 30/10/2026 · PR #84 (Claude)
+
+- `/item`: `meta` no se leía de la petición en la 2.40.0, así que la llamada se quedaba en lectura sin cambiar nada. Corregido.
+- Webs: dulcelucca.com.
+
 ## 2.40.0 · 30/10/2026 · PR #83 (Claude)
 
 - `/theme` (módulo nuevo «Tema», tipología Gestión de la web): lee y cambia los ajustes del tema guardados con Options Framework (The7) buscándolos con `find`, y `labels` cambia textos fijos del tema o de los plugins por su original (p. ej. la etiqueta «Out Of Stock» de las fotos de producto por «Muy pronto»), con gettext: al quitar el cambio o el plugin vuelve el texto original. Previsualiza salvo `apply: true`.

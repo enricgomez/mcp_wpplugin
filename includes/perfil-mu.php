@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EG Publicación · perfil de rendimiento
  * Description: Lo instala /wp-json/eg/v1/perf de EG Publicación. No hace nada salvo en las peticiones que lanza ese endpoint (con un token de un solo uso que caduca en minutos): mide cuánto tarda en cargar cada plugin, cada función enganchada, las consultas SQL y las llamadas HTTP externas, y guarda el resultado.
- * Version: 1
+ * Version: 2
  */
 
 if ( ! defined( 'ABSPATH' ) || empty( $_GET['eg_profile'] ) || ! is_string( $_GET['eg_profile'] ) ) {
@@ -15,6 +15,8 @@ if ( ! is_array( $eg_perf_token ) || empty( $eg_perf_token['t'] ) || ( $eg_perf_
 	return;
 }
 
+// Las peticiones lanzadas sin esperar cortan la conexión enseguida: la página tiene que acabar igual para medirla.
+ignore_user_abort( true );
 if ( ! defined( 'SAVEQUERIES' ) ) {
 	define( 'SAVEQUERIES', true );
 }

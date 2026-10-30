@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.43.1 · 30/10/2026 · PR #91 (Claude)
+
+- `/perf`: `wait: false` lanza las páginas sin esperarlas (para las que tardan más de un minuto, como el carrito de miriamtirado.com) y `results: true` recoge después los perfiles guardados. El mu-plugin sigue midiendo aunque se corte la conexión.
+- Webs: miriamtirado.com.
+
 ## 2.43.0 · 30/10/2026 · PR #90 (Claude)
 
 - `/perf` (módulo nuevo «Perfil», tipología Gestión de la web): mide en el propio servidor qué plugin se come el tiempo de cada página pública o del admin, sin caché: carga de cada plugin, funciones enganchadas por plugin, las más lentas, SQL, llamadas HTTP externas y memoria. Instala el mu-plugin `eg-pub-perfil.php`, inerte salvo con el token de un solo uso que genera el endpoint; `uninstall: true` lo quita.

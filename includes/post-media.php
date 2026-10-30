@@ -89,10 +89,14 @@ function eg_pub_post_media_handle( WP_REST_Request $request ) {
  */
 function eg_pub_post_media_swap_content( WP_Post $post, $new_id, $dry_run, $alt = null, $update_attachment_alt = false ) {
     $old_id = (int) get_post_meta( $post->ID, '_eg_content_image_id', true );
+    if ( ! $old_id && preg_match( '#<!--\s*wp:image\s+\{[^}]*"id":(\d+)#', $post->post_content, $first ) ) {
+        // Traducciones hechas fuera del plugin (p. ej. la automática de WPML): la primera imagen del contenido.
+        $old_id = (int) $first[1];
+    }
     $new_id = $new_id ? $new_id : $old_id;
     $result = array( 'previous_content_attachment_id' => $old_id, 'content_attachment_id' => $old_id );
     if ( ! $old_id ) {
-        return new WP_Error( 'eg_no_content_image', 'Esta entrada no tiene imagen del contenido puesta por EG Publicación.', array( 'status' => 409 ) );
+        return new WP_Error( 'eg_no_content_image', 'Esta entrada no tiene ninguna imagen en el contenido.', array( 'status' => 409 ) );
     }
     $content = $post->post_content;
     $pattern = '#<!--\s*wp:image\s+\{[^}]*"id":' . $old_id . '\b.*?<!--\s*/wp:image\s*-->#s';

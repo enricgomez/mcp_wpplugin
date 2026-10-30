@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.35.3 · 30/10/2026 · PR #73 (Claude)
+
+- `/post-media`: en las entradas sin imagen del contenido registrada por el plugin (traducciones hechas por la traducción automática de WPML), usa la primera imagen del contenido.
+- Webs: taxi-calella.com.
+
 ## 2.35.2 · 30/10/2026 · PR #72 (Claude)
 
 - `/post-media`: el cambio de imagen o de texto alternativo del contenido se guarda sin `wp_update_post`, así WPML no relanza la traducción automática de la entrada (en taxi-calella.com la creaba de nuevo en inglés). Vacía la caché de WP Rocket de esa entrada.

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.41.2 · 30/10/2026 · PR #87 (Claude)
+
+- `/rocket`: `clear: true` vacía la caché de WP Rocket igual que su botón, así que también purga Cloudflare cuando su complemento está activo (vaciar los ficheros por SSH no lo hace). La respuesta dice `cleared`.
+- Webs: sonovet.net (Cloudflare con caché de HTML). En las demás no cambia nada mientras no se use.
+
 ## 2.41.1 · 30/10/2026 · PR #86 (Claude)
 
 - `/seo-tech` `inspect`: cada página trae `cache` con las cabeceras `cf-cache-status`, `cache-control`, `age`, `server` y `x-powered-by`, si el HTML lo ha servido WP Rocket (`rocket`) y los segundos que tardó (`seconds`). Para comprobar la caché de Cloudflare y de WP Rocket sin salir del servidor.

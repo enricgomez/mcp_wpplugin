@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.42.0 · 30/10/2026 · PR pendiente (Claude)
+## 2.42.0 · 30/10/2026 · PR #89 (Claude)
 
 - `/seo-tech` `ai_catalog`: sirve `/.well-known/ai-catalog.json` (catálogo de Agentic Resource Discovery, `specVersion` 1.0, `host` y una entrada con el `llms.txt` de la web si existe, con `representativeQueries`), como JSON con `Access-Control-Allow-Origin: *`. Se calcula al guardar con `apply: true`; `false` lo quita y la ruta vuelve a dar 404. PageSpeed (Lighthouse 13.5, categoría experimental «Agentic browsing») marcaba «El esquema ai-catalog.json no es válido».
 - Webs: nilacakes.com. En las demás no cambia nada mientras no se use.

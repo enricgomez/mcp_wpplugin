@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.36.0 · 30/10/2026 · PR pendiente (Claude)
+
+- `/product` (tipología WooCommerce): cambia también precio normal y rebajado, SKU, peso, existencias, estado (también desde la papelera), imagen principal y galería (ID, URL o `{"url", "alt"}`). Nuevo `create` para crear un producto en borrador, vacío o copiado de otro (`from`, ID o SKU), y `list: true` para ver todos los productos con su estado, papelera incluida.
+- Webs: dulcelucca.com (catálogo de panettones 2026). En las demás no cambia nada mientras no se use.
+
 ## 2.35.4 · 30/10/2026 · PR #74 (Claude)
 
 - FAQ: el margen entre el título «Preguntas frecuentes» y el primer desplegable baja a la mitad (0,75em); el de la 2.34.1 quedaba demasiado grande.

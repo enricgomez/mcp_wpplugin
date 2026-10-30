@@ -12,6 +12,12 @@
  *   meta                         campos de JetEngine del producto y rank_math_title/description/focus_keyword
  *   add_terms, remove_terms      {"product_cat": ["preventa"]}: slugs en cualquier idioma; se usa el término
  *                                del idioma de cada producto
+ *   regular_price, sale_price    precio normal y rebajado ("" quita la rebaja)
+ *   sku, weight, stock_status    SKU, peso (en la unidad de la tienda) e instock/outofstock/onbackorder
+ *   status                       publish, draft, private o pending (también saca el producto de la papelera)
+ *   image, gallery               imagen principal y galería: ID de la biblioteca, URL o {"url", "alt"}
+ * create crea un producto nuevo (en borrador salvo que set diga otro status), vacío o copiado de otro con
+ * create.from (ID o SKU), y le aplica set. list devuelve todos los productos con su estado, papelera incluida.
  * Con dry_run devuelve lo que cambiaría sin guardar. Los textos se guardan sin wp_update_post para que WPML no
  * lance la traducción automática del resto de idiomas. Vacía la caché del producto (WooCommerce y WP Rocket).
  */
@@ -121,7 +127,22 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 	$dry_run = ! empty( $p['dry_run'] );
 	$notes   = array();
 
-	$ids = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );
+	if ( ! empty( $p['list'] ) ) {
+		return new WP_REST_Response( array( 'ok' => true, 'products' => eg_pub_product_list() ), 200 );
+	}
+
+	$ids     = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );
+	$created = null;
+	if ( is_array( $p['create'] ?? null ) ) {
+		$created = eg_pub_product_create( $p['create'], $dry_run );
+		if ( is_wp_error( $created ) ) {
+			return eg_pub_error( 'eg_create', $created->get_error_message(), 400 );
+		}
+		if ( $dry_run ) {
+			return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true, 'create' => $created, 'set' => $p['set'] ?? array() ), 200 );
+		}
+		$ids[] = $created['id'];
+	}
 	foreach ( (array) ( $p['sku'] ?? array() ) as $sku ) {
 		// Todos los productos con ese SKU (con WPML, la traducción comparte el SKU del original).
 		$found = $wpdb->get_col( $wpdb->prepare(
@@ -253,7 +274,48 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 			}
 		}
 
+		// Datos de WooCommerce: precio, SKU, peso, existencias, imágenes y estado.
+		$wc     = eg_pub_product_wc_changes( $id, $c, $dry_run, $notes );
+		$status = null;
+		if ( isset( $c['status'] ) ) {
+			$wanted = sanitize_key( (string) $c['status'] );
+			if ( ! in_array( $wanted, array( 'publish', 'draft', 'private', 'pending' ), true ) ) {
+				$notes[] = 'estado no válido: ' . $wanted;
+			} elseif ( $wanted !== $post->post_status ) {
+				$status                    = $wanted;
+				$row['changes']['status'] = array( 'before' => $post->post_status, 'after' => $wanted );
+			}
+		}
+		foreach ( $wc['changes'] as $key => $change ) {
+			$row['changes'][ $key ] = $change;
+		}
+
 		if ( ! $dry_run && $row['changes'] ) {
+			if ( $wc['product'] ) {
+				try {
+					// Solo metadatos: WooCommerce no llama a wp_update_post y WPML no relanza la traducción.
+					$wc['product']->save();
+				} catch ( Exception $e ) {
+					$notes[] = $id . ': ' . $e->getMessage();
+				}
+				$post = get_post( $id );
+			}
+			if ( $status ) {
+				if ( 'trash' === $post->post_status ) {
+					wp_untrash_post( $id );
+					$post = get_post( $id );
+				}
+				if ( $status !== $post->post_status ) {
+					$fields_status = array( 'post_status' => $status );
+					if ( '' === $post->post_name && 'publish' === $status ) {
+						// Un borrador nuevo (o copiado) aún no tiene slug: wp_update_post lo pondría al publicar.
+						$fields_status['post_name'] = wp_unique_post_slug( sanitize_title( $update['post_title'] ?? $post->post_title ), $id, $status, 'product', $post->post_parent );
+					}
+					$wpdb->update( $wpdb->posts, $fields_status, array( 'ID' => $id ) );
+					clean_post_cache( $id );
+					wp_transition_post_status( $status, $post->post_status, get_post( $id ) );
+				}
+			}
 			if ( $update ) {
 				$update['post_modified']     = current_time( 'mysql' );
 				$update['post_modified_gmt'] = current_time( 'mysql', true );
@@ -301,11 +363,165 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 		}
 	}
 
+	if ( ! $dry_run && function_exists( 'rocket_clean_domain' ) && ( $created || array_filter( $done, function ( $row ) {
+		return isset( $row['changes']['status'] );
+	} ) ) ) {
+		// Un producto que aparece o desaparece cambia también la tienda y las categorías.
+		rocket_clean_domain();
+	}
+
 	return new WP_REST_Response( array(
 		'ok'       => true,
 		'dry_run'  => $dry_run,
+		'created'  => $created,
 		'count'    => count( $done ),
 		'products' => $done,
 		'message'  => implode( ' | ', $notes ),
 	), 200 );
+}
+
+/** Todos los productos, también borradores, privados y en la papelera. */
+function eg_pub_product_list() {
+	$out = array();
+	$ids = get_posts( array(
+		'post_type'        => 'product',
+		'post_status'      => array( 'publish', 'draft', 'pending', 'private', 'future', 'trash' ),
+		'posts_per_page'   => 500,
+		'fields'           => 'ids',
+		'orderby'          => 'date',
+		'order'            => 'DESC',
+		'suppress_filters' => true,
+	) );
+	foreach ( $ids as $id ) {
+		$product = wc_get_product( $id );
+		if ( ! $product ) {
+			continue;
+		}
+		$details = apply_filters( 'wpml_post_language_details', null, $id );
+		$out[]   = array(
+			'id'            => $id,
+			'title'         => $product->get_name(),
+			'sku'           => $product->get_sku(),
+			'status'        => get_post_status( $id ),
+			'type'          => $product->get_type(),
+			'regular_price' => $product->get_regular_price(),
+			'sale_price'    => $product->get_sale_price(),
+			'weight'        => $product->get_weight(),
+			'stock_status'  => $product->get_stock_status(),
+			'categories'    => wp_get_post_terms( $id, 'product_cat', array( 'fields' => 'slugs' ) ),
+			'image'         => (int) $product->get_image_id(),
+			'gallery'       => array_map( 'intval', $product->get_gallery_image_ids() ),
+			'date'          => get_post_field( 'post_date', $id ),
+			'lang'          => is_array( $details ) ? (string) ( $details['language_code'] ?? '' ) : '',
+			'url'           => get_permalink( $id ),
+		);
+	}
+	return $out;
+}
+
+/**
+ * Crea un producto simple en borrador, vacío o copiado de create.from (ID o SKU) con el duplicado de WooCommerce,
+ * que copia descripción, pestañas, categorías, imágenes y envío. El título va en create.title o en set.title.
+ */
+function eg_pub_product_create( $create, $dry_run ) {
+	$source = null;
+	if ( ! empty( $create['from'] ) ) {
+		$from   = $create['from'];
+		$src_id = is_numeric( $from ) ? (int) $from : wc_get_product_id_by_sku( sanitize_text_field( (string) $from ) );
+		$source = $src_id ? wc_get_product( $src_id ) : null;
+		if ( ! $source ) {
+			return new WP_Error( 'eg_create', 'no encuentro el producto de origen ' . $from );
+		}
+	}
+	$title = sanitize_text_field( (string) ( $create['title'] ?? '' ) );
+	if ( ! $source && '' === $title ) {
+		return new WP_Error( 'eg_create', 'falta create.title (o create.from para copiar otro producto)' );
+	}
+	if ( $dry_run ) {
+		return array( 'id' => 0, 'from' => $source ? $source->get_id() : 0, 'title' => $title ?: $source->get_name() . ' (copia)' );
+	}
+	if ( $source ) {
+		if ( ! class_exists( 'WC_Admin_Duplicate_Product' ) ) {
+			require_once WC()->plugin_path() . '/includes/admin/class-wc-admin-duplicate-product.php';
+		}
+		$product = ( new WC_Admin_Duplicate_Product() )->product_duplicate( $source );
+	} else {
+		$product = new WC_Product_Simple();
+		$product->set_status( 'draft' );
+	}
+	if ( '' !== $title ) {
+		$product->set_name( $title );
+		$product->set_slug( '' );
+	}
+	try {
+		$product->set_sku( '' );
+	} catch ( Exception $e ) {
+		unset( $e );
+	}
+	$product->save();
+	return array( 'id' => $product->get_id(), 'from' => $source ? $source->get_id() : 0, 'title' => $product->get_name() );
+}
+
+/** Aplica al producto (sin guardarlo) los campos de WooCommerce de $c y devuelve el producto y los cambios. */
+function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
+	$keys = array( 'regular_price', 'sale_price', 'sku', 'weight', 'stock_status', 'image', 'gallery' );
+	if ( ! array_intersect( $keys, array_keys( $c ) ) ) {
+		return array( 'product' => null, 'changes' => array() );
+	}
+	$product = wc_get_product( $id );
+	$changes = array();
+	foreach ( array( 'regular_price', 'sale_price', 'sku', 'weight', 'stock_status' ) as $key ) {
+		if ( ! array_key_exists( $key, $c ) ) {
+			continue;
+		}
+		$value = (string) $c[ $key ];
+		if ( in_array( $key, array( 'regular_price', 'sale_price', 'weight' ), true ) ) {
+			$value = '' === $value ? '' : wc_format_decimal( str_replace( ',', '.', $value ) );
+		} else {
+			$value = sanitize_text_field( $value );
+		}
+		$old = (string) $product->{'get_' . $key}( 'edit' );
+		if ( $old === $value ) {
+			continue;
+		}
+		if ( 'sku' === $key && '' !== $value && ! wc_product_has_unique_sku( $id, $value ) ) {
+			$notes[] = $id . ': el SKU ' . $value . ' ya lo usa otro producto';
+			continue;
+		}
+		$changes[ $key ] = array( 'before' => $old, 'after' => $value );
+		if ( ! $dry_run ) {
+			$product->{'set_' . $key}( $value );
+		}
+	}
+	if ( array_key_exists( 'image', $c ) ) {
+		$old = (int) $product->get_image_id( 'edit' );
+		$new = $dry_run || empty( $c['image'] ) ? $c['image'] : eg_pub_item_image( $id, $c['image'], sanitize_title( $product->get_name() ) );
+		if ( is_wp_error( $new ) ) {
+			$notes[] = $id . ': ' . $new->get_error_message();
+		} elseif ( $dry_run || (int) $new !== $old ) {
+			$changes['image'] = array( 'before' => $old, 'after' => $new );
+			if ( ! $dry_run ) {
+				$product->set_image_id( (int) $new );
+			}
+		}
+	}
+	if ( array_key_exists( 'gallery', $c ) ) {
+		$old = array_map( 'intval', $product->get_gallery_image_ids( 'edit' ) );
+		$new = array();
+		foreach ( (array) $c['gallery'] as $i => $img ) {
+			$att = $dry_run ? $img : eg_pub_item_image( $id, $img, sanitize_title( $product->get_name() ) . '-' . ( $i + 1 ) );
+			if ( is_wp_error( $att ) ) {
+				$notes[] = $id . ': ' . $att->get_error_message();
+			} else {
+				$new[] = $dry_run ? $att : (int) $att;
+			}
+		}
+		if ( $dry_run || $new !== $old ) {
+			$changes['gallery'] = array( 'before' => $old, 'after' => $new );
+			if ( ! $dry_run ) {
+				$product->set_gallery_image_ids( $new );
+			}
+		}
+	}
+	return array( 'product' => $changes ? $product : null, 'changes' => $changes );
 }

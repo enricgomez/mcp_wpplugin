@@ -42,7 +42,7 @@ En `/publish`, `faqs: "auto"` busca la sección cuyo H2 es «Preguntas frecuente
 En `/publish`, `author` (desde la v2.32.0; ID, nombre de usuario o email) hace que el post lo firme ese usuario, con su avatar, y queda guardado para todos los posts siguientes de la web, también los que llegan sin el parámetro. Si el usuario no existe o no puede escribir entradas, el post se guarda igual y la respuesta lo avisa en `message`.
 
 - Datos estructurados: con Yoast, la página pasa a `WebPage` + `FAQPage` y cada pregunta entra en su grafo como `Question` (igual que el bloque FAQ de Yoast); sin Yoast se imprime un JSON-LD `FAQPage`. Si el contenido ya usa el bloque FAQ de Yoast, no se toca.
-- Estilo: tarjetas con borde, «+» y «−», en tonos neutros y con la pregunta en el color `secondary` de Elementor si la web lo tiene (el `accent` no se usa: en algunas webs es transparente). `faq_css` en `/publish` guarda un CSS propio para toda la web, con los colores de la marca (clases `.eg-faq`, `.eg-faq-item`, `summary`, `[open]`). Desde la v2.35.0 el título «Preguntas frecuentes» deja siempre 1,25em de aire hasta el primer desplegable (`.eg-faq>.wp-block-heading`), también con `faq_css`, que puede cambiarlo.
+- Estilo: tarjetas con borde, «+» y «−», en tonos neutros y con la pregunta en el color `secondary` de Elementor si la web lo tiene (el `accent` no se usa: en algunas webs es transparente). `faq_css` en `/publish` guarda un CSS propio para toda la web, con los colores de la marca (clases `.eg-faq`, `.eg-faq-item`, `summary`, `[open]`).
 - Los posts o páginas hechos con Elementor no pasan por aquí: usan el widget Acordeón de Elementor con «FAQ Schema» activado.
 
 ### Parámetros de categoría

@@ -12,6 +12,9 @@
  *             duplicar); sin Yoast se imprime un JSON-LD propio en la portada. null lo quita.
  *   robots    "líneas" que se añaden al final del robots.txt virtual de WordPress (p. ej. reglas para bots de IA). "" lo quita.
  *   hreflang  true/false: activa o desactiva en WPML «mostrar idiomas alternativos en el HEAD».
+ *   ai_catalog true, o {"description": "…", "queries": ["…", "…"]}: sirve /.well-known/ai-catalog.json (catálogo de
+ *             Agentic Resource Discovery que revisa Lighthouse/PageSpeed) con la ficha de la web y su llms.txt si
+ *             existe. false lo quita y la ruta vuelve a dar 404.
  * Como /seo y /rocket, los cambios solo se previsualizan; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -21,6 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_OPTION_BUSINESS = 'eg_pub_schema_business';
 const EG_PUB_OPTION_ROBOTS   = 'eg_pub_robots_extra';
+const EG_PUB_OPTION_AI_CAT   = 'eg_pub_ai_catalog';
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['seo-tecnico'] = array( 'type' => 'gestion', 'routes' => array( 'seo-tech' ) );
@@ -102,6 +106,56 @@ add_filter( 'robots_txt', function ( $output ) {
 	$extra = trim( (string) get_option( EG_PUB_OPTION_ROBOTS, '' ) );
 	return '' === $extra ? $output : rtrim( $output ) . "\n\n" . $extra . "\n";
 }, 99 );
+
+/**
+ * Catálogo de Agentic Resource Discovery para /.well-known/ai-catalog.json. Se calcula al guardar (así se sabe si
+ * llms.txt existe) y se sirve tal cual: specVersion, host y entries, con representativeQueries en cada entrada.
+ */
+function eg_pub_seo_tech_ai_catalog_build( $cfg ) {
+	$cfg     = is_array( $cfg ) ? $cfg : array();
+	$host    = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+	$name    = wp_strip_all_tags( html_entity_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+	$desc    = isset( $cfg['description'] ) ? sanitize_text_field( $cfg['description'] ) : wp_strip_all_tags( html_entity_decode( get_bloginfo( 'description' ), ENT_QUOTES ) );
+	$queries = array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $cfg['queries'] ?? array() ) ) ) );
+	if ( ! $queries ) {
+		$queries = array( sprintf( '¿Qué ofrece %s?', $name ), sprintf( '¿Cómo contactar con %s?', $name ) );
+	}
+	$catalog = array(
+		'specVersion' => '1.0',
+		'host'        => array( 'displayName' => $name, 'identifier' => $host ),
+		'entries'     => array(),
+	);
+	$llms = wp_remote_get( home_url( '/llms.txt' ), array( 'timeout' => 15, 'redirection' => 0 ) );
+	if ( ! is_wp_error( $llms ) && 200 === (int) wp_remote_retrieve_response_code( $llms ) ) {
+		$catalog['entries'][] = array(
+			'identifier'            => 'urn:air:' . $host . ':docs:llms-txt',
+			'displayName'           => $name . ' (llms.txt)',
+			'type'                  => 'text/markdown',
+			'url'                   => home_url( '/llms.txt' ),
+			'description'           => '' !== $desc ? $desc : $name,
+			'representativeQueries' => array_slice( $queries, 0, 5 ),
+		);
+	}
+	return $catalog;
+}
+
+add_action( 'init', function () {
+	$path = (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH );
+	if ( untrailingslashit( (string) wp_parse_url( home_url(), PHP_URL_PATH ) ) . '/.well-known/ai-catalog.json' !== $path ) {
+		return;
+	}
+	$catalog = get_option( EG_PUB_OPTION_AI_CAT, array() );
+	if ( ! is_array( $catalog ) || ! $catalog ) {
+		return;
+	}
+	status_header( 200 );
+	header( 'Content-Type: application/json; charset=utf-8' );
+	header( 'Access-Control-Allow-Origin: *' );
+	header( 'Cache-Control: public, max-age=86400' );
+	header( 'X-Robots-Tag: noindex' );
+	echo wp_json_encode( $catalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );
+	exit;
+}, 1 );
 
 /** Lee una URL de la propia web y resume lo que importa para el SEO técnico. */
 function eg_pub_seo_tech_inspect_url( $url ) {
@@ -270,6 +324,20 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 			}
 		}
 	}
+	if ( array_key_exists( 'ai_catalog', $p ) ) {
+		$before = get_option( EG_PUB_OPTION_AI_CAT, array() );
+		$after  = ( false === $p['ai_catalog'] || null === $p['ai_catalog'] || 'false' === $p['ai_catalog'] ) ? array() : eg_pub_seo_tech_ai_catalog_build( $p['ai_catalog'] );
+		if ( $before !== $after ) {
+			$out['changes']['ai_catalog'] = array( 'before' => $before, 'after' => $after );
+			if ( $apply ) {
+				if ( $after ) {
+					update_option( EG_PUB_OPTION_AI_CAT, $after, false );
+				} else {
+					delete_option( EG_PUB_OPTION_AI_CAT );
+				}
+			}
+		}
+	}
 	if ( $apply && $out['changes'] ) {
 		$out['applied'] = true;
 		if ( function_exists( 'rocket_clean_domain' ) ) {
@@ -281,6 +349,7 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 		'business'        => get_option( EG_PUB_OPTION_BUSINESS, array() ),
 		'robots'          => (string) get_option( EG_PUB_OPTION_ROBOTS, '' ),
 		'robots_physical' => file_exists( ABSPATH . 'robots.txt' ),
+		'ai_catalog'      => get_option( EG_PUB_OPTION_AI_CAT, array() ) ? home_url( '/.well-known/ai-catalog.json' ) : null,
 		'wpml_hreflang'   => eg_pub_seo_tech_wpml_hreflang(),
 		'yoast'           => defined( 'WPSEO_VERSION' ) ? WPSEO_VERSION : null,
 		'yoast_company'   => defined( 'WPSEO_VERSION' ) ? ( (array) get_option( 'wpseo_titles', array() ) )['company_or_person'] ?? null : null,

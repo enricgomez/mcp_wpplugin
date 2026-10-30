@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.35.1 · 30/10/2026 · PR #71 (Claude)
+
+- `/post-media`: `content_alt` cambia el texto alternativo de la imagen del contenido (con `update_attachment_alt: true` también en la biblioteca) y `featured_alt` el de la imagen destacada, sin volver a publicar la entrada.
+- Webs: taxi-calella.com (textos alternativos del post de Barcelona en los 5 idiomas).
+
 ## 2.35.0 · 30/10/2026 · PR #70 (Claude)
 
 - `/post-media`: nuevo `content_attachment_id` para cambiar la imagen dentro del contenido de una entrada por otra de la biblioteca, sin volver a publicarla y conservando su texto alternativo. `attachment_id` pasa a ser opcional si se manda este.

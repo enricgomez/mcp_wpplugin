@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.41.2 · 30/10/2026 · PR pendiente (Claude)
+## 2.41.2 · 30/10/2026 · PR #87 (Claude)
 
 - `/rocket`: `clear: true` vacía la caché de WP Rocket igual que su botón, así que también purga Cloudflare cuando su complemento está activo (vaciar los ficheros por SSH no lo hace). La respuesta dice `cleared`.
 - Webs: sonovet.net (Cloudflare con caché de HTML). En las demás no cambia nada mientras no se use.

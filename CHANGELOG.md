@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.35.4 · 30/10/2026 · PR pendiente (Claude)
+## 2.35.4 · 30/10/2026 · PR #74 (Claude)
 
 - FAQ: el margen entre el título «Preguntas frecuentes» y el primer desplegable baja a la mitad (0,75em); el de la 2.34.1 quedaba demasiado grande.
 - Webs: todas las que usan las FAQ del plugin (taxi-santasusanna.com, taxi-calella.com).

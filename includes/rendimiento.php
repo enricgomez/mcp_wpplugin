@@ -8,8 +8,8 @@
  *   set            {"async_css": 0, "lazyload_iframes": 1}  interruptores (0/1)
  *   elementor      {"css_print_method": "internal", "font_icon_svg": "active"}  ajustes de rendimiento de Elementor
  *                  (ver EG_PUB_ELEMENTOR_PERF); al guardar se rehace el CSS de Elementor
- *   clear          true vacía la caché de WP Rocket como su botón «Vaciar caché»: también purga Cloudflare
- *                  si su complemento está activo (vaciar los ficheros por SSH no lo hace)
+ *   clear          true vacía la caché de WP Rocket como su botón «Vaciar caché» y purga toda la caché de
+ *                  Cloudflare con los datos del complemento de WP Rocket (si está activo y configurado)
  * Como /seo y /term, por defecto solo previsualiza; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -60,6 +60,39 @@ function eg_pub_rocket_view( $opts ) {
 		'likely_official' => '' !== $email && ! preg_match( '/^(noreply|no-reply|test|admin)@/i', $email ),
 	);
 	return $view;
+}
+
+/**
+ * Purga toda la caché de Cloudflare con los datos del complemento de WP Rocket (email, clave global y zona).
+ * Por la API REST el complemento no purga solo; devuelve null si no está configurado.
+ */
+function eg_pub_rocket_purge_cloudflare( $opts ) {
+	$email = (string) ( $opts['cloudflare_email'] ?? '' );
+	$key   = defined( 'WP_ROCKET_CF_API_KEY' ) ? (string) WP_ROCKET_CF_API_KEY : (string) ( $opts['cloudflare_api_key'] ?? '' );
+	$zone  = (string) ( $opts['cloudflare_zone_id'] ?? '' );
+	if ( empty( $opts['do_cloudflare'] ) || '' === $key || '' === $zone ) {
+		return null;
+	}
+	$headers = array( 'Content-Type' => 'application/json' );
+	if ( '' !== $email ) {
+		$headers['X-Auth-Email'] = $email;
+		$headers['X-Auth-Key']   = $key;
+	} else {
+		$headers['Authorization'] = 'Bearer ' . $key;
+	}
+	$res = wp_remote_post( 'https://api.cloudflare.com/client/v4/zones/' . rawurlencode( $zone ) . '/purge_cache', array(
+		'timeout' => 20,
+		'headers' => $headers,
+		'body'    => wp_json_encode( array( 'purge_everything' => true ) ),
+	) );
+	if ( is_wp_error( $res ) ) {
+		return array( 'ok' => false, 'error' => $res->get_error_message() );
+	}
+	$body = json_decode( (string) wp_remote_retrieve_body( $res ), true );
+	return array(
+		'ok'     => ! empty( $body['success'] ),
+		'errors' => array_map( fn( $e ) => $e['message'] ?? '', (array) ( $body['errors'] ?? array() ) ),
+	);
 }
 
 function eg_pub_rocket_handle( WP_REST_Request $r ) {
@@ -143,11 +176,16 @@ function eg_pub_rocket_handle( WP_REST_Request $r ) {
 		rocket_clean_domain();
 		$cleared = true;
 	}
+	$cloudflare = null;
+	if ( ! empty( $p['clear'] ) ) {
+		$cloudflare = eg_pub_rocket_purge_cloudflare( $opts );
+	}
 
 	return new WP_REST_Response( array(
 		'ok'       => true,
 		'applied'  => $apply && (bool) $changes,
 		'cleared'  => $cleared || ( $apply && $changes ),
+		'cloudflare' => $cloudflare,
 		'version'  => WP_ROCKET_VERSION,
 		'settings' => eg_pub_rocket_view( $apply ? $new : $opts ),
 		'elementor' => array_map( fn( $def ) => get_option( $def[0], null ), EG_PUB_ELEMENTOR_PERF ),

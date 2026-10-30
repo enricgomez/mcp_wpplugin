@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.41.3 · 30/10/2026 · PR #88 (Claude)
+
+- `/rocket` `clear`: purga Cloudflare directamente con su API (purge_everything), usando el email, la clave y la zona guardados en el complemento de Cloudflare de WP Rocket. En la 2.41.2 el complemento no purgaba al vaciar desde la API REST. La respuesta trae `cloudflare` (`ok` y errores), o `null` si el complemento no está configurado.
+- Webs: sonovet.net.
+
 ## 2.41.2 · 30/10/2026 · PR #87 (Claude)
 
 - `/rocket`: `clear: true` vacía la caché de WP Rocket igual que su botón, así que también purga Cloudflare cuando su complemento está activo (vaciar los ficheros por SSH no lo hace). La respuesta dice `cleared`.

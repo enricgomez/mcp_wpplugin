@@ -63,7 +63,7 @@ function eg_pub_item_acf_state( $post_id ) {
 	return $out;
 }
 
-/** ID de adjunto a partir de un ID, una URL o {"url"|"id", "alt", "filename"}. */
+/** ID de adjunto a partir de un ID, una URL o {"url"|"id"|"b64", "alt", "filename"}. */
 function eg_pub_item_image( $post_id, $img, $filename ) {
 	if ( is_numeric( $img ) ) {
 		return get_post( (int) $img ) ? (int) $img : new WP_Error( 'eg_img', 'no existe el adjunto ' . (int) $img );
@@ -75,10 +75,10 @@ function eg_pub_item_image( $post_id, $img, $filename ) {
 		}
 		return (int) $img['id'];
 	}
-	if ( empty( $img['url'] ) ) {
-		return new WP_Error( 'eg_img', 'falta la url de la imagen' );
+	if ( empty( $img['url'] ) && empty( $img['b64'] ) ) {
+		return new WP_Error( 'eg_img', 'falta la url (o el b64) de la imagen' );
 	}
-	return eg_pub_sideload_image( $post_id, (string) $img['url'], '', array(
+	return eg_pub_sideload_image( $post_id, (string) ( $img['url'] ?? '' ), (string) ( $img['b64'] ?? '' ), array(
 		'filename' => $img['filename'] ?? $filename,
 		'alt'      => $img['alt'] ?? '',
 	) );

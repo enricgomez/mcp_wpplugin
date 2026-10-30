@@ -16,7 +16,7 @@
  *   sale_from, sale_to           fechas de la rebaja (AAAA-MM-DD o AAAA-MM-DD HH:MM, hora de la web; "" la quita)
  *   sku, weight, stock_status    SKU, peso (en la unidad de la tienda) e instock/outofstock/onbackorder
  *   status                       publish, draft, private o pending (también saca el producto de la papelera)
- *   image, gallery               imagen principal y galería: ID de la biblioteca, URL o {"url", "alt"}
+ *   image, gallery               imagen principal y galería: ID de la biblioteca, URL o {"url"|"b64", "alt", "filename"}
  * create crea un producto nuevo (en borrador salvo que set diga otro status), vacío o copiado de otro con
  * create.from (ID o SKU), y le aplica set. list devuelve todos los productos con su estado, papelera incluida.
  * Con dry_run devuelve lo que cambiaría sin guardar. Los textos se guardan sin wp_update_post para que WPML no
@@ -523,7 +523,7 @@ function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
 	}
 	if ( array_key_exists( 'image', $c ) ) {
 		$old = (int) $product->get_image_id( 'edit' );
-		$new = $dry_run || empty( $c['image'] ) ? $c['image'] : eg_pub_item_image( $id, $c['image'], sanitize_title( $product->get_name() ) );
+		$new = $dry_run || empty( $c['image'] ) ? eg_pub_product_img_label( $c['image'] ) : eg_pub_item_image( $id, $c['image'], sanitize_title( $product->get_name() ) );
 		if ( is_wp_error( $new ) ) {
 			$notes[] = $id . ': ' . $new->get_error_message();
 		} elseif ( $dry_run || (int) $new !== $old ) {
@@ -537,7 +537,7 @@ function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
 		$old = array_map( 'intval', $product->get_gallery_image_ids( 'edit' ) );
 		$new = array();
 		foreach ( (array) $c['gallery'] as $i => $img ) {
-			$att = $dry_run ? $img : eg_pub_item_image( $id, $img, sanitize_title( $product->get_name() ) . '-' . ( $i + 1 ) );
+			$att = $dry_run ? eg_pub_product_img_label( $img ) : eg_pub_item_image( $id, $img, sanitize_title( $product->get_name() ) . '-' . ( $i + 1 ) );
 			if ( is_wp_error( $att ) ) {
 				$notes[] = $id . ': ' . $att->get_error_message();
 			} else {
@@ -552,4 +552,12 @@ function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
 		}
 	}
 	return array( 'product' => $changes ? $product : null, 'changes' => $changes );
+}
+
+/** En dry_run, la imagen pedida tal cual, sin devolver el base64 entero. */
+function eg_pub_product_img_label( $img ) {
+	if ( is_array( $img ) && ! empty( $img['b64'] ) ) {
+		$img['b64'] = strlen( (string) $img['b64'] ) . ' caracteres';
+	}
+	return $img;
 }

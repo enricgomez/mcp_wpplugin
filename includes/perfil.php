@@ -5,6 +5,9 @@
  *   urls        ["/", "/producto/criar-juntos/", "/carrito/"]  páginas públicas, como un visitante sin sesión (máx. 10)
  *   admin_urls  ["/wp-admin/", "/wp-admin/edit.php?post_type=product"]  pantallas del admin, con la sesión del usuario
  *               de EG Publicación (una sesión temporal que se cierra al acabar)
+ *   wait        false lanza las peticiones sin esperarlas (para páginas que tardan más de un minuto); los
+ *               resultados se recogen después con results
+ *   results     true devuelve (y borra) los perfiles guardados que nadie ha recogido todavía
  *   uninstall   true quita el mu-plugin de perfil y sus opciones
  * La primera llamada instala el mu-plugin `eg-pub-perfil.php` (copia de includes/perfil-mu.php), que no hace nada
  * salvo en las peticiones que lanza este endpoint con un token de un solo uso que caduca a los 5 minutos. Cada página
@@ -92,6 +95,21 @@ function eg_pub_perf_handle( WP_REST_Request $request ) {
 	if ( ! empty( $p['uninstall'] ) ) {
 		return new WP_REST_Response( array( 'ok' => eg_pub_perf_uninstall(), 'uninstalled' => true ), 200 );
 	}
+	if ( ! empty( $p['results'] ) ) {
+		global $wpdb;
+		$names = $wpdb->get_col( "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE 'eg\\_pub\\_perf\\_r\\_%'" );
+		$pages = array();
+		foreach ( $names as $name ) {
+			wp_cache_delete( $name, 'options' );
+			$data = get_option( $name );
+			if ( is_array( $data ) ) {
+				$pages[] = array( 'url' => $data['url'] ?? '', 'top_ms' => eg_pub_perf_top( $data ), 'profile' => $data );
+			}
+			delete_option( $name );
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'pages' => $pages ), 200 );
+	}
+	$wait = ! array_key_exists( 'wait', $p ) || ! empty( $p['wait'] );
 	$jobs = array();
 	foreach ( array( 'urls' => false, 'admin_urls' => true ) as $key => $admin ) {
 		foreach ( array_slice( (array) ( $p[ $key ] ?? array() ), 0, 10 ) as $u ) {
@@ -108,7 +126,7 @@ function eg_pub_perf_handle( WP_REST_Request $request ) {
 		return eg_pub_error( 'eg_perf_mu', 'No se ha podido copiar el mu-plugin de perfil en wp-content/mu-plugins (permisos).', 500 );
 	}
 	$token = wp_generate_password( 32, false, false );
-	update_option( 'eg_pub_perf_token', array( 't' => $token, 'exp' => time() + 300 ), false );
+	update_option( 'eg_pub_perf_token', array( 't' => $token, 'exp' => time() + ( $wait ? 300 : 600 ) ), false );
 
 	$cookies = array();
 	$session = '';
@@ -131,12 +149,17 @@ function eg_pub_perf_handle( WP_REST_Request $request ) {
 		$req   = add_query_arg( array( 'eg_profile' => $token, 'eg_profile_id' => $id, 'nc' => wp_rand() ), $url );
 		$start = microtime( true );
 		$res   = wp_remote_get( $req, array(
-			'timeout'     => 60,
+			'timeout'     => $wait ? 60 : 1,
+			'blocking'    => $wait,
 			'redirection' => 0,
 			'cookies'     => $admin ? $cookies : array(),
 			'headers'     => array( 'User-Agent' => 'Mozilla/5.0 EG-Publicacion-perfil/' . EG_PUB_VERSION ),
 		) );
 		$wall = round( microtime( true ) - $start, 2 );
+		if ( ! $wait ) {
+			$pages[] = array( 'url' => $url, 'admin' => $admin, 'id' => $id, 'launched' => true );
+			continue;
+		}
 		$data = null;
 		for ( $i = 0; $i < 20 && ! $data; $i++ ) {
 			wp_cache_delete( 'eg_pub_perf_r_' . $id, 'options' );
@@ -162,8 +185,11 @@ function eg_pub_perf_handle( WP_REST_Request $request ) {
 		$pages[] = $page;
 	}
 
-	delete_option( 'eg_pub_perf_token' );
-	if ( $session ) {
+	if ( $wait ) {
+		delete_option( 'eg_pub_perf_token' );
+	}
+	// Sin esperar, la sesión temporal del admin caduca sola a los 10 minutos.
+	if ( $session && $wait ) {
 		WP_Session_Tokens::get_instance( $uid )->destroy( $session );
 	}
 	return new WP_REST_Response( array( 'ok' => true, 'pages' => $pages ), 200 );

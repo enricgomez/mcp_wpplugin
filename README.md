@@ -32,6 +32,7 @@ Con **Gestión de la web** activada, `POST /wp-json/eg/v1/seo` permite revisar y
 - **Por defecto previsualiza**: devuelve valores, cambios propuestos y advertencias orientativas. Solo guarda con `apply: true`.
 - Guarda metadatos nativos de Yoast SEO cuando está activo; Rank Math cuando está activo. El editor de blog y las landings también usan este mismo sistema. La búsqueda/sustitución de textos y la edición de productos admiten claves Yoast.
 - El diagnóstico es una ayuda básica, **no** reproduce el análisis ni garantiza los semáforos de Yoast. El análisis completo debe revisarse en el editor de WordPress, especialmente con Elementor y contenidos traducidos.
+- Desde la v2.37.0, `indexar` (solo Yoast, requiere permisos de administración): decide si un tipo de contenido o una taxonomía entera sale en buscadores, el ajuste «Mostrar … en los resultados de búsqueda» de Yoast. Ejemplo: `{"indexar": {"post": true, "category": true}, "apply": true}`. Sin `apply` solo previsualiza; devuelve el estado `index`/`noindex` de todos los tipos. Al guardar vacía la caché de WP Rocket.
 
 Ejemplo de previsualización: `{"ids":[123,456],"set":{"seo_title":"Título optimizado","seo_description":"Descripción para buscadores","focus_keyword":"frase clave"},"langs":{"en":{"seo_title":"Optimized title","seo_description":"English search snippet","focus_keyword":"key phrase"}}}`. Para aplicar los cambios, añadir `"apply":true`.
 

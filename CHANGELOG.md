@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.37.0 · 30/10/2026 · PR #76 (Claude)
+
+- `/seo`: nuevo `indexar` para el ajuste global de Yoast que decide si las entradas, páginas, categorías u otros tipos salen en Google (`noindex-*` de `wpseo_titles`). Previsualiza por defecto; guarda con `apply: true` y vacía la caché de WP Rocket.
+- Webs: taxi-calella.com (todas las entradas del blog estaban en noindex). En las demás no cambia nada mientras no se use.
+
 ## 2.36.0 · 30/10/2026 · PR #75 (Claude)
 
 - `/product` (tipología WooCommerce): cambia también precio normal y rebajado, SKU, peso, existencias, estado (también desde la papelera), imagen principal y galería (ID, URL o `{"url", "alt"}`). Nuevo `create` para crear un producto en borrador, vacío o copiado de otro (`from`, ID o SKU), y `list: true` para ver todos los productos con su estado, papelera incluida.

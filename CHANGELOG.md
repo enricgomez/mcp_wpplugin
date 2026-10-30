@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.39.0 · 30/10/2026 · PR #82 (Claude)
+
+- `/rocket`: nuevo `elementor` para los ajustes de rendimiento de Elementor que no se pueden tocar sin wp-admin: cómo se imprime el CSS (`css_print_method`: `internal` lo mete en el HTML y ahorra peticiones), iconos como SVG en lugar de las fuentes de Font Awesome (`font_icon_svg`), carga de CSS optimizada, compatibilidad con Font Awesome 4 y `font_display`. Previsualiza salvo `apply: true`; al guardar rehace el CSS de Elementor y vacía la caché de WP Rocket. La respuesta incluye los valores actuales en `elementor`.
+- Webs: sonovet.net (LCP en móvil). En las demás no cambia nada mientras no se use.
+
 ## 2.38.3 · 30/10/2026 · PR #81 (Claude)
 
 - `/item`: `set.content_replace` (`[{"from", "to"}]`) cambia trozos exactos del contenido tal cual, shortcodes y HTML incluidos, sin reenviar ni volver a filtrar la página entera. Cada `from` tiene que salir exactamente una vez. Para páginas de WPBakery, donde `/text` no llega porque solo cambia el texto visible.

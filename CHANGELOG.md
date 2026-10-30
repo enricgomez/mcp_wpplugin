@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.35.0 · 30/10/2026 · PR pendiente (Claude)
+
+- Preguntas frecuentes del blog: más margen entre el título «Preguntas frecuentes» y el primer desplegable (1,25em). Se aplica también en las webs con `faq_css` propio, que puede cambiarlo.
+- `/post-media`: nuevo `content_attachment_id` para cambiar la imagen dentro del contenido de una entrada por otra de la biblioteca, sin volver a publicarla y conservando su texto alternativo. `attachment_id` pasa a ser opcional si se manda este.
+- Webs: taxi-calella.com (imagen del coche del post de La Roca Village y sus traducciones). El margen de las FAQ afecta a todas las webs con preguntas frecuentes en el blog.
+
 ## 2.34.0 · 29/10/2026 · PR #68 (Claude)
 
 - `/menu`: `items` acepta también enlaces personalizados `{url, title, position?, parent?}`, p. ej. el ancla de una sección de una página. Se reconocen por su URL: si ya existe uno con esa URL, se actualiza en vez de duplicarse. Antes solo se podían añadir páginas, y una misma página no podía estar dos veces en el menú.

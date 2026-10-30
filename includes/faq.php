@@ -284,11 +284,13 @@ add_action( 'wp_head', function () {
 
 /** Estilo de los desplegables: neutro, con la pregunta en el color secundario de Elementor si lo hay; `faq_css` en /publish lo sustituye por el de la marca. */
 function eg_pub_faq_css() {
+	// Aire entre el título «Preguntas frecuentes» y el primer desplegable; va delante para que `faq_css` pueda cambiarlo.
+	$base   = '.eg-faq>.wp-block-heading{margin-bottom:1.25em}';
 	$custom = (string) get_option( EG_PUB_OPTION_FAQ_CSS, '' );
 	if ( '' !== $custom ) {
-		return $custom;
+		return $base . $custom;
 	}
-	return '.eg-faq{margin:2.5em 0}'
+	return $base . '.eg-faq{margin:2.5em 0}'
 		. '.eg-faq .eg-faq-item{border:1px solid rgba(0,0,0,.12);border-radius:10px;margin:0 0 12px;background:#fff;overflow:hidden;transition:box-shadow .2s}'
 		. '.eg-faq .eg-faq-item[open]{box-shadow:0 6px 18px rgba(0,0,0,.08);border-color:rgba(0,0,0,.25)}'
 		. '.eg-faq .eg-faq-item>summary{list-style:none;cursor:pointer;position:relative;padding:16px 52px 16px 20px;font-weight:600;line-height:1.4;color:var(--e-global-color-secondary,inherit)}'

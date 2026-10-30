@@ -7,6 +7,8 @@
  * `set` cambia title, slug, excerpt, content, status o menu_order; `acf` cambia campos por nombre o clave
  * (las imágenes y galerías admiten ID, URL o {"url", "alt"}, y se suben una sola vez); `featured_image` pone
  * la imagen destacada. Se guarda sin wp_update_post para que WPML no lance la traducción automática.
+ * `with_meta: true` en la lectura devuelve sus campos personalizados (p. ej. los del tema, como _dt_sidebar_position
+ * de The7) y `meta` ({"campo": valor}) los cambia; "" o null borra el campo. No toca los internos de WordPress.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -111,11 +113,18 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 	$set     = (array) ( $p['set'] ?? array() );
 	$acf     = (array) ( $p['acf'] ?? array() );
 	$dry_run = ! empty( $p['dry_run'] );
-	if ( $dry_run || ( ! $set && ! $acf && ! isset( $p['featured_image'] ) ) ) {
+	if ( $dry_run || ( ! $set && ! $acf && ! $meta && ! isset( $p['featured_image'] ) ) ) {
 		$state = eg_pub_item_state( $post_id );
 		if ( ! empty( $p['with_content'] ) ) {
 			// El contenido completo, tal cual (shortcodes de WPBakery incluidos), para preparar un /text exacto.
 			$state['content'] = $post->post_content;
+		}
+		if ( ! empty( $p['with_meta'] ) ) {
+			$state['meta'] = array();
+			foreach ( get_post_meta( $post_id ) as $key => $values ) {
+				$value                  = maybe_unserialize( $values[0] );
+				$state['meta'][ $key ] = is_string( $value ) && strlen( $value ) > 300 ? substr( $value, 0, 300 ) . '…' : $value;
+			}
 		}
 		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $state, 200 );
 	}
@@ -233,6 +242,21 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 		}
 		update_field( $field['key'], $value, $post_id );
 		$changes[] = 'acf.' . $field['name'];
+	}
+
+	// --- Campos personalizados -----------------------------------------------------
+	foreach ( $meta as $key => $value ) {
+		$key = (string) $key;
+		if ( preg_match( '/^_(wp_|edit_|thumbnail_id$|elementor_data$)/', $key ) ) {
+			$notes[] = 'el campo ' . $key . ' es interno de WordPress: no se cambia';
+			continue;
+		}
+		if ( null === $value || '' === $value ) {
+			delete_post_meta( $post_id, $key );
+		} else {
+			update_post_meta( $post_id, $key, is_scalar( $value ) ? wp_slash( (string) $value ) : $value );
+		}
+		$changes[] = 'meta.' . $key;
 	}
 
 	// Elementor pinta los campos dinámicos con su caché: que la regenere.

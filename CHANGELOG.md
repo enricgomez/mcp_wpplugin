@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.40.0 · 30/10/2026 · PR #83 (Claude)
+
+- `/theme` (módulo nuevo «Tema», tipología Gestión de la web): lee y cambia los ajustes del tema guardados con Options Framework (The7) buscándolos con `find`, y `labels` cambia textos fijos del tema o de los plugins por su original (p. ej. la etiqueta «Out Of Stock» de las fotos de producto por «Muy pronto»), con gettext: al quitar el cambio o el plugin vuelve el texto original. Previsualiza salvo `apply: true`.
+- `/item`: `with_meta: true` lee los campos personalizados de la entrada y `meta` los cambia (p. ej. el sidebar de The7 de un producto). No toca los internos de WordPress.
+- Webs: dulcelucca.com (etiqueta «Muy pronto» hasta abrir la campaña y diseño de la ficha de producto). En las demás no cambia nada mientras no se use.
+
 ## 2.39.0 · 30/10/2026 · PR #82 (Claude)
 
 - `/rocket`: nuevo `elementor` para los ajustes de rendimiento de Elementor que no se pueden tocar sin wp-admin: cómo se imprime el CSS (`css_print_method`: `internal` lo mete en el HTML y ahorra peticiones), iconos como SVG en lugar de las fuentes de Font Awesome (`font_icon_svg`), carga de CSS optimizada, compatibilidad con Font Awesome 4 y `font_display`. Previsualiza salvo `apply: true`; al guardar rehace el CSS de Elementor y vacía la caché de WP Rocket. La respuesta incluye los valores actuales en `elementor`.

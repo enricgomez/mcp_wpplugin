@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.49.0 · 01/11/2026 · PR pendiente (Claude)
+
+- `/cpt`: nuevo `rewrite` (`{"<post_type>": "<base>"}`) cambia la base de las URL de un tipo de contenido ya registrado, sea de CPT UI (no hace falta JetEngine) o de JetEngine. Regenera los enlaces permanentes en la petición siguiente, borra los indexables de Yoast de ese tipo para que el canonical y el sitemap salgan con la URL nueva y avisa si ya hay una página con esa ruta y el CPT tiene archivo. Con `dry_run` solo dice qué cambiaría.
+- Webs: test-neptunoapartments.com (las fichas de apartamento pasan de /habitacion/ a /apartamentos-calella-costa-barcelona/, como en la web actual).
+
 ## 2.48.1 · 01/11/2026 · PR #98 (Claude)
 
 - `/form` con `settings`: rehace el CSS del formulario (Forminator solo lo rehacía al guardar desde el admin), así los cambios de color del botón se ven al momento.

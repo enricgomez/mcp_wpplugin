@@ -198,6 +198,18 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 			wp_transition_post_status( $row['post_status'], $post->post_status, get_post( $post_id ) );
 		}
 		$changes = array_merge( $changes, array_keys( $row ) );
+		// Yoast guarda la URL, el título y el estado en su tabla de indexables y no se entera de este cambio (no pasa
+		// por wp_update_post): se borra el indexable de la entrada y de sus hijas, y Yoast lo rehace en la siguiente
+		// visita. Si no, el canonical, el og:url y el sitemap siguen con la URL antigua.
+		if ( defined( 'WPSEO_VERSION' ) && array_intersect( array( 'post_name', 'post_parent', 'post_title', 'post_status' ), array_keys( $row ) ) ) {
+			$ids   = array_merge( array( $post_id ), array_map( 'intval', get_children( array( 'post_parent' => $post_id, 'post_type' => $post->post_type, 'fields' => 'ids' ) ) ) );
+			$table = $wpdb->prefix . 'yoast_indexable';
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+				$in = implode( ',', array_map( 'intval', $ids ) );
+				$wpdb->query( "DELETE FROM {$table} WHERE object_type = 'post' AND object_id IN ({$in})" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$changes[] = 'yoast_indexable';
+			}
+		}
 	}
 
 	// --- Imagen destacada --------------------------------------------------------

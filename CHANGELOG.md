@@ -10,7 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.46.0 · 01/11/2026 · PR pendiente (Claude)
+## 2.46.1 · 01/11/2026 · PR #95 (Claude)
+
+- `/item`: al cambiar `slug`, `parent`, `title` o `status` en una web con Yoast, borra el indexable de Yoast de la entrada y de sus hijas para que lo rehaga en la siguiente visita. Como `/item` guarda sin `wp_update_post`, Yoast seguía sirviendo el canonical, el og:url y el sitemap con la URL antigua. La respuesta lo indica en `changes` (`yoast_indexable`).
+- Webs: shamaspa.com (canonical de /spa/ apuntando a /spa-2/). Afecta a todas las webs con Yoast cuando se use `/item` para esos campos.
+
+## 2.46.0 · 01/11/2026 · PR #94 (Claude)
 
 - `/redirect` sin Rank Math ni Redirection: la redirección la guarda el propio EG Publicación (opción `eg_pub_redirects`, `plugin: eg-publicacion` en la respuesta) y la aplica solo cuando la URL de origen da 404, en `template_redirect` antes de `redirect_canonical`, para que WordPress no adivine otra página. 410 y 451 devuelven ese código. Con Rank Math o Redirection no cambia nada.
 - Webs: shamaspa.com (sin plugin de redirecciones; quitar el «-2» de las URL de spa y de la página de litigios con su 301).

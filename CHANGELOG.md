@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.47.0 · 01/11/2026 · PR pendiente (Claude)
+## 2.47.0 · 01/11/2026 · PR #96 (Claude)
 
 - `/form` (módulo nuevo «Formularios», tipología Gestión de la web): lee y cambia los textos de un formulario de Forminator (etiquetas, placeholders, texto de aceptación, opciones, botón de enviar y mensajes) sin tocar el resto. Los cambios se mezclan con lo que hay.
 - Webs: hotelneptuno.com (formularios de contacto, trabaja con nosotros y eventos con los textos en castellano en ca/en/fr/de).

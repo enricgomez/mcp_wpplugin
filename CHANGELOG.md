@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.48.0 · 01/11/2026 · PR #97 (Claude)
+
+- `/form`: `where: true` dice en qué entradas (páginas, plantillas de Elementor, contenido) se usa el formulario, con su idioma y el elemento de Elementor. `copy: true` (con `title`) crea una copia del formulario y devuelve su ID. `swap` (`{"to": ID, "pages": [IDs]}`) cambia en esas entradas el formulario por otro. Así cada idioma puede tener su propio formulario traducido cuando todos compartían uno.
+- Webs: hotelneptuno.com (el mismo formulario de contacto en castellano en todos los idiomas).
+
 ## 2.47.0 · 01/11/2026 · PR #96 (Claude)
 
 - `/form` (módulo nuevo «Formularios», tipología Gestión de la web): lee y cambia los textos de un formulario de Forminator (etiquetas, placeholders, texto de aceptación, opciones, botón de enviar y mensajes) sin tocar el resto. Los cambios se mezclan con lo que hay.

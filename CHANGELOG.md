@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.51.0 · 01/11/2026 · PR #101 (Claude)
+
+- `/template` con `id`: nuevo `images` (`{"<ID de adjunto actual>": <ID de adjunto nuevo>}`) cambia fotos en el sitio en una página o plantilla de Elementor, en cualquier control de imagen (imagen, fondo, fondo superpuesto o al pasar el ratón, diapositivas, cajas, galerías), sin tocar el resto ni los ids de los elementos. Devuelve en `images` cuántas veces cambió cada foto y en `missing` las que no estaban. Se puede combinar con `patch`, `replace` y `remove`, y guarda la copia en `_eg_pub_elementor_backup`.
+- Webs: test-neptunoapartments.com (cambiar las fotos heredadas del hotel por las de los apartamentos). Sirve en todas las webs con Elementor.
+
 ## 2.50.0 · 01/11/2026 · PR #100 (Claude)
 
 - `/internal-links` (módulo Enlaces): busca en el JSON de Elementor de todas las páginas y plantillas los enlaces escritos a mano que apuntan a una entrada de la propia web (botones, imágenes, títulos, listas de iconos y cualquier control de enlace, también en repetidores) y, en los menús, los elementos con enlace personalizado a la web. Sin `apply` solo los lista; con `apply: true` les pone la etiqueta dinámica «Enlace interno» con el ID de la entrada (la URL queda de respaldo) y pasa los elementos de menú a enlace de entrada. `domains` añade otros dominios que cuentan como internos e `ids` limita a unas entradas. Deja fuera anclas, parámetros, tel:, mailto: y externos, y lista en `unresolved` los que no corresponden a ninguna entrada. Guarda la copia en `_eg_pub_elementor_backup`.

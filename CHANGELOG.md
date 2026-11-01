@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.48.1 · 01/11/2026 · PR #98 (Claude)
+
+- `/form` con `settings`: rehace el CSS del formulario (Forminator solo lo rehacía al guardar desde el admin), así los cambios de color del botón se ven al momento.
+- Webs: hotelneptuno.com (botón de los formularios de eventos blanco sobre fondo blanco).
+
 ## 2.48.0 · 01/11/2026 · PR #97 (Claude)
 
 - `/form`: `where: true` dice en qué entradas (páginas, plantillas de Elementor, contenido) se usa el formulario, con su idioma y el elemento de Elementor. `copy: true` (con `title`) crea una copia del formulario y devuelve su ID. `swap` (`{"to": ID, "pages": [IDs]}`) cambia en esas entradas el formulario por otro. Así cada idioma puede tener su propio formulario traducido cuando todos compartían uno.

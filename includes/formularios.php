@@ -138,6 +138,9 @@ function eg_pub_form_handle( WP_REST_Request $r ) {
 		$meta['settings'] = $settings;
 		update_post_meta( $id, EG_PUB_FORMINATOR_META, $meta );
 		clean_post_cache( $id );
+		if ( $set ) {
+			eg_pub_form_reset_css( $id );
+		}
 		if ( function_exists( 'rocket_clean_domain' ) ) {
 			rocket_clean_domain();
 		}
@@ -279,4 +282,17 @@ function eg_pub_form_where( $id, $to = 0, $pages = array() ) {
 		$out['missing'] = array_values( array_diff( $pages, $changed ) );
 	}
 	return new WP_REST_Response( $out, 200 );
+}
+
+/**
+ * Forminator guarda los colores y estilos del formulario en un CSS propio que solo rehace al guardar desde el
+ * admin: tras cambiar ajustes se borra y Forminator lo vuelve a crear en la siguiente visita.
+ */
+function eg_pub_form_reset_css( $id ) {
+	$uploads = wp_upload_dir();
+	foreach ( (array) glob( trailingslashit( $uploads['basedir'] ) . 'forminator/' . (int) $id . '_*/css/style-' . (int) $id . '.css' ) as $file ) {
+		if ( $file && is_file( $file ) ) {
+			wp_delete_file( $file );
+		}
+	}
 }

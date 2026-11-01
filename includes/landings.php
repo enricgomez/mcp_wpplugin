@@ -649,10 +649,12 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	if ( ! in_array( $code, array( 301, 302, 307, 410, 451 ), true ) ) {
 		return eg_pub_error( 'eg_code', 'Código de redirección no válido: ' . $code );
 	}
-	if ( ! class_exists( '\RankMath\Redirections\Redirection' ) ) {
-		return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo o tiene desactivado el módulo de Redirecciones.', 501 );
+	$rank_math   = class_exists( '\\RankMath\\Redirections\\Redirection' );
+	$redirection = class_exists( 'Red_Item' );
+	if ( ! $rank_math && ! $redirection ) {
+		return eg_pub_error( 'eg_redirect_plugin', 'No hay dónde guardar la redirección: hace falta Rank Math (módulo Redirecciones) o el plugin Redirection.', 501 );
 	}
-	// Rank Math guarda la URL de origen sin dominio ni barra inicial.
+	// La URL de origen sin dominio.
 	$path = trim( (string) wp_parse_url( $from, PHP_URL_PATH ), '/' );
 	if ( '' === $path ) {
 		return eg_pub_error( 'eg_from', 'La URL de origen no puede ser la portada.' );
@@ -662,7 +664,11 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 		$to = untrailingslashit( get_option( 'home' ) ) . $to;
 	}
 
-	// Rank Math actualiza la redirección que ya tenga ese mismo origen en lugar de crear otra.
+	if ( ! $rank_math ) {
+		return eg_pub_redirect_redirection( $path, $to, $code );
+	}
+
+	// Rank Math guarda la URL de origen sin barra inicial y actualiza la redirección que ya tenga ese mismo origen.
 	$id = \RankMath\Redirections\Redirection::from( array(
 		'url_to'      => esc_url_raw( $to ),
 		'header_code' => $code,
@@ -672,7 +678,45 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	if ( ! $id ) {
 		return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección de ' . $path . '.', 409 );
 	}
-	return new WP_REST_Response( array( 'ok' => true, 'id' => (int) $id, 'from' => $path, 'to' => esc_url_raw( $to ), 'code' => $code ), 200 );
+	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'rank-math', 'id' => (int) $id, 'from' => $path, 'to' => esc_url_raw( $to ), 'code' => $code ), 200 );
+}
+
+/**
+ * La misma redirección en el plugin Redirection (John Godley), para las webs sin Rank Math. Origen exacto con
+ * barra inicial y final (Redirection ignora la barra final por defecto); si ya hay una con ese origen, la cambia.
+ */
+function eg_pub_redirect_redirection( $path, $to, $code ) {
+	global $wpdb;
+	$items  = $wpdb->prefix . 'redirection_items';
+	$groups = $wpdb->prefix . 'redirection_groups';
+	$source = '/' . $path . ( false === strpos( basename( $path ), '.' ) ? '/' : '' );
+	$group  = (int) $wpdb->get_var( "SELECT id FROM {$groups} WHERE status = 'enabled' AND module_id = 1 ORDER BY id LIMIT 1" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $group ) {
+		return eg_pub_error( 'eg_redirect', 'Redirection no tiene ningún grupo activo de WordPress donde guardar la redirección.', 409 );
+	}
+	$error   = in_array( $code, array( 410, 451 ), true );
+	$details = array(
+		'url'         => $source,
+		'match_type'  => 'url',
+		'regex'       => false,
+		'group_id'    => $group,
+		'action_type' => $error ? 'error' : 'url',
+		'action_code' => $code,
+		'action_data' => $error ? array() : array( 'url' => esc_url_raw( $to ) ),
+	);
+	$existing = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$items} WHERE url IN (%s, %s) AND regex = 0 ORDER BY id LIMIT 1", $source, untrailingslashit( $source ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( $existing && ( $item = Red_Item::get_by_id( $existing ) ) ) {
+		$result = $item->update( $details );
+		$id     = $existing;
+	} else {
+		$result = Red_Item::create( $details );
+		$id     = $result instanceof Red_Item ? (int) $result->get_id() : 0;
+	}
+	if ( is_wp_error( $result ) || ! $id ) {
+		$message = is_wp_error( $result ) ? $result->get_error_message() : 'sin ID';
+		return eg_pub_error( 'eg_redirect', 'Redirection no ha guardado la redirección de ' . $source . ': ' . $message, 409 );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'redirection', 'id' => $id, 'updated' => (bool) $existing, 'from' => $source, 'to' => $error ? '' : esc_url_raw( $to ), 'code' => $code ), 200 );
 }
 
 /* ======================================================================

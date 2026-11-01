@@ -275,7 +275,7 @@ function eg_pub_ability_defs() {
 			'module'      => 'redirecciones',
 			'cap'         => 'manage_options',
 			'label'       => 'Crear una redirección',
-			'description' => 'Crea una redirección en Rank Math.',
+			'description' => 'Crea una redirección en Rank Math o, si no está, en el plugin Redirection.',
 			'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
 			'input'       => array(
 				'required'   => array( 'from', 'to' ),

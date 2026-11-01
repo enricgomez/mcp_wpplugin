@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.45.0 · 01/11/2026 · PR pendiente (Claude)
+
+- `/redirect`: si la web no tiene Rank Math, guarda la redirección en el plugin Redirection (primer grupo activo de WordPress, origen exacto con barra final; si ya hay una con ese origen, la cambia). 410 y 451 se guardan como error. La respuesta trae `plugin` (`rank-math` o `redirection`). Con Rank Math no cambia nada.
+- Webs: hotelneptuno.com (Yoast + Redirection; URL traducidas de equipo, servicios y ofertas con 301 desde las antiguas).
+
 ## 2.44.0 · 30/10/2026 · PR #92 (Claude)
 
 - `/perf` `fixes`: ajustes de rendimiento del servidor que se activan o quitan desde el endpoint (opción `eg_pub_perf_fixes`). El primero, `jet_validator`: JetElements 2.9.2.7 vuelve a montar la lista completa de controles de cada elemento de Elementor (con los registros de iconos y animaciones) al pintarlo, al generar su CSS y al cargar cada documento. El ajuste cambia esos tres ganchos por los mismos pasos con la lista guardada por tipo de elemento durante la petición. Si no encuentra los tres ganchos (otra versión de JetElements), no toca nada y lo dice en `fixes.jet_validator.active`.

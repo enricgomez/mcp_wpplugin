@@ -9,6 +9,9 @@
  * la imagen destacada. Se guarda sin wp_update_post para que WPML no lance la traducción automática.
  * `with_meta: true` en la lectura devuelve sus campos personalizados (p. ej. los del tema, como _dt_sidebar_position
  * de The7) y `meta` ({"campo": valor}) los cambia; "" o null borra el campo. No toca los internos de WordPress.
+ * `acf_new` ([{"name", "label", "type"?, "after"?}]) añade campos nuevos al grupo de ACF de la entrada (el del campo
+ * `group_of`, o el primero), de tipo interruptor (true_false) si no se dice otro. Si ya existe uno con ese nombre en
+ * el grupo, no lo duplica. Solo grupos guardados en la base de datos (no los de PHP). Con dry_run solo lo describe.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -103,6 +106,67 @@ function eg_pub_item_state( $post_id ) {
 	);
 }
 
+/** Añade campos al grupo de ACF de la entrada. Devuelve lo creado y lo que ya estaba. */
+function eg_pub_item_acf_new( $post_id, $new, $group_of, $dry_run ) {
+	if ( ! function_exists( 'acf_update_field' ) ) {
+		return eg_pub_error( 'eg_acf', 'ACF no está activo.' );
+	}
+	$groups = acf_get_field_groups( array( 'post_id' => $post_id, 'post_type' => get_post_type( $post_id ) ) );
+	$group  = $groups ? $groups[0] : null;
+	if ( $group_of ) {
+		foreach ( $groups as $g ) {
+			foreach ( (array) acf_get_fields( $g ) as $f ) {
+				if ( $f['name'] === $group_of || $f['key'] === $group_of ) {
+					$group = $g;
+					break 2;
+				}
+			}
+		}
+	}
+	if ( ! $group || empty( $group['ID'] ) ) {
+		return eg_pub_error( 'eg_acf', 'La entrada no tiene un grupo de campos de ACF guardado en la base de datos.' );
+	}
+	$existing = array();
+	$order    = 0;
+	foreach ( (array) acf_get_fields( $group ) as $f ) {
+		$existing[ $f['name'] ] = $f['key'];
+		$order                  = max( $order, (int) $f['menu_order'] );
+	}
+	$types   = array( 'true_false', 'text', 'textarea', 'number', 'image', 'url' );
+	$created = array();
+	$kept    = array();
+	foreach ( (array) $new as $item ) {
+		$name  = sanitize_key( $item['name'] ?? '' );
+		$label = sanitize_text_field( $item['label'] ?? '' );
+		$type  = in_array( $item['type'] ?? 'true_false', $types, true ) ? ( $item['type'] ?? 'true_false' ) : 'true_false';
+		if ( '' === $name || '' === $label ) {
+			return eg_pub_error( 'eg_acf', 'Cada campo nuevo necesita name y label.' );
+		}
+		if ( isset( $existing[ $name ] ) ) {
+			$kept[ $name ] = $existing[ $name ];
+			continue;
+		}
+		$field = array(
+			'key'        => 'field_' . substr( md5( $group['key'] . $name ), 0, 13 ),
+			'label'      => $label,
+			'name'       => $name,
+			'type'       => $type,
+			'parent'     => (int) $group['ID'],
+			'menu_order' => ++$order,
+		);
+		if ( 'true_false' === $type ) {
+			$field += array( 'ui' => 1, 'default_value' => 0 );
+		}
+		if ( ! $dry_run ) {
+			$saved = acf_update_field( $field );
+			$field['key'] = $saved['key'] ?? $field['key'];
+		}
+		$existing[ $name ] = $field['key'];
+		$created[ $name ]  = $field['key'];
+	}
+	return array( 'group' => $group['title'], 'group_key' => $group['key'], 'created' => (object) $created, 'existing' => (object) $kept );
+}
+
 function eg_pub_item_handle( WP_REST_Request $r ) {
 	$p       = $r->get_params();
 	$post_id = (int) ( $p['id'] ?? 0 );
@@ -114,6 +178,16 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 	$acf     = (array) ( $p['acf'] ?? array() );
 	$meta    = (array) ( $p['meta'] ?? array() );
 	$dry_run = ! empty( $p['dry_run'] );
+	$acf_new = null;
+	if ( ! empty( $p['acf_new'] ) ) {
+		$acf_new = eg_pub_item_acf_new( $post_id, $p['acf_new'], sanitize_text_field( $p['group_of'] ?? '' ), $dry_run );
+		if ( is_wp_error( $acf_new ) ) {
+			return $acf_new;
+		}
+		if ( $dry_run || ( ! $set && ! $acf && ! $meta && ! isset( $p['featured_image'] ) ) ) {
+			return new WP_REST_Response( array( 'ok' => true, 'dry_run' => $dry_run, 'acf_new' => $acf_new ), 200 );
+		}
+	}
 	if ( $dry_run || ( ! $set && ! $acf && ! $meta && ! isset( $p['featured_image'] ) ) ) {
 		$state = eg_pub_item_state( $post_id );
 		if ( ! empty( $p['with_content'] ) ) {

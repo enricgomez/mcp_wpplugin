@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.52.0 · 01/11/2026 · PR (Claude)
+
+- `/item` (módulo Fichas): nuevo `acf_new` (`[{"name", "label", "type"?}]`) añade campos al grupo de ACF de la entrada (el del campo que diga `group_of`, o el primero), de tipo interruptor (`true_false`) si no se indica otro (`text`, `textarea`, `number`, `image`, `url`). No duplica un campo que ya exista con ese nombre (sale en `existing`) y devuelve en `created` la clave de cada campo nuevo. Solo con grupos guardados en la base de datos. Con `dry_run` solo dice qué crearía. Para darles valor, una llamada `acf` aparte.
+- Webs: test-neptunoapartments.com (interruptores del equipamiento de los apartamentos). Sirve en todas las webs con ACF.
+
 ## 2.51.1 · 01/11/2026 · PR #102 (Claude)
 
 - `/template` con `images`: si un ID de adjunto nuevo no existe en la biblioteca de medios ya no se ignora sin avisar; sale en `bad_images` (y si no queda ninguna foto válida que cambiar, la llamada da error `eg_bad_image`).

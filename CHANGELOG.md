@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.50.0 · 01/11/2026 · PR #100 (Claude)
+
+- `/internal-links` (módulo Enlaces): busca en el JSON de Elementor de todas las páginas y plantillas los enlaces escritos a mano que apuntan a una entrada de la propia web (botones, imágenes, títulos, listas de iconos y cualquier control de enlace, también en repetidores) y, en los menús, los elementos con enlace personalizado a la web. Sin `apply` solo los lista; con `apply: true` les pone la etiqueta dinámica «Enlace interno» con el ID de la entrada (la URL queda de respaldo) y pasa los elementos de menú a enlace de entrada. `domains` añade otros dominios que cuentan como internos e `ids` limita a unas entradas. Deja fuera anclas, parámetros, tel:, mailto: y externos, y lista en `unresolved` los que no corresponden a ninguna entrada. Guarda la copia en `_eg_pub_elementor_backup`.
+- Webs: test-neptunoapartments.com (enlaces internos dinámicos para WPML y cambios de URL). Sirve en todas las webs con Elementor Pro.
+
 ## 2.49.0 · 01/11/2026 · PR #99 (Claude)
 
 - `/cpt`: nuevo `rewrite` (`{"<post_type>": "<base>"}`) cambia la base de las URL de un tipo de contenido ya registrado, sea de CPT UI (no hace falta JetEngine) o de JetEngine. Regenera los enlaces permanentes en la petición siguiente, borra los indexables de Yoast de ese tipo para que el canonical y el sitemap salgan con la URL nueva y avisa si ya hay una página con esa ruta y el CPT tiene archivo. Con `dry_run` solo dice qué cambiaría.

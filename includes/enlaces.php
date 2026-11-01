@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
-	$modules['enlaces'] = array( 'type' => 'gestion', 'routes' => array( 'lang-links' ) );
+	$modules['enlaces'] = array( 'type' => 'gestion', 'routes' => array( 'lang-links', 'internal-links' ) );
 	return $modules;
 } );
 
@@ -35,6 +35,11 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'eg/v1', '/lang-links', array(
 		'methods'             => 'POST',
 		'callback'            => 'eg_pub_lang_links_handle',
+		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
+	) );
+	register_rest_route( 'eg/v1', '/internal-links', array(
+		'methods'             => 'POST',
+		'callback'            => 'eg_pub_internal_links_handle',
 		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
 	) );
 } );
@@ -254,4 +259,206 @@ function eg_pub_lang_links_handle( WP_REST_Request $r ) {
 		'elsewhere'        => $elsewhere,
 		'message'          => implode( ' | ', $notes ),
 	), 200 );
+}
+
+/*
+ * Enlaces internos escritos a mano → etiqueta dinámica «Enlace interno» de Elementor:
+ *   POST /wp-json/eg/v1/internal-links
+ * Busca en el JSON de Elementor de todas las páginas y plantillas (o de `ids`) los enlaces de los widgets (botón,
+ * imagen, título, listas de iconos y cualquier control de enlace, también dentro de repetidores) que apuntan a una
+ * entrada de esta web, y en los menús los elementos con enlace personalizado a una entrada de la web. Sin `apply`
+ * solo lo lista. Con `apply: true` pone en cada enlace la etiqueta dinámica internal-url con el ID de la entrada
+ * (la URL escrita queda como respaldo) y pasa los elementos de menú a enlace de entrada. Así, si cambia una URL o
+ * se traduce con WPML, el enlace sigue bien.
+ *   domains  opcional: otros dominios que cuentan como internos (p. ej. el de la web antigua antes de migrar).
+ *   ids      opcional: solo esas entradas o plantillas.
+ * No toca enlaces con #ancla o parámetros, ni tel:, mailto: o externos; los que no corresponden a ninguna entrada
+ * salen en `unresolved`. Antes de guardar deja el JSON anterior en _eg_pub_elementor_backup.
+ */
+function eg_pub_internal_links_handle( WP_REST_Request $r ) {
+	global $wpdb;
+	$p       = (array) $r->get_json_params();
+	$apply   = ! empty( $p['apply'] );
+	$hosts   = array();
+	foreach ( array_merge( array( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ), (array) ( $p['domains'] ?? array() ) ) as $h ) {
+		$h = strtolower( preg_replace( '#^(https?://)?(www\.)?#i', '', trim( (string) $h, '/ ' ) ) );
+		if ( $h ) {
+			$hosts[ $h ] = true;
+		}
+	}
+	$ids = array_filter( array_map( 'absint', (array) ( $p['ids'] ?? array() ) ) );
+	$sql = "SELECT pm.post_id FROM {$wpdb->postmeta} pm JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE pm.meta_key = '_elementor_data' AND p.post_type <> 'revision' AND p.post_status IN ('publish','draft','private','future','pending')";
+	$all = array_map( 'intval', $wpdb->get_col( $sql ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	if ( $ids ) {
+		$all = array_values( array_intersect( $all, $ids ) );
+	}
+
+	$out = array( 'ok' => true, 'apply' => $apply, 'docs' => array(), 'menus' => array(), 'unresolved' => array(), 'converted' => 0, 'pending' => 0 );
+	foreach ( $all as $id ) {
+		$raw  = get_post_meta( $id, '_elementor_data', true );
+		$data = is_string( $raw ) ? json_decode( $raw, true ) : $raw;
+		if ( ! is_array( $data ) ) {
+			continue;
+		}
+		$found = array();
+		eg_pub_internal_links_walk( $data, $hosts, $apply, $found );
+		if ( ! $found ) {
+			continue;
+		}
+		$doc = array( 'id' => $id, 'title' => get_the_title( $id ), 'type' => get_post_type( $id ), 'links' => array() );
+		$changed = false;
+		foreach ( $found as $f ) {
+			if ( empty( $f['post_id'] ) ) {
+				$out['unresolved'][] = array( 'doc' => $id ) + $f;
+				continue;
+			}
+			$doc['links'][] = $f;
+			$changed        = $changed || $apply;
+			$out[ $apply ? 'converted' : 'pending' ]++;
+		}
+		if ( $doc['links'] ) {
+			$out['docs'][] = $doc;
+		}
+		if ( $changed ) {
+			update_post_meta( $id, '_eg_pub_elementor_backup', wp_slash( wp_json_encode( array( 'time' => time(), 'title' => get_the_title( $id ), 'data' => is_string( $raw ) ? $raw : wp_json_encode( $raw ) ) ) ) );
+			update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( $data ) ) );
+			delete_post_meta( $id, '_elementor_css' );
+			delete_post_meta( $id, '_elementor_element_cache' );
+			if ( function_exists( 'rocket_clean_post' ) ) {
+				rocket_clean_post( $id );
+			}
+		}
+	}
+
+	// Menús: elementos con enlace personalizado a una entrada de la web.
+	if ( ! $ids ) {
+		$items = get_posts( array( 'post_type' => 'nav_menu_item', 'post_status' => 'any', 'numberposts' => -1, 'meta_key' => '_menu_item_type', 'meta_value' => 'custom', 'suppress_filters' => true ) );
+		foreach ( $items as $item ) {
+			$url = (string) get_post_meta( $item->ID, '_menu_item_url', true );
+			$pid = eg_pub_internal_links_resolve( $url, $hosts, $why );
+			if ( null === $pid ) {
+				continue;
+			}
+			$row = array( 'item' => $item->ID, 'title' => $item->post_title, 'url' => $url, 'post_id' => $pid );
+			if ( ! $pid ) {
+				$out['unresolved'][] = $row + array( 'why' => $why );
+				continue;
+			}
+			if ( $apply ) {
+				update_post_meta( $item->ID, '_menu_item_type', 'post_type' );
+				update_post_meta( $item->ID, '_menu_item_object', get_post_type( $pid ) );
+				update_post_meta( $item->ID, '_menu_item_object_id', $pid );
+				update_post_meta( $item->ID, '_menu_item_url', '' );
+				$out['converted']++;
+			} else {
+				$out['pending']++;
+			}
+			$out['menus'][] = $row;
+		}
+	}
+	if ( $apply && class_exists( '\Elementor\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
+		\Elementor\Plugin::$instance->files_manager->clear_cache();
+	}
+	return new WP_REST_Response( $out, 200 );
+}
+
+/**
+ * Recorre elementos de Elementor y, en cada control de enlace sin etiqueta dinámica que apunta a la web, anota
+ * (y con $apply pone) la etiqueta internal-url. Mira también dentro de repetidores (listas de iconos, diapositivas…).
+ */
+function eg_pub_internal_links_walk( &$elements, $hosts, $apply, &$found ) {
+	foreach ( $elements as &$el ) {
+		if ( ! is_array( $el ) ) {
+			continue;
+		}
+		if ( isset( $el['settings'] ) && is_array( $el['settings'] ) ) {
+			eg_pub_internal_links_settings( $el['settings'], $hosts, $apply, $found, array( 'element' => $el['id'] ?? '', 'widget' => $el['widgetType'] ?? ( $el['elType'] ?? '' ) ) );
+		}
+		if ( ! empty( $el['elements'] ) && is_array( $el['elements'] ) ) {
+			eg_pub_internal_links_walk( $el['elements'], $hosts, $apply, $found );
+		}
+	}
+	unset( $el );
+}
+
+function eg_pub_internal_links_settings( &$settings, $hosts, $apply, &$found, $ctx ) {
+	foreach ( $settings as $key => &$val ) {
+		if ( ! is_array( $val ) || '__dynamic__' === $key || '__globals__' === $key ) {
+			continue;
+		}
+		if ( isset( $val['url'] ) && is_string( $val['url'] ) && '' !== $val['url'] ) {
+			if ( ! empty( $settings['__dynamic__'][ $key ] ) ) {
+				continue;
+			}
+			$pid = eg_pub_internal_links_resolve( $val['url'], $hosts, $why );
+			if ( null === $pid ) {
+				continue;
+			}
+			$row = $ctx + array( 'key' => $key, 'url' => $val['url'], 'post_id' => $pid );
+			if ( ! $pid ) {
+				$row['why'] = $why;
+			} elseif ( $apply ) {
+				$tag = sprintf( '[elementor-tag id="%s" name="internal-url" settings="%s"]', substr( md5( $val['url'] . wp_rand() ), 0, 7 ), rawurlencode( wp_json_encode( array( 'type' => 'post', 'post_id' => (string) $pid ) ) ) );
+				if ( ! isset( $settings['__dynamic__'] ) || ! is_array( $settings['__dynamic__'] ) ) {
+					$settings['__dynamic__'] = array();
+				}
+				$settings['__dynamic__'][ $key ] = $tag;
+			}
+			$found[] = $row;
+			continue;
+		}
+		// Repetidor: lista de filas con sus propios ajustes (y su propio __dynamic__).
+		if ( array_values( $val ) === $val ) {
+			foreach ( $val as $i => &$item ) {
+				if ( is_array( $item ) ) {
+					eg_pub_internal_links_settings( $item, $hosts, $apply, $found, $ctx + array( 'repeater' => $key, 'row' => $i ) );
+				}
+			}
+			unset( $item );
+		}
+	}
+	unset( $val );
+}
+
+/**
+ * ID de la entrada de la web a la que apunta una URL; 0 si es de la web pero no corresponde a ninguna entrada
+ * ($why dice por qué) y null si no es un enlace interno que se pueda convertir (externo, ancla, tel:, mailto:…).
+ */
+function eg_pub_internal_links_resolve( $url, $hosts, &$why = '' ) {
+	$why = '';
+	$url = trim( (string) $url );
+	if ( '' === $url || '#' === $url[0] || preg_match( '#^(tel|mailto|javascript|whatsapp|sms):#i', $url ) ) {
+		return null;
+	}
+	$parts = wp_parse_url( $url );
+	if ( ! empty( $parts['host'] ) ) {
+		$host = strtolower( preg_replace( '#^www\.#i', '', $parts['host'] ) );
+		if ( empty( $hosts[ $host ] ) ) {
+			return null;
+		}
+	} elseif ( '/' !== ( $url[0] ?? '' ) ) {
+		return null;
+	}
+	if ( ! empty( $parts['fragment'] ) || ! empty( $parts['query'] ) ) {
+		$why = 'lleva #ancla o parámetros';
+		return 0;
+	}
+	$path = '/' . ltrim( (string) ( $parts['path'] ?? '/' ), '/' );
+	if ( preg_match( '#^/wp-content/#', $path ) ) {
+		return null;
+	}
+	if ( '/' === $path ) {
+		$front = (int) get_option( 'page_on_front' );
+		$why   = $front ? '' : 'la portada no es una página';
+		return $front;
+	}
+	$pid = url_to_postid( home_url( $path ) );
+	if ( ! $pid ) {
+		$page = get_page_by_path( trim( $path, '/' ), OBJECT, get_post_types( array( 'public' => true ) ) );
+		$pid  = $page ? (int) $page->ID : 0;
+	}
+	if ( ! $pid ) {
+		$why = 'no corresponde a ninguna entrada';
+	}
+	return (int) $pid;
 }

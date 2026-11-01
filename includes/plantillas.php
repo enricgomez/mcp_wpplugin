@@ -151,10 +151,16 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 	// images: {"<ID de adjunto actual>": <ID de adjunto nuevo>} cambia esa foto en todos los controles de imagen
 	// (imagen, fondo, diapositivas, galerías…) sin tocar el resto ni los ids de los elementos.
 	$img_map = array();
+	$img_bad = array();
 	foreach ( ( is_array( $images ) ? $images : array() ) as $old_img => $new_img ) {
 		if ( (int) $old_img && (int) $new_img && 'attachment' === get_post_type( (int) $new_img ) ) {
 			$img_map[ (int) $old_img ] = (int) $new_img;
+		} else {
+			$img_bad[] = (string) $new_img;
 		}
+	}
+	if ( $img_bad && ! $img_map && ! $patch && ! $replace && ! $remove && ! $widgets ) {
+		return eg_pub_error( 'eg_bad_image', 'Estos adjuntos nuevos no existen en la biblioteca de medios: ' . implode( ', ', $img_bad ) . '.' );
 	}
 	$patch   = is_array( $patch ) ? $patch : array();
 	$widgets = is_array( $widgets ) ? array_filter( $widgets, 'is_array' ) : array();
@@ -218,7 +224,7 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 	if ( function_exists( 'rocket_clean_post' ) ) {
 		rocket_clean_post( $id );
 	}
-	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'removed' => $removed, 'images' => (object) $swapped, 'missing' => $missing ), 200 );
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'removed' => $removed, 'images' => (object) $swapped, 'missing' => $missing, 'bad_images' => $img_bad ), 200 );
 }
 
 /**

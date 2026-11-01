@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.51.1 · 01/11/2026 · PR #102 (Claude)
+
+- `/template` con `images`: si un ID de adjunto nuevo no existe en la biblioteca de medios ya no se ignora sin avisar; sale en `bad_images` (y si no queda ninguna foto válida que cambiar, la llamada da error `eg_bad_image`).
+- Webs: test-neptunoapartments.com. Sirve en todas.
+
 ## 2.51.0 · 01/11/2026 · PR #101 (Claude)
 
 - `/template` con `id`: nuevo `images` (`{"<ID de adjunto actual>": <ID de adjunto nuevo>}`) cambia fotos en el sitio en una página o plantilla de Elementor, en cualquier control de imagen (imagen, fondo, fondo superpuesto o al pasar el ratón, diapositivas, cajas, galerías), sin tocar el resto ni los ids de los elementos. Devuelve en `images` cuántas veces cambió cada foto y en `missing` las que no estaban. Se puede combinar con `patch`, `replace` y `remove`, y guarda la copia en `_eg_pub_elementor_backup`.

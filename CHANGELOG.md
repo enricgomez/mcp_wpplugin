@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.45.0 · 01/11/2026 · PR pendiente (Claude)
+## 2.45.0 · 01/11/2026 · PR #93 (Claude)
 
 - `/redirect`: si la web no tiene Rank Math, guarda la redirección en el plugin Redirection (primer grupo activo de WordPress, origen exacto con barra final; si ya hay una con ese origen, la cambia). 410 y 451 se guardan como error. La respuesta trae `plugin` (`rank-math` o `redirection`). Con Rank Math no cambia nada.
 - Webs: hotelneptuno.com (Yoast + Redirection; URL traducidas de equipo, servicios y ofertas con 301 desde las antiguas).

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.47.0 · 01/11/2026 · PR #96 (Claude)
+
+- `/form` (módulo nuevo «Formularios», tipología Gestión de la web): lee y cambia los textos de un formulario de Forminator (etiquetas, placeholders, texto de aceptación, opciones, botón de enviar y mensajes) sin tocar el resto. Los cambios se mezclan con lo que hay.
+- Webs: hotelneptuno.com (formularios de contacto, trabaja con nosotros y eventos con los textos en castellano en ca/en/fr/de).
+
 ## 2.46.1 · 01/11/2026 · PR #95 (Claude)
 
 - `/item`: al cambiar `slug`, `parent`, `title` o `status` en una web con Yoast, borra el indexable de Yoast de la entrada y de sus hijas para que lo rehaga en la siguiente visita. Como `/item` guarda sin `wp_update_post`, Yoast seguía sirviendo el canonical, el og:url y el sitemap con la URL antigua. La respuesta lo indica en `changes` (`yoast_indexable`).

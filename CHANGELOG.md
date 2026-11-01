@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.46.0 · 01/11/2026 · PR pendiente (Claude)
+
+- `/redirect` sin Rank Math ni Redirection: la redirección la guarda el propio EG Publicación (opción `eg_pub_redirects`, `plugin: eg-publicacion` en la respuesta) y la aplica solo cuando la URL de origen da 404, en `template_redirect` antes de `redirect_canonical`, para que WordPress no adivine otra página. 410 y 451 devuelven ese código. Con Rank Math o Redirection no cambia nada.
+- Webs: shamaspa.com (sin plugin de redirecciones; quitar el «-2» de las URL de spa y de la página de litigios con su 301).
+
 ## 2.45.0 · 01/11/2026 · PR #93 (Claude)
 
 - `/redirect`: si la web no tiene Rank Math, guarda la redirección en el plugin Redirection (primer grupo activo de WordPress, origen exacto con barra final; si ya hay una con ese origen, la cambia). 410 y 451 se guardan como error. La respuesta trae `plugin` (`rank-math` o `redirection`). Con Rank Math no cambia nada.

@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_OPTION_LANDINGS = 'eg_pub_landings_enabled';
 const EG_PUB_META_LANDING    = '_eg_landing_id';
+const EG_PUB_OPTION_REDIRECTS = 'eg_pub_redirects';
 
 /** Hay algún módulo opcional activo (antes de la 2.6.0 había un único interruptor para todos). */
 function eg_pub_landings_enabled() {
@@ -651,9 +652,6 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	}
 	$rank_math   = class_exists( '\\RankMath\\Redirections\\Redirection' );
 	$redirection = class_exists( 'Red_Item' );
-	if ( ! $rank_math && ! $redirection ) {
-		return eg_pub_error( 'eg_redirect_plugin', 'No hay dónde guardar la redirección: hace falta Rank Math (módulo Redirecciones) o el plugin Redirection.', 501 );
-	}
 	// La URL de origen sin dominio.
 	$path = trim( (string) wp_parse_url( $from, PHP_URL_PATH ), '/' );
 	if ( '' === $path ) {
@@ -664,6 +662,9 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 		$to = untrailingslashit( get_option( 'home' ) ) . $to;
 	}
 
+	if ( ! $rank_math && ! $redirection ) {
+		return eg_pub_redirect_own( $path, $to, $code );
+	}
 	if ( ! $rank_math ) {
 		return eg_pub_redirect_redirection( $path, $to, $code );
 	}
@@ -718,6 +719,44 @@ function eg_pub_redirect_redirection( $path, $to, $code ) {
 	}
 	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'redirection', 'id' => $id, 'updated' => (bool) $existing, 'from' => $source, 'to' => $error ? '' : esc_url_raw( $to ), 'code' => $code ), 200 );
 }
+
+/**
+ * Webs sin Rank Math ni Redirection: la redirección la guarda EG Publicación (opción eg_pub_redirects) y la
+ * aplica solo cuando la URL de origen da 404, así nunca tapa una página que exista.
+ */
+function eg_pub_redirect_own( $path, $to, $code ) {
+	$own   = get_option( EG_PUB_OPTION_REDIRECTS, array() );
+	$own   = is_array( $own ) ? $own : array();
+	$key   = strtolower( rawurldecode( $path ) );
+	$error = in_array( $code, array( 410, 451 ), true );
+	$own[ $key ] = array( 'to' => $error ? '' : esc_url_raw( $to ), 'code' => $code );
+	update_option( EG_PUB_OPTION_REDIRECTS, $own, true );
+	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'eg-publicacion', 'from' => $key, 'to' => $own[ $key ]['to'], 'code' => $code, 'total' => count( $own ) ), 200 );
+}
+
+// Aplica las redirecciones propias en las URL que dan 404, antes de redirect_canonical (prioridad 10), para que
+// WordPress no adivine otra página parecida.
+add_action( 'template_redirect', function () {
+	if ( ! is_404() ) {
+		return;
+	}
+	$own = get_option( EG_PUB_OPTION_REDIRECTS, array() );
+	if ( empty( $own ) || ! is_array( $own ) ) {
+		return;
+	}
+	$uri  = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	$path = strtolower( rawurldecode( trim( (string) wp_parse_url( $uri, PHP_URL_PATH ), '/' ) ) );
+	if ( '' === $path || empty( $own[ $path ] ) ) {
+		return;
+	}
+	$code = (int) $own[ $path ]['code'];
+	if ( in_array( $code, array( 410, 451 ), true ) ) {
+		status_header( $code );
+		return;
+	}
+	wp_redirect( $own[ $path ]['to'], $code, 'EG Publicación' ); // phpcs:ignore WordPress.Security.SafeRedirect
+	exit;
+}, 1 );
 
 /* ======================================================================
  * Estilo de las fotos integradas en el texto de las landings.

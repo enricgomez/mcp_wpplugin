@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.55.0 · 02/11/2026 · PR (Claude)
+
+- `/template` con `id`: nuevo `insert_after` (`{"<id de elemento>": {elemento} o [elementos]}`) añade elementos nuevos justo detrás de ese elemento, en el mismo contenedor, sin reenviar el contenedor ni rehacer sus otros hijos (si el elemento nuevo no trae `id`, se le asigna uno). Devuelve `inserted_after`. Se combina con `patch`, `replace` y `remove` y guarda la copia en `_eg_pub_elementor_backup`.
+- `/template` con `id` y `get`: lee sin cambiar nada. `["<id>", …]` devuelve esos elementos completos (ajustes e hijos); `true` devuelve el árbol de la página o plantilla (id y tipo de cada elemento).
+- Webs: test-cbarbacoa.com (carrito de Elementor Pro en la cabecera junto al botón «Tienda Online»). Sirve en todas.
+
 ## 2.54.0 · 02/11/2026 · PR (Claude)
 
 - `/seo-tech` (módulo SEO técnico): nuevo `rankmath_modules` (`{"redirections": "on"|"off", …}`) activa o desactiva módulos de Rank Math con su propia función; al activar, Rank Math crea las tablas que falten. Activar un módulo ya activo cuenta como cambio, para poder reparar sus tablas. El estado devuelve `rank_math_modules` y `rank_math_tables`. Solo con `apply: true`.

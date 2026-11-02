@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.54.0 · 02/11/2026 · PR (Claude)
+
+- `/seo-tech` (módulo SEO técnico): nuevo `rankmath_modules` (`{"redirections": "on"|"off", …}`) activa o desactiva módulos de Rank Math con su propia función; al activar, Rank Math crea las tablas que falten. Activar un módulo ya activo cuenta como cambio, para poder reparar sus tablas. El estado devuelve `rank_math_modules` y `rank_math_tables`. Solo con `apply: true`.
+- Motivo: en test-cbarbacoa.com el módulo de redirecciones estaba activo sin sus tablas; cada visita escribía errores de base de datos tan largos que nginx cortaba con 502 («upstream sent too big header») al añadir al carrito. Sirve en todas las webs con Rank Math.
+
 ## 2.53.0 · 02/11/2026 · PR (Claude)
 
 - `/product` (módulo Productos): nuevos `upsell_ids` y `cross_sell_ids` en `set` para relacionar productos: ventas dirigidas («Quizás te interese…» en la ficha) y ventas cruzadas (en el carrito). Se dan como lista de IDs o SKU; `[]` los quita. No admite el propio producto ni repetidos, avisa en `notes` de los que no encuentra y con `dry_run` solo dice qué cambiaría. `list` devuelve además `tags`, `upsell_ids` y `cross_sell_ids` de cada producto.

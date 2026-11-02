@@ -17,6 +17,8 @@
  *   sku, weight, stock_status    SKU, peso (en la unidad de la tienda) e instock/outofstock/onbackorder
  *   status                       publish, draft, private o pending (también saca el producto de la papelera)
  *   image, gallery               imagen principal y galería: ID de la biblioteca, URL o {"url"|"b64", "alt", "filename"}
+ *   upsell_ids, cross_sell_ids   productos relacionados: ventas dirigidas («Quizás te interese…» en la ficha) y
+ *                                ventas cruzadas (en el carrito), como lista de IDs o SKU ([] los quita)
  * create crea un producto nuevo (en borrador salvo que set diga otro status), vacío o copiado de otro con
  * create.from (ID o SKU), y le aplica set. list devuelve todos los productos con su estado, papelera incluida.
  * Con dry_run devuelve lo que cambiaría sin guardar. Los textos se guardan sin wp_update_post para que WPML no
@@ -414,6 +416,9 @@ function eg_pub_product_list() {
 			'weight'        => $product->get_weight(),
 			'stock_status'  => $product->get_stock_status(),
 			'categories'    => wp_get_post_terms( $id, 'product_cat', array( 'fields' => 'slugs' ) ),
+			'tags'          => wp_get_post_terms( $id, 'product_tag', array( 'fields' => 'slugs' ) ),
+			'upsell_ids'    => array_map( 'intval', $product->get_upsell_ids() ),
+			'cross_sell_ids' => array_map( 'intval', $product->get_cross_sell_ids() ),
 			'image'         => (int) $product->get_image_id(),
 			'gallery'       => array_map( 'intval', $product->get_gallery_image_ids() ),
 			'date'          => get_post_field( 'post_date', $id ),
@@ -469,7 +474,7 @@ function eg_pub_product_create( $create, $dry_run ) {
 
 /** Aplica al producto (sin guardarlo) los campos de WooCommerce de $c y devuelve el producto y los cambios. */
 function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
-	$keys = array( 'regular_price', 'sale_price', 'sale_from', 'sale_to', 'sku', 'weight', 'stock_status', 'image', 'gallery' );
+	$keys = array( 'regular_price', 'sale_price', 'sale_from', 'sale_to', 'sku', 'weight', 'stock_status', 'image', 'gallery', 'upsell_ids', 'cross_sell_ids' );
 	if ( ! array_intersect( $keys, array_keys( $c ) ) ) {
 		return array( 'product' => null, 'changes' => array() );
 	}
@@ -551,7 +556,41 @@ function eg_pub_product_wc_changes( $id, $c, $dry_run, &$notes ) {
 			}
 		}
 	}
+	foreach ( array( 'upsell_ids', 'cross_sell_ids' ) as $key ) {
+		if ( ! array_key_exists( $key, $c ) ) {
+			continue;
+		}
+		$old = array_map( 'intval', $product->{'get_' . $key}( 'edit' ) );
+		$new = array();
+		foreach ( (array) $c[ $key ] as $ref ) {
+			$rid = eg_pub_product_ref_id( $ref );
+			if ( ! $rid ) {
+				$notes[] = $id . ': ' . $key . ': no encuentro el producto ' . ( is_scalar( $ref ) ? $ref : '' );
+			} elseif ( $rid !== $id && ! in_array( $rid, $new, true ) ) {
+				$new[] = $rid;
+			}
+		}
+		if ( $new === $old ) {
+			continue;
+		}
+		$changes[ $key ] = array( 'before' => $old, 'after' => $new );
+		if ( ! $dry_run ) {
+			$product->{'set_' . $key}( $new );
+		}
+	}
 	return array( 'product' => $changes ? $product : null, 'changes' => $changes );
+}
+
+/** ID del producto al que se refiere $ref (ID numérico o SKU); 0 si no es un producto de la tienda. */
+function eg_pub_product_ref_id( $ref ) {
+	if ( ! is_scalar( $ref ) || '' === trim( (string) $ref ) ) {
+		return 0;
+	}
+	$ref = trim( (string) $ref );
+	if ( ctype_digit( $ref ) && 'product' === get_post_type( (int) $ref ) ) {
+		return (int) $ref;
+	}
+	return (int) wc_get_product_id_by_sku( sanitize_text_field( $ref ) );
 }
 
 /** En dry_run, la imagen pedida tal cual, sin devolver el base64 entero. */

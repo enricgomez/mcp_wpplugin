@@ -15,6 +15,10 @@
  *   ai_catalog true, o {"description": "…", "queries": ["…", "…"]}: sirve /.well-known/ai-catalog.json (catálogo de
  *             Agentic Resource Discovery que revisa Lighthouse/PageSpeed) con la ficha de la web y su llms.txt si
  *             existe. false lo quita y la ruta vuelve a dar 404.
+ *   rankmath_modules {"redirections": "off", "404-monitor": "on"}: activa o desactiva módulos de Rank Math con su
+ *             propia función (al activar, Rank Math crea las tablas que le falten al módulo). Sirve para reparar un
+ *             módulo activo sin tablas en la base de datos, que llena el log de errores en cada visita. El estado
+ *             devuelve los módulos activos y las tablas de Rank Math que hay.
  * Como /seo y /rocket, los cambios solo se previsualizan; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -338,6 +342,40 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 			}
 		}
 	}
+	if ( array_key_exists( 'rankmath_modules', $p ) ) {
+		if ( ! class_exists( '\\RankMath\\Helper' ) ) {
+			return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo en esta web.' );
+		}
+		$before = array_values( (array) get_option( 'rank_math_modules', array() ) );
+		$after  = $before;
+		$wanted = array();
+		foreach ( (array) $p['rankmath_modules'] as $mod => $state ) {
+			$mod = sanitize_key( $mod );
+			if ( '' === $mod ) {
+				continue;
+			}
+			$on             = in_array( $state, array( true, 1, '1', 'on', 'true' ), true );
+			$wanted[ $mod ] = $on ? 'on' : 'off';
+			$after          = $on ? array_values( array_unique( array_merge( $after, array( $mod ) ) ) ) : array_values( array_diff( $after, array( $mod ) ) );
+		}
+		if ( $wanted ) {
+			// Siempre cuenta como cambio: activar un módulo ya activo sirve para que Rank Math cree sus tablas.
+			$out['changes']['rankmath_modules'] = array( 'before' => $before, 'after' => $after, 'set' => $wanted );
+			if ( $apply ) {
+				if ( is_callable( array( '\\RankMath\\Helper', 'update_modules' ) ) ) {
+					\RankMath\Helper::update_modules( $wanted );
+				} else {
+					update_option( 'rank_math_modules', $after );
+				}
+				$on_mods = array_keys( array_filter( $wanted, function ( $v ) {
+					return 'on' === $v;
+				} ) );
+				if ( $on_mods && is_callable( array( '\\RankMath\\Installer', 'create_tables' ) ) ) {
+					\RankMath\Installer::create_tables( $on_mods );
+				}
+			}
+		}
+	}
 	if ( $apply && $out['changes'] ) {
 		$out['applied'] = true;
 		if ( function_exists( 'rocket_clean_domain' ) ) {
@@ -354,5 +392,10 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 		'yoast'           => defined( 'WPSEO_VERSION' ) ? WPSEO_VERSION : null,
 		'yoast_company'   => defined( 'WPSEO_VERSION' ) ? ( (array) get_option( 'wpseo_titles', array() ) )['company_or_person'] ?? null : null,
 	);
+	if ( class_exists( '\\RankMath\\Helper' ) ) {
+		global $wpdb;
+		$out['state']['rank_math_modules'] = array_values( (array) get_option( 'rank_math_modules', array() ) );
+		$out['state']['rank_math_tables']  = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'rank_math' ) . '%' ) );
+	}
 	return new WP_REST_Response( $out, 200 );
 }

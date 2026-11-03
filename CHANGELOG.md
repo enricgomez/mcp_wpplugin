@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.70.0 · 03/11/2026 · PR (Claude)
+
+- `/template` (Elementor) admite `list: true`: devuelve, sin cambiar nada, las plantillas de Elementor de todos los idiomas (id, título, tipo, estado, idioma de WPML, condiciones del Theme Builder, clave de EG) y la portada y la página de entradas de Ajustes → Lectura.
+- Webs: campingelfar.com (plantillas del blog). En las demás no cambia nada mientras no se use.
+
 ## 2.69.0 · 03/11/2026 · PR (Claude)
 
 - `/comments`: `trash` (lista de IDs) manda comentarios a la papelera y `pings: false` desactiva pingbacks y trackbacks (no avisa a los enlazados, no los acepta en entradas nuevas y los cierra en las existentes). Solo previsualiza; guarda con `apply: true`.

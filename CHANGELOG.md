@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.68.0 · 03/11/2026 · PR (Claude)
+
+- Aviso por email de post publicado: cada idioma lleva ya su enlace (/ca/, /en/, /fr/...). Antes, en el wp-cron WPML usaba el idioma por defecto y todas las traducciones salían con la URL del castellano. El original va primero.
+- Nuevo `POST /comments` (tipología Gestión de la web): lista comentarios, pingbacks y trackbacks de cualquier estado con autor, URL de origen, IP y entrada. Filtros `type`, `status`, `post_id`, `limit`. Solo lectura.
+- Webs: hotelmiamicalella.com (aviso del post del Ironman y revisión de un pingback). Sirve en todas.
+
 ## 2.67.0 · 03/11/2026 · PR #121 (Claude)
 
 - Nuevo `POST /wc-emails` (tipología Gestión de la web, requiere WooCommerce): lista los emails de WooCommerce y, con `extra` (`{"customer_completed_order": {"es": "…", "ca": "…"}}`), añade un texto al final del email en el idioma del pedido (WPML), p. ej. la petición de reseña con el enlace directo a Google. Se aplica con un filtro: el email de WooCommerce no cambia. Solo previsualiza; guarda con `apply: true`.

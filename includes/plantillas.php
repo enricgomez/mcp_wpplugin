@@ -113,7 +113,6 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	if ( isset( $p['settings'] ) && is_array( $p['settings'] ) ) {
 		update_post_meta( $id, '_elementor_page_settings', $p['settings'] );
 	}
-	$conditions = isset( $p['conditions'] ) && is_array( $p['conditions'] ) ? eg_pub_template_conditions( $id, $p['conditions'] ) : null;
 	delete_post_meta( $id, '_elementor_css' );
 	delete_post_meta( $id, '_elementor_element_cache' );
 
@@ -128,6 +127,9 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 			'source_language_code' => $source ? sanitize_key( $p['translation_of'] ) : null,
 		) );
 	}
+	// Las condiciones van después del idioma: la caché de condiciones de Elementor Pro solo cuenta las
+	// plantillas que WPML ya tiene en un idioma; una plantilla nueva sin idioma quedaba fuera y no se aplicaba.
+	$conditions = isset( $p['conditions'] ) && is_array( $p['conditions'] ) ? eg_pub_template_conditions( $id, $p['conditions'] ) : null;
 
 	// Avisos útiles para formularios: reCAPTCHA necesita claves en Elementor → Ajustes → Integraciones.
 	$recaptcha = array(

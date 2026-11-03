@@ -80,6 +80,7 @@ function eg_pub_import_content( $html, $post_id, $host, &$notes, &$images ) {
 	$html = str_replace( ' class=""', '', $html );
 	// El CSS que imprime gallery_shortcode() del origen: [gallery] lo vuelve a poner.
 	$html = preg_replace( '#<style[^>]*>(?:(?!</style>).)*gallery_shortcode(?:(?!</style>).)*</style>\s*#is', '', $html );
+	$html = eg_pub_import_strip_builder( $html );
 
 	// Galerías (cualquier tema): un div con clase «gallery», hasta su cierre, que contiene imágenes del origen.
 	$offset = 0;
@@ -118,6 +119,21 @@ function eg_pub_import_content( $html, $post_id, $host, &$notes, &$images ) {
 		return $tag;
 	}, $html );
 
+	// Enlaces a páginas de la web de origen: al post importado aquí con el mismo slug o, si no existe, solo el texto.
+	$html = preg_replace_callback( '#<a\b[^>]*\shref=([\'"])([^\'"]+)\1[^>]*>(.*?)</a>#is', function ( $m ) use ( $host, &$notes ) {
+		$url = html_entity_decode( $m[2] );
+		if ( false !== strpos( $url, '/wp-content/' ) || eg_pub_import_bare_host( $host ) !== eg_pub_import_bare_host( (string) wp_parse_url( $url, PHP_URL_HOST ) ) ) {
+			return $m[0];
+		}
+		$slug   = basename( untrailingslashit( (string) wp_parse_url( $url, PHP_URL_PATH ) ) );
+		$target = $slug ? get_page_by_path( $slug, OBJECT, array( 'post', 'page' ) ) : null;
+		if ( $target ) {
+			return str_replace( $m[2], esc_url( get_permalink( $target ) ), $m[0] );
+		}
+		$notes[] = 'enlace a la web de origen quitado (queda el texto): ' . $url;
+		return $m[3];
+	}, $html );
+
 	// Enlaces al archivo de una imagen del origen (p. ej. la imagen ampliada).
 	$html = preg_replace_callback( '#href=([\'"])([^\'"]+\.(?:jpe?g|png|webp|gif|avif))\1#i', function ( $m ) use ( $is_source, $map ) {
 		$orig = eg_pub_import_original( $m[2] );
@@ -125,6 +141,29 @@ function eg_pub_import_content( $html, $post_id, $host, &$notes, &$images ) {
 	}, $html );
 
 	return trim( $html );
+}
+
+/**
+ * Restos de maquetadores del origen que aquí no existen: shortcodes de WPBakery ([vc_row], [vc_column_text]…,
+ * se quedan el texto y las imágenes de dentro; [vc_btn] desaparece), el envoltorio wpb-content-wrapper y los
+ * <style> que imprimen los shortcodes del tema (The7 y similares). Después, los párrafos que quedan vacíos.
+ */
+function eg_pub_import_strip_builder( $html ) {
+	$html = preg_replace( '#<style\b[^>]*>.*?</style>\s*#is', '', $html );
+	$html = preg_replace( '#\[/?vc_[a-z0-9_]+(?:\s[^\]]*)?\]#i', '', $html );
+	$html = ltrim( $html );
+	if ( preg_match( '#^<div class=([\'"])wpb-content-wrapper\1>#i', $html, $w ) ) {
+		$end = eg_pub_import_div_end( $html, 0 );
+		$html = substr( $html, strlen( $w[0] ), $end - strlen( $w[0] ) - strlen( '</div>' ) ) . substr( $html, $end );
+	}
+	// Un <div> de galería que el shortcode dejaba dentro de un <p>: el <p> sobra.
+	$html = preg_replace( '#<p>\s*(<div\b)#i', '$1', $html );
+	$html = preg_replace( '#(</div>)\s*</p>#i', '$1', $html );
+	do {
+		$before = $html;
+		$html   = preg_replace( '#<p>(?:\s|&nbsp;|<br\s*/?>)*</p>\s*#i', '', $html );
+	} while ( $before !== $html );
+	return $html;
 }
 
 /** Posición justo después del </div> que cierra el div que empieza en $from (o el final del texto). */

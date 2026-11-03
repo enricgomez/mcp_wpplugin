@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.60.0 · 03/11/2026 · PR (Claude)
+## 2.60.0 · 03/11/2026 · PR #111 (Claude)
 
 - `/redirect` con `regex`: `id` cambia una redirección de Rank Math que ya existe (patrón, destino y código) en lugar de crear otra, y `status: "inactive"` la deja desactivada. Devuelve `status`.
 - Webs: nilacakes.com (corregir la redirección de las URL catalanas /ca/producto/). Sirve en todas con Rank Math.

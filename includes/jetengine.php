@@ -14,6 +14,10 @@
  * `listings` crea o actualiza (por key) plantillas de listado de JetEngine hechas con Elementor para un CPT: key, title,
  * post_type, elements (JSON de Elementor del elemento del listado) y settings (ajustes de página opcionales). El ID que
  * devuelve es el que se pone en `lisitng_id` del widget Listing Grid.
+ * `fields` (`{"<post_type>": [campos]}`) añade, cambia o quita campos de un CPT de JetEngine que ya existe, con el mismo
+ * formato simplificado (name, title, type, description, options «valor::Etiqueta», width); un campo con el mismo name se
+ * actualiza y `"remove": true` lo quita. `labels` (`{"<post_type>": {"name": …, "singular_name": …}}`) cambia sus
+ * etiquetas. Los valores ya guardados en las entradas no se tocan.
  * `rewrite` (`{"<post_type>": "<base>"}`) cambia la base de las URL de un CPT ya registrado, de JetEngine o de CPT UI
  * (este no necesita JetEngine), y regenera los enlaces permanentes.
  */
@@ -162,7 +166,7 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 		return eg_pub_error( 'eg_no_jetengine', 'JetEngine no está activo en esta web.' );
 	}
 	$before = eg_pub_cpt_list();
-	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) && empty( $p['entries'] ) && empty( $p['listings'] ) ) ) {
+	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) && empty( $p['entries'] ) && empty( $p['listings'] ) && empty( $p['fields'] ) && empty( $p['labels'] ) ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $before );
 	}
 
@@ -184,6 +188,19 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 			}
 			$result['post_type'] = array( 'slug' => $slug, 'id' => (int) $res['item_id'], 'notices' => $res['notices'] ?? array() );
 			$changed             = true;
+		}
+	}
+
+	$edit = array_unique( array_merge( array_keys( (array) ( $p['fields'] ?? array() ) ), array_keys( (array) ( $p['labels'] ?? array() ) ) ) );
+	if ( $edit ) {
+		$result['fields'] = array();
+		foreach ( $edit as $pt ) {
+			$row = eg_pub_cpt_edit( sanitize_key( $pt ), (array) ( $p['fields'][ $pt ] ?? array() ), (array) ( $p['labels'][ $pt ] ?? array() ) );
+			if ( is_wp_error( $row ) ) {
+				$row          = array( 'post_type' => $pt, 'error' => $row->get_error_message() );
+				$result['ok'] = false;
+			}
+			$result['fields'][] = $row;
 		}
 	}
 
@@ -321,6 +338,84 @@ function eg_pub_jet_cpt_rewrite( $pt, $slug, $dry_run ) {
 }
 
 /** Campos de JetEngine de un CPT: nombre => definición. */
+/**
+ * Añade, cambia o quita campos de un CPT de JetEngine ya creado y cambia sus etiquetas. Escribe en la tabla de
+ * JetEngine (jet_post_types) igual que su editor: meta_fields y labels serializados.
+ */
+function eg_pub_cpt_edit( $post_type, $fields, $labels ) {
+	global $wpdb;
+	$table = $wpdb->prefix . 'jet_post_types';
+	$row   = $wpdb->get_row( $wpdb->prepare( "SELECT id, labels, meta_fields FROM {$table} WHERE slug = %s LIMIT 1", $post_type ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $row ) {
+		return new WP_Error( 'eg_cpt_missing', 'No hay ningún CPT de JetEngine con el slug ' . $post_type . '.' );
+	}
+	$current = array_values( (array) jet_engine_safe_unserialize_array( $row['meta_fields'], 'eg_pub_cpt_edit' ) );
+	$out     = array( 'post_type' => $post_type, 'added' => array(), 'updated' => array(), 'removed' => array(), 'labels' => false );
+
+	foreach ( $fields as $f ) {
+		$name = sanitize_key( $f['name'] ?? '' );
+		if ( ! $name ) {
+			continue;
+		}
+		$pos = null;
+		foreach ( $current as $i => $c ) {
+			if ( ( $c['name'] ?? '' ) === $name ) {
+				$pos = $i;
+				break;
+			}
+		}
+		if ( ! empty( $f['remove'] ) ) {
+			if ( null !== $pos ) {
+				array_splice( $current, $pos, 1 );
+				$out['removed'][] = $name;
+			}
+			continue;
+		}
+		$field = null !== $pos ? $current[ $pos ] : array(
+			'title' => $name, 'name' => $name, 'object_type' => 'field', 'type' => 'text', 'width' => '100%',
+			'id' => wp_rand( 10000, 99999 ), 'isNested' => false, 'is_nested' => false, 'options' => array(),
+			'repeater-fields' => array(), 'is_required' => false, 'quick_editable' => false, 'description' => '',
+			'args' => array(), 'conditions' => array(),
+		);
+		foreach ( array( 'title', 'description', 'width' ) as $key ) {
+			if ( isset( $f[ $key ] ) ) {
+				$field[ $key ] = sanitize_text_field( $f[ $key ] );
+			}
+		}
+		if ( isset( $f['type'] ) ) {
+			$field['type'] = sanitize_key( $f['type'] );
+		}
+		if ( 'gallery' === $field['type'] || 'media' === $field['type'] ) {
+			$field['value_format'] = $field['value_format'] ?? 'id';
+		}
+		if ( isset( $f['options'] ) ) {
+			$field['options'] = array();
+			foreach ( (array) $f['options'] as $opt ) {
+				$parts              = explode( '::', (string) $opt, 2 );
+				$field['options'][] = array( 'key' => sanitize_key( $parts[0] ), 'value' => sanitize_text_field( $parts[1] ?? $parts[0] ), 'id' => wp_rand( 10000, 99999 ) );
+			}
+		}
+		if ( null !== $pos ) {
+			$current[ $pos ]  = $field;
+			$out['updated'][] = $name;
+		} else {
+			$current[]      = $field;
+			$out['added'][] = $name;
+		}
+	}
+
+	$data = array( 'meta_fields' => maybe_serialize( array_values( $current ) ) );
+	if ( $labels ) {
+		$old            = (array) jet_engine_safe_unserialize_array( $row['labels'], 'eg_pub_cpt_edit' );
+		$data['labels'] = maybe_serialize( array_merge( $old, array_map( 'sanitize_text_field', $labels ) ) );
+		$out['labels']  = true;
+	}
+	if ( false === $wpdb->update( $table, $data, array( 'id' => (int) $row['id'] ) ) ) {
+		return new WP_Error( 'eg_cpt_update', 'No se ha podido guardar el CPT: ' . $wpdb->last_error );
+	}
+	return $out;
+}
+
 function eg_pub_cpt_fields( $post_type ) {
 	foreach ( (array) jet_engine()->cpt->data->get_items() as $item ) {
 		if ( $item['slug'] === $post_type ) {

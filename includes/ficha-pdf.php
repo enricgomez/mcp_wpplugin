@@ -109,6 +109,17 @@ foreach ( array( 'widget', 'container', 'section', 'column' ) as $eg_pub_type ) 
 }
 unset( $eg_pub_type );
 
+/*
+ * La caché de elementos de Elementor guarda ya pintados los elementos sin etiquetas dinámicas, así que la
+ * condición solo se evaluaría una vez para todas las fichas. Los elementos con eg-si-meta- se marcan como
+ * dinámicos para que se pinten en cada petición.
+ */
+add_filter( 'elementor/element/is_dynamic_content', function ( $dynamic, $raw_data ) {
+	$settings = (array) ( $raw_data['settings'] ?? array() );
+	$classes  = (string) ( $settings['_css_classes'] ?? '' ) . ' ' . (string) ( $settings['css_classes'] ?? '' );
+	return $dynamic || false !== strpos( $classes, 'eg-si-meta-' );
+}, 10, 2 );
+
 /* ---------- Migración desde la descripción ---------- */
 
 /** Primer enlace .pdf del contenido y el bloque (p, h1-h6, li) que lo contiene. */

@@ -11,7 +11,8 @@
  *            así que al desactivar el plugin todo vuelve a como estaba.
  *   lang_labels {"ca": {"Ahora personalízalo...": "Ara personalitza'l..."}} cambia textos de los widgets de Elementor
  *            en ese idioma de WPML (p. ej. de plantillas que no están traducidas); "" o null quita el cambio. Se
- *            aplica al pintar el widget, así que el JSON de Elementor no cambia.
+ *            aplica al pintar el widget, así que el JSON de Elementor no cambia. También cambia en ese idioma los textos
+ *            fijos de plugins (gettext) por su original o su traducción, p. ej. {"Pickup date": "Data de recollida"}.
  *   sg_exclude {"minify": ["sr7", "tp-tools"], "combine": [...], "defer": [...]} añade handles de scripts a las
  *            exclusiones de SiteGround Optimizer (minificar, combinar y cargar en diferido); "remove" los quita.
  * Como /seo, solo previsualiza; guarda con apply:true y vacía la caché de WP Rocket y de SiteGround.
@@ -74,6 +75,27 @@ if ( get_option( EG_PUB_LANG_LABELS_OPT ) ) {
 	add_filter( 'elementor/widget/render_content', 'eg_pub_lang_labels_filter', 20 );
 	// Con la caché de elementos de Elementor el widget no se vuelve a pintar: se cambia también el HTML de la plantilla entera.
 	add_filter( 'elementor/frontend/the_content', 'eg_pub_lang_labels_filter', 20 );
+	// También textos de plugins sin traducción a ese idioma (p. ej. «Pickup date»): por el original o por su traducción.
+	add_filter( 'gettext', 'eg_pub_lang_labels_gettext', 20, 2 );
+	add_filter( 'gettext_with_context', function ( $translation, $text ) {
+		return eg_pub_lang_labels_gettext( $translation, $text );
+	}, 20, 2 );
+}
+
+function eg_pub_lang_labels_gettext( $translation, $text ) {
+	static $map = null;
+	if ( null === $map ) {
+		if ( ! did_action( 'wpml_loaded' ) && ! did_action( 'init' ) ) {
+			return $translation;
+		}
+		$all  = (array) get_option( EG_PUB_LANG_LABELS_OPT, array() );
+		$lang = (string) apply_filters( 'wpml_current_language', null );
+		$map  = isset( $all[ $lang ] ) ? (array) $all[ $lang ] : array();
+	}
+	if ( isset( $map[ $text ] ) ) {
+		return $map[ $text ];
+	}
+	return isset( $map[ $translation ] ) ? $map[ $translation ] : $translation;
 }
 
 /** Nombre de la opción donde el tema guarda sus ajustes (Options Framework, p. ej. «the7»), o ''. */

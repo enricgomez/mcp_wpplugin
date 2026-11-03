@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.58.0 · 03/11/2026 · PR (Claude)
+
+- Nuevo `POST /backup` (siempre activo, cualquier tipología): copias de UpdraftPlus desde Make. Sin parámetros devuelve el estado: la última copia (fecha, si terminó bien y sus errores), las cinco últimas del historial, si hay una en curso y el destino remoto. Con `run: true` lanza una copia completa (base de datos y archivos) con los ajustes de UpdraftPlus de la web, en segundo plano con el cron de WordPress. Si ya hay una en curso, no lanza otra.
+- Webs: test-cbarbacoa.com (copia antes de cambiar la tipografía). Sirve en todas las webs con UpdraftPlus.
+
 ## 2.57.0 · 03/11/2026 · PR #108 (Claude)
 
 - `/wpml-strings` (nuevo, módulo de enlaces): lista y traduce cadenas de WPML String Translation (`context`, `name`, `set` con `id`/`lang`/`value`) y con `flush: true` regenera los enlaces permanentes y vacía WP Rocket. Sirve para traducir las bases de URL de WooCommerce (`producto` → `producte`).

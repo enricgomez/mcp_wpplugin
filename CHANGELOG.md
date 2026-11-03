@@ -13,6 +13,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 ## 2.71.0 · 03/11/2026 · directo a main (Claude, a petición de Enric)
 
 - Ajustes → EG Publicación: en una web donde el plugin se instala por primera vez (sin ajustes guardados), vienen marcadas todas las tipologías que la web puede usar: Blog y Gestión de la web siempre, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Antes solo venía el Blog y los demás endpoints respondían 404 hasta marcarlos a mano. Mientras no se guarden los ajustes, una tipología que pase a cumplir su requisito (p. ej. instalar Elementor después) se activa sola; al guardar, manda lo marcado.
+- IndexNow (Ajustes → EG IndexNow): si nunca se ha guardado el ajuste, viene activado, salvo en webs ocultas a los buscadores (staging) o si ya avisa otro plugin (Rank Math con Instant Indexing, All in One SEO, SEOPress o el plugin IndexNow), para no enviar dos veces. Un ajuste guardado se respeta.
 - Webs que ya guardaron los ajustes o que vienen de la 2.7.x o anterior: no cambia nada. Una web que nunca guardó los ajustes pasa también a tener todas las tipologías disponibles (todos los endpoints siguen pidiendo la clave `X-EG-Key`).
 - Webs: test-nuriagrima.cat.egserver.cloud (staging nuevo). Afecta a las instalaciones nuevas.
 

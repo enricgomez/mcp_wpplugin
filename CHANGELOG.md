@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.63.2 · 03/11/2026 · PR (Claude)
+
+- `/import-wp`: el extracto del post también se limpia de shortcodes de WPBakery (antes se guardaba con `[vc_row]…` y salía así en los listados del blog).
+- Webs: test-viajestauro.com. Sirve en todas.
+
 ## 2.63.1 · 03/11/2026 · PR (Claude)
 
 - `/import-wp`: limpia los restos de maquetadores de la web de origen que aquí no existen. Quita los shortcodes de WPBakery (`[vc_row]`, `[vc_column_text]`…, conservando el texto y las imágenes de dentro; `[vc_btn]` desaparece), el envoltorio `wpb-content-wrapper`, los `<style>` que imprimen los shortcodes del tema (The7 y similares) y los párrafos vacíos que quedan. Los enlaces a páginas de la web de origen pasan al post importado con el mismo slug o, si no existe, se quedan solo en texto (avisa en `notes`).

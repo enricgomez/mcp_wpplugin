@@ -234,7 +234,7 @@ function eg_pub_import_post( $src, $source, $status ) {
 		'post_type'     => 'post',
 		'post_title'    => wp_strip_all_tags( html_entity_decode( $src['title']['rendered'] ?? '', ENT_QUOTES ) ),
 		'post_name'     => $slug,
-		'post_excerpt'  => trim( wp_strip_all_tags( html_entity_decode( $src['excerpt']['rendered'] ?? '', ENT_QUOTES ) ) ),
+		'post_excerpt'  => trim( wp_strip_all_tags( eg_pub_import_strip_builder( html_entity_decode( $src['excerpt']['rendered'] ?? '', ENT_QUOTES ) ) ) ),
 		'post_status'   => $status,
 		'comment_status' => 'closed',
 		'post_date'     => str_replace( 'T', ' ', $src['date'] ),

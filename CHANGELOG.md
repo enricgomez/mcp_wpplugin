@@ -10,11 +10,18 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.65.0 · 03/11/2026 · PR #119 (Claude)
+## 2.66.0 · 03/11/2026 · PR #119 (Claude)
 
 - `/theme`: `lang_labels` también cambia, solo en ese idioma de WPML, textos fijos de plugins (gettext) por su original o por su traducción, p. ej. `{"ca": {"Pickup date": "Data de recollida"}}` para plugins sin traducción al catalán.
 - `/wpml-strings`: `context: "*"` busca en todos los contextos y `value` busca por el texto original (p. ej. el título de una pasarela de pago).
 - Webs: nilacakes.com (checkout en catalán: fechas de recogida y pago con Redsys). Sirve en todas las que usan WPML.
+
+## 2.65.0 · 03/11/2026 · PR (Claude)
+
+- Ficha técnica en PDF de los productos en un campo propio, `ficha_tecnica_pdf` (URL), con un recuadro «Ficha técnica (PDF)» en la ficha del producto en wp-admin para elegirlo de la biblioteca o pegar la URL. Elementor Pro lo lee con la etiqueta dinámica «Campo personalizado».
+- Visibilidad condicional en Elementor: un elemento con la clase CSS `eg-si-meta-<clave>` solo se pinta si la entrada actual tiene ese metadato con valor (p. ej. el bloque de descarga solo sale en los productos con PDF).
+- Nuevo `POST /ficha-pdf` (cualquier tipología, requiere WooCommerce): estado, y con `migrate: true` pasa el primer enlace .pdf de cada descripción al campo y quita ese bloque del texto; `copy: true` sube antes el PDF a la biblioteca. Solo previsualiza; guarda con `apply: true`.
+- Webs: test-cbarbacoa.com (fichas técnicas de los productos OFYR y Kamado Joe).
 
 ## 2.64.0 · 03/11/2026 · PR (Claude)
 

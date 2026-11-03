@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.60.0 · 03/11/2026 · PR #111 (Claude)
+
+- `/redirect` con `regex`: `id` cambia una redirección de Rank Math que ya existe (patrón, destino y código) en lugar de crear otra, y `status: "inactive"` la deja desactivada. Devuelve `status`.
+- Webs: nilacakes.com (corregir la redirección de las URL catalanas /ca/producto/). Sirve en todas con Rank Math.
+
 ## 2.59.0 · 03/11/2026 · PR (Claude)
 
 - `/media` admite vídeo: un `url` o `filename` acabado en `.mp4` o `.webm` se sube a la biblioteca como vídeo (antes se forzaba a imagen y fallaba). El `b64` acepta cualquier tipo en la cabecera `data:`. Sirve para poner vídeos de fondo en cabeceras de Elementor.

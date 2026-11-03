@@ -660,17 +660,22 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 		if ( false === @preg_match( '#' . str_replace( '#', '\\#', $from ) . '#', '' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
 			return eg_pub_error( 'eg_regex', 'El patrón no es una expresión regular válida: ' . $from );
 		}
-		$to = 0 === strpos( $to, '/' ) ? untrailingslashit( get_option( 'home' ) ) . $to : $to;
-		$id = \RankMath\Redirections\Redirection::from( array(
+		$to   = 0 === strpos( $to, '/' ) ? untrailingslashit( get_option( 'home' ) ) . $to : $to;
+		$data = array(
 			'url_to'      => $to,
 			'header_code' => $code,
-			'status'      => 'active',
+			'status'      => 'inactive' === $r->get_param( 'status' ) ? 'inactive' : 'active',
 			'sources'     => array( array( 'pattern' => $from, 'comparison' => 'regex' ) ),
-		) )->save();
+		);
+		if ( (int) $r->get_param( 'id' ) ) {
+			// Cambia una redirección de Rank Math que ya existe (p. ej. para corregir el destino o desactivarla).
+			$data['id'] = (int) $r->get_param( 'id' );
+		}
+		$id = \RankMath\Redirections\Redirection::from( $data )->save();
 		if ( ! $id ) {
 			return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección de ' . $from . '.', 409 );
 		}
-		return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'rank-math', 'id' => (int) $id, 'from' => $from, 'regex' => true, 'to' => $to, 'code' => $code ), 200 );
+		return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'rank-math', 'id' => (int) $id, 'from' => $from, 'regex' => true, 'to' => $to, 'code' => $code, 'status' => $data['status'] ), 200 );
 	}
 	// La URL de origen sin dominio.
 	$path = trim( (string) wp_parse_url( $from, PHP_URL_PATH ), '/' );

@@ -57,6 +57,10 @@ function eg_pub_active_types() {
 	}
 	// Webs que vienen de la 2.7.x o antes: el blog estaba siempre activo y cada módulo suelto pasa a su tipología.
 	$old = get_option( EG_PUB_OPTION_MODULES, null );
+	if ( ! is_array( $old ) && null === get_option( EG_PUB_OPTION_LANDINGS, null ) ) {
+		// Instalación nueva (nunca se han guardado los ajustes): todas las tipologías que la web puede usar.
+		return eg_pub_available_types();
+	}
 	if ( ! is_array( $old ) ) {
 		// 2.5.x: el interruptor único de landings encendía todo lo general.
 		$old = get_option( EG_PUB_OPTION_LANDINGS, false ) ? array( 'landings', 'plantillas', 'textos', 'menus', 'redirecciones', 'contenido' ) : array();
@@ -69,6 +73,13 @@ function eg_pub_active_types() {
 		}
 	}
 	return array_values( array_intersect( array_keys( eg_pub_types() ), $types ) );
+}
+
+/** Tipologías cuyos requisitos cumple la web (p. ej. Elementor solo si Elementor está activo). */
+function eg_pub_available_types() {
+	return array_keys( array_filter( eg_pub_types(), function ( $t ) {
+		return empty( $t['requires'] ) || defined( $t['requires'] );
+	} ) );
 }
 
 function eg_pub_type_enabled( $type ) {

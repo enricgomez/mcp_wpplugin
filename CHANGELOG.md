@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.71.0 · 03/11/2026 · directo a main (Claude, a petición de Enric)
+
+- Ajustes → EG Publicación: en una web donde el plugin se instala por primera vez (sin ajustes guardados), vienen marcadas todas las tipologías que la web puede usar: Blog y Gestión de la web siempre, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Antes solo venía el Blog y los demás endpoints respondían 404 hasta marcarlos a mano. Mientras no se guarden los ajustes, una tipología que pase a cumplir su requisito (p. ej. instalar Elementor después) se activa sola; al guardar, manda lo marcado.
+- Webs que ya guardaron los ajustes o que vienen de la 2.7.x o anterior: no cambia nada. Una web que nunca guardó los ajustes pasa también a tener todas las tipologías disponibles (todos los endpoints siguen pidiendo la clave `X-EG-Key`).
+- Webs: test-nuriagrima.cat.egserver.cloud (staging nuevo). Afecta a las instalaciones nuevas.
+
 ## 2.70.0 · 03/11/2026 · PR (Claude)
 
 - `/template` (Elementor) admite `list: true`: devuelve, sin cambiar nada, las plantillas de Elementor de todos los idiomas (id, título, tipo, estado, idioma de WPML, condiciones del Theme Builder, clave de EG) y la portada y la página de entradas de Ajustes → Lectura.

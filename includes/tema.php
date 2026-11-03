@@ -61,16 +61,19 @@ if ( get_option( EG_PUB_LABELS_OPT ) ) {
 }
 
 // Textos de Elementor por idioma: se sustituyen en el HTML de cada widget cuando la página está en ese idioma.
+function eg_pub_lang_labels_filter( $content ) {
+	static $map = null;
+	if ( null === $map ) {
+		$all  = (array) get_option( EG_PUB_LANG_LABELS_OPT, array() );
+		$lang = (string) apply_filters( 'wpml_current_language', null );
+		$map  = isset( $all[ $lang ] ) ? (array) $all[ $lang ] : array();
+	}
+	return $map && is_string( $content ) ? strtr( $content, $map ) : $content;
+}
 if ( get_option( EG_PUB_LANG_LABELS_OPT ) ) {
-	add_filter( 'elementor/widget/render_content', function ( $content ) {
-		static $map = null;
-		if ( null === $map ) {
-			$all  = (array) get_option( EG_PUB_LANG_LABELS_OPT, array() );
-			$lang = (string) apply_filters( 'wpml_current_language', null );
-			$map  = isset( $all[ $lang ] ) ? (array) $all[ $lang ] : array();
-		}
-		return $map ? strtr( $content, $map ) : $content;
-	}, 20 );
+	add_filter( 'elementor/widget/render_content', 'eg_pub_lang_labels_filter', 20 );
+	// Con la caché de elementos de Elementor el widget no se vuelve a pintar: se cambia también el HTML de la plantilla entera.
+	add_filter( 'elementor/frontend/the_content', 'eg_pub_lang_labels_filter', 20 );
 }
 
 /** Nombre de la opción donde el tema guarda sus ajustes (Options Framework, p. ej. «the7»), o ''. */
@@ -163,6 +166,13 @@ function eg_pub_theme_handle( WP_REST_Request $r ) {
 			update_option( EG_PUB_LANG_LABELS_OPT, $langlab, true );
 		} else {
 			delete_option( EG_PUB_LANG_LABELS_OPT );
+		}
+		if ( preg_grep( '/^lang_labels\./', $changes ) ) {
+			// La caché de elementos de Elementor guarda el HTML ya pintado: se vacía para que salga el texto nuevo.
+			delete_post_meta_by_key( '_elementor_element_cache' );
+			if ( class_exists( '\\Elementor\\Plugin' ) && isset( \Elementor\Plugin::$instance->files_manager ) ) {
+				\Elementor\Plugin::$instance->files_manager->clear_cache();
+			}
 		}
 		if ( function_exists( 'rocket_clean_domain' ) ) {
 			rocket_clean_domain();

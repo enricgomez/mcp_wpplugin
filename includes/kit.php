@@ -280,7 +280,7 @@ function eg_pub_media_handle( WP_REST_Request $r ) {
 		}
 		if ( '' !== $b64 ) {
 			// Imagen ya optimizada que no está publicada en ninguna URL (p. ej. una foto de Drive reducida).
-			$data = base64_decode( preg_replace( '#^data:image/\w+;base64,#', '', $b64 ), true );
+			$data = base64_decode( preg_replace( '#^data:[\w.+-]+/[\w.+-]+;base64,#', '', $b64 ), true );
 			if ( false === $data ) {
 				$out[] = $row + array( 'error' => 'El base64 no es válido.' );
 				continue;
@@ -298,7 +298,8 @@ function eg_pub_media_handle( WP_REST_Request $r ) {
 		if ( '' === $name ) {
 			$name = basename( (string) wp_parse_url( $url, PHP_URL_PATH ) );
 		}
-		if ( ! preg_match( '/\.(jpe?g|png|gif|webp|svg|avif)$/i', $name ) ) {
+		// Desde la 2.59.0 también vídeo (mp4/webm) para fondos de cabecera; el resto cae en imagen.
+		if ( ! preg_match( '/\.(jpe?g|png|gif|webp|svg|avif|mp4|webm)$/i', $name ) ) {
 			$type = wp_get_image_mime( $tmp );
 			$name = ( $key ?: 'imagen' ) . '.' . ( $type ? str_replace( array( 'image/', 'jpeg' ), array( '', 'jpg' ), $type ) : 'jpg' );
 		}

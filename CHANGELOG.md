@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.59.0 · 03/11/2026 · PR (Claude)
+
+- `/media` admite vídeo: un `url` o `filename` acabado en `.mp4` o `.webm` se sube a la biblioteca como vídeo (antes se forzaba a imagen y fallaba). El `b64` acepta cualquier tipo en la cabecera `data:`. Sirve para poner vídeos de fondo en cabeceras de Elementor.
+- Webs: test-cbarbacoa.com (vídeo de la cabecera de la home). Sirve en todas las webs con la tipología Elementor.
+
 ## 2.58.0 · 03/11/2026 · PR (Claude)
 
 - Nuevo `POST /backup` (siempre activo, cualquier tipología): copias de UpdraftPlus desde Make. Sin parámetros devuelve el estado: la última copia (fecha, si terminó bien y sus errores), las cinco últimas del historial, si hay una en curso y el destino remoto. Con `run: true` lanza una copia completa (base de datos y archivos) con los ajustes de UpdraftPlus de la web, en segundo plano con el cron de WordPress. Si ya hay una en curso, no lanza otra.

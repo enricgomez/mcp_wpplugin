@@ -5,6 +5,9 @@
  * Elige las entradas por ruta (paths), por ID (ids) o por términos de una taxonomía (post_type + terms), con
  * sus traducciones de WPML si se pide. Con dry_run solo las lista con su estado actual. El cambio se guarda
  * sin wp_update_post para que WPML no lance la traducción automática del resto de idiomas.
+ * Con gone (410, o {"code":301,"to":"/ruta/"}) guarda además, en cada entrada publicada que se despublica, la
+ * redirección de la URL que tenía (en su idioma), con el mismo sistema que /redirect. Sirve para dar de baja una
+ * página en todos los idiomas con una sola llamada: {"paths":["/ruta/"],"with_translations":true,"status":"draft","gone":410}.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -45,12 +48,43 @@ function eg_pub_status_find_path( $path ) {
 	return $page ? (int) $page->ID : 0;
 }
 
+/**
+ * Guarda la redirección de una URL que se despublica con el mismo /redirect del plugin (Rank Math, Redirection o
+ * la lista propia de EG Publicación). Devuelve from, code y ok, o el error.
+ */
+function eg_pub_status_gone( $url, $gone ) {
+	$req = new WP_REST_Request( 'POST', '/eg/v1/redirect' );
+	$req->set_param( 'from', $url );
+	$req->set_param( 'to', ! empty( $gone['to'] ) ? (string) $gone['to'] : '/' );
+	$req->set_param( 'code', (int) $gone['code'] );
+	$res = eg_pub_redirect_handle( $req );
+	if ( is_wp_error( $res ) ) {
+		return array( 'ok' => false, 'from' => $url, 'error' => $res->get_error_message() );
+	}
+	$data = $res instanceof WP_REST_Response ? $res->get_data() : (array) $res;
+	return array( 'ok' => ! empty( $data['ok'] ), 'from' => $data['from'] ?? $url, 'code' => (int) $gone['code'], 'plugin' => $data['plugin'] ?? '', 'message' => $data['message'] ?? '' );
+}
+
 function eg_pub_status_handle( WP_REST_Request $r ) {
 	$p       = $r->get_params();
 	$status  = sanitize_key( $p['status'] ?? '' );
 	$dry_run = ! empty( $p['dry_run'] );
 	if ( ! $dry_run && ! in_array( $status, array( 'draft', 'publish', 'private', 'pending' ), true ) ) {
 		return eg_pub_error( 'eg_status', 'status debe ser draft, publish, private o pending (o usar dry_run).' );
+	}
+
+	// gone: 410 (o 301/302 con to) para las URL de las entradas que se despublican.
+	$gone = null;
+	if ( isset( $p['gone'] ) && '' !== $p['gone'] && false !== $p['gone'] ) {
+		$gone = is_array( $p['gone'] ) ? $p['gone'] : array( 'code' => (int) $p['gone'] );
+		$gone['code'] = (int) ( $gone['code'] ?? 410 );
+		$gone['code'] = $gone['code'] ? $gone['code'] : 410;
+		if ( ! function_exists( 'eg_pub_redirect_handle' ) ) {
+			return eg_pub_error( 'eg_gone', 'gone necesita el módulo de redirecciones activo.', 409 );
+		}
+		if ( ! in_array( $gone['code'], array( 410, 451 ), true ) && empty( $gone['to'] ) ) {
+			return eg_pub_error( 'eg_gone', 'gone con código ' . $gone['code'] . ' necesita to.' );
+		}
 	}
 
 	$ids   = array();
@@ -124,6 +158,10 @@ function eg_pub_status_handle( WP_REST_Request $r ) {
 			'status' => $post->post_status,
 		);
 		if ( ! $dry_run && $post->post_status !== $status ) {
+			// gone: al despublicar, guarda una redirección (o un 410) en la URL que tenía cada entrada publicada.
+			if ( null !== $gone && 'publish' === $post->post_status && 'publish' !== $status ) {
+				$row['redirect'] = eg_pub_status_gone( $row['url'], $gone );
+			}
 			global $wpdb;
 			$wpdb->update( $wpdb->posts, array( 'post_status' => $status ), array( 'ID' => $id ) );
 			clean_post_cache( $id );

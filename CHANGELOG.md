@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.56.0 · 03/11/2026 · PR (Claude)
+
+- `/status`: nuevo `gone` (`410`, o `{"code": 301, "to": "/ruta/"}`). Al despublicar, guarda en cada entrada que estaba publicada la redirección de la URL que tenía en su idioma, con el mismo sistema que `/redirect` (Rank Math, Redirection o la lista propia del plugin). Con `with_translations` da de baja una página en todos los idiomas en una sola llamada, sin tener que buscar la URL traducida (WPML traduce el slug). Cada entrada devuelve `redirect` con `from`, `code` y `ok`.
+- Webs: desire-vips.com (bajas de perfiles: borrador en ES y EN + 410). Sirve en todas.
+
 ## 2.55.0 · 02/11/2026 · PR (Claude)
 
 - `/template` con `id`: nuevo `insert_after` (`{"<id de elemento>": {elemento} o [elementos]}`) añade elementos nuevos justo detrás de ese elemento, en el mismo contenedor, sin reenviar el contenedor ni rehacer sus otros hijos (si el elemento nuevo no trae `id`, se le asigna uno). Devuelve `inserted_after`. Se combina con `patch`, `replace` y `remove` y guarda la copia en `_eg_pub_elementor_backup`.

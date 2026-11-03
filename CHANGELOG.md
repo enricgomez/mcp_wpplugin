@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.65.0 · 03/11/2026 · PR (Claude)
+## 2.65.0 · 03/11/2026 · PR #119 (Claude)
 
 - `/theme`: `lang_labels` también cambia, solo en ese idioma de WPML, textos fijos de plugins (gettext) por su original o por su traducción, p. ej. `{"ca": {"Pickup date": "Data de recollida"}}` para plugins sin traducción al catalán.
 - `/wpml-strings`: `context: "*"` busca en todos los contextos y `value` busca por el texto original (p. ej. el título de una pasarela de pago).

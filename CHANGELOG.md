@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.67.0 · 03/11/2026 · PR (Claude)
+
+- Nuevo `POST /wc-emails` (tipología Gestión de la web, requiere WooCommerce): lista los emails de WooCommerce y, con `extra` (`{"customer_completed_order": {"es": "…", "ca": "…"}}`), añade un texto al final del email en el idioma del pedido (WPML), p. ej. la petición de reseña con el enlace directo a Google. Se aplica con un filtro: el email de WooCommerce no cambia. Solo previsualiza; guarda con `apply: true`.
+- Webs: nilacakes.com (reseñas de Google en el email de pedido completado). Sirve en todas las tiendas.
+
 ## 2.66.1 · 03/11/2026 · PR (Claude)
 
 - Visibilidad `eg-si-meta-<clave>` (desde 2.65.0): los elementos con esa clase se marcan como dinámicos para la caché de elementos de Elementor. Antes la caché guardaba el elemento ya pintado y la condición solo se evaluaba una vez para todas las fichas (el bloque de la ficha técnica salía también en productos sin PDF).

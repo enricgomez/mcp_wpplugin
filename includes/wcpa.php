@@ -4,7 +4,8 @@
  *   POST /wp-json/eg/v1/wcpa-forms
  * Sin parámetros lista los formularios (wcpa_pt_forms) de todos los idiomas: id, título, estado, idioma de WPML,
  * si tienen campos y los textos que muestran (etiquetas, descripciones, opciones…), agrupados por clave. `ids` limita
- * la lista a esos formularios.
+ * la lista a esos formularios. Con `type: "options"` lista las listas de opciones globales (wcpa_pt_options), que
+ * los formularios usan por su clave; `copy` y `translate` también sirven para ellas (sus textos van en `label`).
  *   copy       {"<id origen>": <id destino>} copia los ajustes y campos de WCPA (metadatos que empiezan por _wcpa o
  *              wcpa) del formulario origen al destino, p. ej. del formulario en castellano a su traducción vacía
  *              (la traducción automática de WPML crea el formulario sin campos y la ficha no muestra opciones).
@@ -37,7 +38,11 @@ add_action( 'rest_api_init', function () {
 	) );
 } );
 
-const EG_PUB_WCPA_JSON_KEY = '_wcpa_fb_json_data';
+/** Tipos de WCPA que se copian y su metadato con el JSON de campos u opciones. */
+const EG_PUB_WCPA_TYPES = array(
+	'wcpa_pt_forms'   => '_wcpa_fb_json_data',
+	'wcpa_pt_options' => '_wcpa_options_data',
+);
 
 /** Metadatos de WCPA de un formulario: todo lo que empieza por _wcpa o wcpa. */
 function eg_pub_wcpa_meta( $form_id ) {
@@ -112,20 +117,22 @@ function eg_pub_wcpa_forms_handle( WP_REST_Request $r ) {
 	foreach ( (array) ( $p['copy'] ?? array() ) as $src => $dst ) {
 		$src = (int) $src;
 		$dst = (int) $dst;
-		if ( 'wcpa_pt_forms' !== get_post_type( $src ) || 'wcpa_pt_forms' !== get_post_type( $dst ) || $src === $dst ) {
-			$notes[] = 'copia ' . $src . ' → ' . $dst . ': los dos tienen que ser formularios de WCPA distintos';
+		$type = get_post_type( $src );
+		if ( ! isset( EG_PUB_WCPA_TYPES[ $type ] ) || get_post_type( $dst ) !== $type || $src === $dst ) {
+			$notes[] = 'copia ' . $src . ' → ' . $dst . ': tienen que ser dos formularios (o dos listas de opciones) de WCPA distintos';
 			continue;
 		}
+		$jkey = EG_PUB_WCPA_TYPES[ $type ];
 		$meta = eg_pub_wcpa_meta( $src );
-		if ( empty( $meta[ EG_PUB_WCPA_JSON_KEY ] ) ) {
-			$notes[] = 'copia ' . $src . ' → ' . $dst . ': el formulario origen no tiene campos';
+		if ( empty( $meta[ $jkey ] ) ) {
+			$notes[] = 'copia ' . $src . ' → ' . $dst . ': el origen no tiene campos ni opciones';
 			continue;
 		}
 		$texts      = array();
 		$translated = 0;
-		$json       = json_decode( (string) $meta[ EG_PUB_WCPA_JSON_KEY ] );
+		$json       = json_decode( (string) $meta[ $jkey ] );
 		eg_pub_wcpa_walk( $json, $keys, $map, $texts, $translated );
-		$meta[ EG_PUB_WCPA_JSON_KEY ] = wp_json_encode( $json );
+		$meta[ $jkey ] = wp_json_encode( $json );
 		$pending                      = array();
 		foreach ( $texts as $k => $list ) {
 			foreach ( array_keys( $list ) as $t ) {
@@ -150,7 +157,7 @@ function eg_pub_wcpa_forms_handle( WP_REST_Request $r ) {
 	$flushed = ( $apply && $changes ) ? eg_pub_wcpa_flush() : 0;
 
 	$args = array(
-		'post_type'        => 'wcpa_pt_forms',
+		'post_type'        => 'options' === ( $p['type'] ?? '' ) ? 'wcpa_pt_options' : 'wcpa_pt_forms',
 		'post_status'      => 'any',
 		'posts_per_page'   => 200,
 		'suppress_filters' => true,
@@ -165,7 +172,8 @@ function eg_pub_wcpa_forms_handle( WP_REST_Request $r ) {
 		$meta  = eg_pub_wcpa_meta( $post->ID );
 		$texts = array();
 		$n     = 0;
-		$json  = isset( $meta[ EG_PUB_WCPA_JSON_KEY ] ) ? json_decode( (string) $meta[ EG_PUB_WCPA_JSON_KEY ] ) : null;
+		$jkey  = EG_PUB_WCPA_TYPES[ $post->post_type ];
+		$json  = isset( $meta[ $jkey ] ) ? json_decode( (string) $meta[ $jkey ] ) : null;
 		if ( $json ) {
 			eg_pub_wcpa_walk( $json, $keys, array(), $texts, $n );
 		}

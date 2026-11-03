@@ -71,8 +71,11 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 		}
 		return new WP_REST_Response( array( 'ok' => true, 'results' => $results ), 200 );
 	}
-	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) ) ) {
-		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array() );
+	if ( ! empty( $p['id'] ) && ! empty( $p['get'] ) ) {
+		return eg_pub_template_get( (int) $p['id'], $p['get'] );
+	}
+	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) || isset( $p['images'] ) || isset( $p['insert_after'] ) ) ) {
+		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array(), array(), $p['images'] ?? array(), $p['insert_after'] ?? array() );
 	}
 	if ( '' === $key || '' === $title || ! is_array( $elements ) || ! $elements ) {
 		return eg_pub_error( 'eg_missing', 'Faltan datos obligatorios: key, title o elements (JSON de Elementor).' );
@@ -144,16 +147,38 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
  * `replace` = {"<id de elemento>": {elemento completo}} cambia ese elemento entero, con sus hijos
  * (para reestructurar una sección sin reenviar toda la página); se aplica antes que `patch`.
  * `remove` = ["<id de elemento>", …] quita esos elementos con sus hijos (también secciones de primer nivel).
+ * `insert_after` = {"<id de elemento>": {elemento} o [elementos]} añade elementos nuevos justo detrás de ese, en el
+ * mismo contenedor (p. ej. un widget junto a un botón de la cabecera) sin rehacer el contenedor.
  * Solo toca _elementor_data (el anterior queda en _eg_pub_elementor_backup); el resto del documento queda igual.
  */
-function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array(), $widgets = array() ) {
+function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array(), $widgets = array(), $images = array(), $insert = array() ) {
 	$post    = get_post( $id );
+	// images: {"<ID de adjunto actual>": <ID de adjunto nuevo>} cambia esa foto en todos los controles de imagen
+	// (imagen, fondo, diapositivas, galerías…) sin tocar el resto ni los ids de los elementos.
+	$img_map = array();
+	$img_bad = array();
+	foreach ( ( is_array( $images ) ? $images : array() ) as $old_img => $new_img ) {
+		if ( (int) $old_img && (int) $new_img && 'attachment' === get_post_type( (int) $new_img ) ) {
+			$img_map[ (int) $old_img ] = (int) $new_img;
+		} else {
+			$img_bad[] = (string) $new_img;
+		}
+	}
+	if ( $img_bad && ! $img_map && ! $patch && ! $replace && ! $remove && ! $widgets ) {
+		return eg_pub_error( 'eg_bad_image', 'Estos adjuntos nuevos no existen en la biblioteca de medios: ' . implode( ', ', $img_bad ) . '.' );
+	}
 	$patch   = is_array( $patch ) ? $patch : array();
 	$widgets = is_array( $widgets ) ? array_filter( $widgets, 'is_array' ) : array();
 	$replace = is_array( $replace ) ? array_filter( $replace, fn( $el ) => is_array( $el ) && ! empty( $el['elType'] ) ) : array();
 	$remove  = array_values( array_filter( array_map( 'strval', (array) $remove ) ) );
-	if ( ! $post || ( ! $patch && ! $replace && ! $remove && ! $widgets ) ) {
-		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}}, replace {"id de elemento": {elemento}} o remove ["id de elemento"].' );
+	$insert  = is_array( $insert ) ? $insert : array();
+	foreach ( $insert as $after_id => $new_els ) {
+		$new_els             = ( is_array( $new_els ) && isset( $new_els['elType'] ) ) ? array( $new_els ) : (array) $new_els;
+		$insert[ $after_id ] = array_values( array_filter( $new_els, fn( $el ) => is_array( $el ) && ! empty( $el['elType'] ) ) );
+	}
+	$insert = array_filter( $insert );
+	if ( ! $post || ( ! $patch && ! $replace && ! $remove && ! $widgets && ! $img_map && ! $insert ) ) {
+		return eg_pub_error( 'eg_missing', 'Faltan datos: id de una plantilla o página y patch {"id de elemento": {ajustes}}, replace {"id de elemento": {elemento}}, remove ["id de elemento"] o images {"id de adjunto actual": id de adjunto nuevo} (el adjunto nuevo debe existir).' );
 	}
 	if ( ! current_user_can( 'edit_post', $id ) ) {
 		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );
@@ -165,7 +190,9 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 	$found    = array();
 	$replaced = array();
 	$removed  = array();
-	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, $remove, $widgets, &$found, &$replaced, &$removed ) {
+	$inserted = array();
+	$walk     = function ( $elements ) use ( &$walk, $patch, $replace, $remove, $widgets, $insert, &$found, &$replaced, &$removed, &$inserted ) {
+		$out = array();
 		foreach ( $elements as $i => &$el ) {
 			$eid = (string) ( $el['id'] ?? '' );
 			if ( in_array( $eid, $remove, true ) ) {
@@ -191,12 +218,27 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 			}
 		}
 		unset( $el );
-		return array_values( $elements );
+		foreach ( array_values( $elements ) as $el ) {
+			$out[] = $el;
+			$eid   = (string) ( $el['id'] ?? '' );
+			if ( isset( $insert[ $eid ] ) ) {
+				foreach ( $insert[ $eid ] as $new_el ) {
+					$new_el += array( 'id' => substr( md5( $eid . wp_json_encode( $new_el ) . count( $out ) ), 0, 7 ), 'settings' => array(), 'elements' => array() );
+					$out[]   = $new_el;
+				}
+				$inserted[] = $eid;
+			}
+		}
+		return $out;
 	};
 	$old     = (string) get_post_meta( $id, '_elementor_data', true );
 	$data    = $walk( $data );
-	$missing = array_values( array_diff( array_map( 'strval', array_merge( array_keys( $patch ), array_keys( $replace ), $remove ) ), $found, $replaced, $removed ) );
-	if ( ! $found && ! $replaced && ! $removed ) {
+	$swapped = array();
+	if ( $img_map ) {
+		$data = eg_pub_template_swap_images( $data, $img_map, $swapped );
+	}
+	$missing = array_values( array_diff( array_map( 'strval', array_merge( array_keys( $patch ), array_keys( $replace ), $remove, array_keys( $img_map ), array_keys( $insert ) ) ), $found, $replaced, $removed, $inserted, array_map( 'strval', array_keys( $swapped ) ) ) );
+	if ( ! $found && ! $replaced && ! $removed && ! $swapped && ! $inserted ) {
 		return eg_pub_error( 'eg_not_found', 'No se encontró ningún elemento con esos ids o tipos de widget.', 404 );
 	}
 	update_post_meta( $id, '_eg_pub_elementor_backup', wp_slash( wp_json_encode( array( 'time' => time(), 'title' => $post->post_title, 'data' => $old ) ) ) );
@@ -206,7 +248,75 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
 	if ( function_exists( 'rocket_clean_post' ) ) {
 		rocket_clean_post( $id );
 	}
-	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'removed' => $removed, 'missing' => $missing ), 200 );
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'patched' => $found, 'replaced' => $replaced, 'removed' => $removed, 'inserted_after' => $inserted, 'images' => (object) $swapped, 'missing' => $missing, 'bad_images' => $img_bad ), 200 );
+}
+
+/**
+ * Lee elementos del JSON de Elementor de una plantilla o página sin cambiar nada: `get` = ["<id>", …] devuelve esos
+ * elementos completos (ajustes e hijos); `get` = true devuelve el árbol entero resumido (id, tipo y widget).
+ */
+function eg_pub_template_get( $id, $get ) {
+	$post = get_post( $id );
+	if ( ! $post || ! current_user_can( 'edit_post', $id ) ) {
+		return eg_pub_error( 'eg_forbidden', 'No se puede leer ese contenido.', 403 );
+	}
+	$data = json_decode( (string) get_post_meta( $id, '_elementor_data', true ), true );
+	if ( ! is_array( $data ) ) {
+		return eg_pub_error( 'eg_not_elementor', 'Ese contenido no tiene JSON de Elementor.', 400 );
+	}
+	$ids  = is_array( $get ) ? array_map( 'strval', $get ) : array();
+	$hits = array();
+	$walk = function ( $elements ) use ( &$walk, $ids, &$hits ) {
+		$tree = array();
+		foreach ( $elements as $el ) {
+			$eid = (string) ( $el['id'] ?? '' );
+			if ( in_array( $eid, $ids, true ) ) {
+				$hits[ $eid ] = $el;
+			}
+			$tree[] = array_filter( array(
+				'id'       => $eid,
+				'type'     => $el['widgetType'] ?? ( $el['elType'] ?? '' ),
+				'elements' => ! empty( $el['elements'] ) ? $walk( $el['elements'] ) : null,
+			) );
+		}
+		return $tree;
+	};
+	$tree = $walk( $data );
+	$out  = array( 'ok' => true, 'id' => $id, 'title' => $post->post_title );
+	if ( $ids ) {
+		$out['elements'] = (object) $hits;
+		$out['missing']  = array_values( array_diff( $ids, array_keys( $hits ) ) );
+	} else {
+		$out['tree'] = $tree;
+	}
+	return new WP_REST_Response( $out, 200 );
+}
+
+/**
+ * Cambia fotos en el JSON de Elementor: cada control de imagen {"id": N, "url": …} con N en $map pasa al
+ * adjunto nuevo (id, url y alt). Cuenta en $swapped cuántas veces se cambió cada ID antiguo.
+ */
+function eg_pub_template_swap_images( $node, $map, &$swapped ) {
+	if ( ! is_array( $node ) ) {
+		return $node;
+	}
+	if ( isset( $node['id'], $node['url'] ) && ! isset( $node['elType'] ) && isset( $map[ (int) $node['id'] ] ) ) {
+		$old_id        = (int) $node['id'];
+		$new           = $map[ $old_id ];
+		$node['id']    = $new;
+		$node['url']   = (string) wp_get_attachment_url( $new );
+		if ( array_key_exists( 'alt', $node ) ) {
+			$node['alt'] = (string) get_post_meta( $new, '_wp_attachment_image_alt', true );
+		}
+		$swapped[ $old_id ] = ( $swapped[ $old_id ] ?? 0 ) + 1;
+		return $node;
+	}
+	foreach ( $node as $k => $v ) {
+		if ( is_array( $v ) ) {
+			$node[ $k ] = eg_pub_template_swap_images( $v, $map, $swapped );
+		}
+	}
+	return $node;
 }
 
 /**

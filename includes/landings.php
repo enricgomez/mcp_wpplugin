@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const EG_PUB_OPTION_LANDINGS = 'eg_pub_landings_enabled';
 const EG_PUB_META_LANDING    = '_eg_landing_id';
+const EG_PUB_OPTION_REDIRECTS = 'eg_pub_redirects';
 
 /** Hay algún módulo opcional activo (antes de la 2.6.0 había un único interruptor para todos). */
 function eg_pub_landings_enabled() {
@@ -559,6 +560,40 @@ function eg_pub_menu_handle( WP_REST_Request $r ) {
 	$pos  = 0;
 	foreach ( (array) ( $p['items'] ?? array() ) as $item ) {
 		++$pos; // Las páginas quedan en el orden de "items" (con WPML el menú puede no listar sus elementos durante la petición).
+		if ( ! empty( $item['url'] ) ) {
+			// Enlace personalizado (p. ej. un ancla de una página): se reconoce por su URL.
+			$url     = esc_url_raw( (string) $item['url'] );
+			$title   = wp_strip_all_tags( (string) ( $item['title'] ?? '' ) );
+			$item_id = 0;
+			$place   = array( 'order' => $pos, 'parent' => 0 );
+			if ( '' === $url || '' === $title ) {
+				$notes[] = 'un enlace necesita url y title';
+				continue;
+			}
+			foreach ( $existing as $it ) {
+				if ( $it['url'] === $url ) {
+					$item_id = $it['id'];
+					$place   = $keep ? $it : $place;
+				}
+			}
+			if ( $keep && ! $item_id ) {
+				$place['order'] = ++$last;
+			}
+			$res = wp_update_nav_menu_item( $menu->term_id, $item_id, array(
+				'menu-item-type'      => 'custom',
+				'menu-item-url'       => $url,
+				'menu-item-title'     => $title,
+				'menu-item-status'    => 'publish',
+				'menu-item-position'  => isset( $item['position'] ) ? (int) $item['position'] : $place['order'],
+				'menu-item-parent-id' => isset( $item['parent'] ) ? (int) $item['parent'] : $place['parent'],
+			) );
+			if ( is_wp_error( $res ) ) {
+				$notes[] = $title . ': ' . $res->get_error_message();
+			} else {
+				$added[] = $title;
+			}
+			continue;
+		}
 		$page_id = ! empty( $item['landing_id'] ) ? eg_pub_find_landing( $item['landing_id'] ) : (int) ( $item['page_id'] ?? 0 );
 		if ( ! $page_id || 'page' !== get_post_type( $page_id ) ) {
 			$notes[] = 'no encuentro la página ' . ( $item['landing_id'] ?? ( $item['page_id'] ?? '' ) );
@@ -615,10 +650,34 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	if ( ! in_array( $code, array( 301, 302, 307, 410, 451 ), true ) ) {
 		return eg_pub_error( 'eg_code', 'Código de redirección no válido: ' . $code );
 	}
-	if ( ! class_exists( '\RankMath\Redirections\Redirection' ) ) {
-		return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo o tiene desactivado el módulo de Redirecciones.', 501 );
+	$rank_math   = class_exists( '\\RankMath\\Redirections\\Redirection' );
+	$redirection = class_exists( 'Red_Item' );
+	if ( $r->get_param( 'regex' ) ) {
+		// Patrón de Rank Math sobre la ruta sin barra inicial, p. ej. ^ca/producto/(.*)$ hacia /ca/producte/$1.
+		if ( ! $rank_math ) {
+			return eg_pub_error( 'eg_regex', 'Las redirecciones con patrón solo se pueden guardar con Rank Math.' );
+		}
+		if ( false === @preg_match( '#' . str_replace( '#', '\\#', $from ) . '#', '' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			return eg_pub_error( 'eg_regex', 'El patrón no es una expresión regular válida: ' . $from );
+		}
+		$to   = 0 === strpos( $to, '/' ) ? untrailingslashit( get_option( 'home' ) ) . $to : $to;
+		$data = array(
+			'url_to'      => $to,
+			'header_code' => $code,
+			'status'      => 'inactive' === $r->get_param( 'status' ) ? 'inactive' : 'active',
+			'sources'     => array( array( 'pattern' => $from, 'comparison' => 'regex' ) ),
+		);
+		if ( (int) $r->get_param( 'id' ) ) {
+			// Cambia una redirección de Rank Math que ya existe (p. ej. para corregir el destino o desactivarla).
+			$data['id'] = (int) $r->get_param( 'id' );
+		}
+		$id = \RankMath\Redirections\Redirection::from( $data )->save();
+		if ( ! $id ) {
+			return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección de ' . $from . '.', 409 );
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'rank-math', 'id' => (int) $id, 'from' => $from, 'regex' => true, 'to' => $to, 'code' => $code, 'status' => $data['status'] ), 200 );
 	}
-	// Rank Math guarda la URL de origen sin dominio ni barra inicial.
+	// La URL de origen sin dominio.
 	$path = trim( (string) wp_parse_url( $from, PHP_URL_PATH ), '/' );
 	if ( '' === $path ) {
 		return eg_pub_error( 'eg_from', 'La URL de origen no puede ser la portada.' );
@@ -628,7 +687,14 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 		$to = untrailingslashit( get_option( 'home' ) ) . $to;
 	}
 
-	// Rank Math actualiza la redirección que ya tenga ese mismo origen en lugar de crear otra.
+	if ( ! $rank_math && ! $redirection ) {
+		return eg_pub_redirect_own( $path, $to, $code );
+	}
+	if ( ! $rank_math ) {
+		return eg_pub_redirect_redirection( $path, $to, $code );
+	}
+
+	// Rank Math guarda la URL de origen sin barra inicial y actualiza la redirección que ya tenga ese mismo origen.
 	$id = \RankMath\Redirections\Redirection::from( array(
 		'url_to'      => esc_url_raw( $to ),
 		'header_code' => $code,
@@ -638,8 +704,84 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	if ( ! $id ) {
 		return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección de ' . $path . '.', 409 );
 	}
-	return new WP_REST_Response( array( 'ok' => true, 'id' => (int) $id, 'from' => $path, 'to' => esc_url_raw( $to ), 'code' => $code ), 200 );
+	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'rank-math', 'id' => (int) $id, 'from' => $path, 'to' => esc_url_raw( $to ), 'code' => $code ), 200 );
 }
+
+/**
+ * La misma redirección en el plugin Redirection (John Godley), para las webs sin Rank Math. Origen exacto con
+ * barra inicial y final (Redirection ignora la barra final por defecto); si ya hay una con ese origen, la cambia.
+ */
+function eg_pub_redirect_redirection( $path, $to, $code ) {
+	global $wpdb;
+	$items  = $wpdb->prefix . 'redirection_items';
+	$groups = $wpdb->prefix . 'redirection_groups';
+	$source = '/' . $path . ( false === strpos( basename( $path ), '.' ) ? '/' : '' );
+	$group  = (int) $wpdb->get_var( "SELECT id FROM {$groups} WHERE status = 'enabled' AND module_id = 1 ORDER BY id LIMIT 1" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( ! $group ) {
+		return eg_pub_error( 'eg_redirect', 'Redirection no tiene ningún grupo activo de WordPress donde guardar la redirección.', 409 );
+	}
+	$error   = in_array( $code, array( 410, 451 ), true );
+	$details = array(
+		'url'         => $source,
+		'match_type'  => 'url',
+		'regex'       => false,
+		'group_id'    => $group,
+		'action_type' => $error ? 'error' : 'url',
+		'action_code' => $code,
+		'action_data' => $error ? array() : array( 'url' => esc_url_raw( $to ) ),
+	);
+	$existing = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$items} WHERE url IN (%s, %s) AND regex = 0 ORDER BY id LIMIT 1", $source, untrailingslashit( $source ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	if ( $existing && ( $item = Red_Item::get_by_id( $existing ) ) ) {
+		$result = $item->update( $details );
+		$id     = $existing;
+	} else {
+		$result = Red_Item::create( $details );
+		$id     = $result instanceof Red_Item ? (int) $result->get_id() : 0;
+	}
+	if ( is_wp_error( $result ) || ! $id ) {
+		$message = is_wp_error( $result ) ? $result->get_error_message() : 'sin ID';
+		return eg_pub_error( 'eg_redirect', 'Redirection no ha guardado la redirección de ' . $source . ': ' . $message, 409 );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'redirection', 'id' => $id, 'updated' => (bool) $existing, 'from' => $source, 'to' => $error ? '' : esc_url_raw( $to ), 'code' => $code ), 200 );
+}
+
+/**
+ * Webs sin Rank Math ni Redirection: la redirección la guarda EG Publicación (opción eg_pub_redirects) y la
+ * aplica solo cuando la URL de origen da 404, así nunca tapa una página que exista.
+ */
+function eg_pub_redirect_own( $path, $to, $code ) {
+	$own   = get_option( EG_PUB_OPTION_REDIRECTS, array() );
+	$own   = is_array( $own ) ? $own : array();
+	$key   = strtolower( rawurldecode( $path ) );
+	$error = in_array( $code, array( 410, 451 ), true );
+	$own[ $key ] = array( 'to' => $error ? '' : esc_url_raw( $to ), 'code' => $code );
+	update_option( EG_PUB_OPTION_REDIRECTS, $own, true );
+	return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'eg-publicacion', 'from' => $key, 'to' => $own[ $key ]['to'], 'code' => $code, 'total' => count( $own ) ), 200 );
+}
+
+// Aplica las redirecciones propias en las URL que dan 404, antes de redirect_canonical (prioridad 10), para que
+// WordPress no adivine otra página parecida.
+add_action( 'template_redirect', function () {
+	if ( ! is_404() ) {
+		return;
+	}
+	$own = get_option( EG_PUB_OPTION_REDIRECTS, array() );
+	if ( empty( $own ) || ! is_array( $own ) ) {
+		return;
+	}
+	$uri  = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+	$path = strtolower( rawurldecode( trim( (string) wp_parse_url( $uri, PHP_URL_PATH ), '/' ) ) );
+	if ( '' === $path || empty( $own[ $path ] ) ) {
+		return;
+	}
+	$code = (int) $own[ $path ]['code'];
+	if ( in_array( $code, array( 410, 451 ), true ) ) {
+		status_header( $code );
+		return;
+	}
+	wp_redirect( $own[ $path ]['to'], $code, 'EG Publicación' ); // phpcs:ignore WordPress.Security.SafeRedirect
+	exit;
+}, 1 );
 
 /* ======================================================================
  * Estilo de las fotos integradas en el texto de las landings.

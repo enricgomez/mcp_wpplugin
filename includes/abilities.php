@@ -263,7 +263,7 @@ function eg_pub_ability_defs() {
 				'properties' => array(
 					'menu'    => array( 'type' => array( 'integer', 'string' ), 'description' => 'ID, slug o nombre del menú.' ),
 					'lang'    => eg_pub_prop( 'string', 'Idioma: se usa la traducción del menú en WPML.' ),
-					'items'   => eg_pub_prop( 'array', 'Páginas que añadir ({page_id|landing_id, title, position, parent}).' ),
+					'items'   => eg_pub_prop( 'array', 'Páginas que añadir ({page_id|landing_id, title, position, parent}) o enlaces personalizados ({url, title, position, parent}), que se reconocen por su URL.' ),
 					'labels'  => eg_pub_prop( 'object', 'Texto nuevo de elementos existentes: {id de elemento: texto}.' ),
 					'keep_place' => eg_pub_prop( 'boolean', 'Las páginas que ya están no se mueven y las nuevas van al final.' ),
 					'dry_run' => eg_pub_prop( 'boolean', 'Solo listar.' ),
@@ -275,7 +275,7 @@ function eg_pub_ability_defs() {
 			'module'      => 'redirecciones',
 			'cap'         => 'manage_options',
 			'label'       => 'Crear una redirección',
-			'description' => 'Crea una redirección en Rank Math.',
+			'description' => 'Crea una redirección en Rank Math o, si no está, en el plugin Redirection.',
 			'annotations' => array( 'readonly' => false, 'destructive' => false, 'idempotent' => false ),
 			'input'       => array(
 				'required'   => array( 'from', 'to' ),

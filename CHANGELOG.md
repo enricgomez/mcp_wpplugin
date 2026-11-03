@@ -10,6 +10,246 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.63.0 · 03/11/2026 · PR #114 (Claude)
+
+- `/wcpa-forms`: también lista (`type: "options"`), copia y traduce las listas de opciones globales de WCPA (`wcpa_pt_options`, JSON en `_wcpa_options_data`). Los formularios las usan por su clave y, si la traducción está vacía, WCPA muestra las opciones del idioma principal.
+- Webs: nilacakes.com (8 listas de opciones en catalán: entrepans, begudes, cookies…).
+
+## 2.62.0 · 03/11/2026 · PR #113 (Claude)
+
+- Nuevo `POST /wcpa-forms` (módulo «WCPA», Gestión de la web): lista los formularios de Acowebs WooCommerce Custom Product Addons con su idioma de WPML, si tienen campos y sus textos. `copy` (`{"<origen>": <destino>}`) copia los ajustes y campos de WCPA de un formulario a otro y `translate` (`{"Bebida": "Beguda"}`) traduce los textos que se ven (no los valores internos de las opciones). Con `apply: true` vacía las cachés de WCPA, que no caducan, en todos los idiomas.
+- Motivo: la traducción automática de WPML crea los formularios traducidos sin campos, y la ficha en ese idioma no muestra opciones.
+- Webs: nilacakes.com (13 formularios en catalán). Sirve en todas las webs con WCPA y WPML.
+
+## 2.61.0 · 03/11/2026 · PR #112 (Claude)
+
+- `/theme` `lang_labels`: también se aplica al HTML entero de cada plantilla o página de Elementor (`elementor/frontend/the_content`), porque con la caché de elementos de Elementor el widget no se vuelve a pintar y el texto no cambiaba. Al guardar un cambio de `lang_labels` vacía esa caché (`_elementor_element_cache`) y los CSS de Elementor.
+- Webs: nilacakes.com («Ara personalitza'l...» en la ficha de producto en catalán).
+
+## 2.60.0 · 03/11/2026 · PR #111 (Claude)
+
+- `/redirect` con `regex`: `id` cambia una redirección de Rank Math que ya existe (patrón, destino y código) en lugar de crear otra, y `status: "inactive"` la deja desactivada. Devuelve `status`.
+- Webs: nilacakes.com (corregir la redirección de las URL catalanas /ca/producto/). Sirve en todas con Rank Math.
+
+## 2.59.0 · 03/11/2026 · PR (Claude)
+
+- `/media` admite vídeo: un `url` o `filename` acabado en `.mp4` o `.webm` se sube a la biblioteca como vídeo (antes se forzaba a imagen y fallaba). El `b64` acepta cualquier tipo en la cabecera `data:`. Sirve para poner vídeos de fondo en cabeceras de Elementor.
+- Webs: test-cbarbacoa.com (vídeo de la cabecera de la home). Sirve en todas las webs con la tipología Elementor.
+
+## 2.58.0 · 03/11/2026 · PR (Claude)
+
+- Nuevo `POST /backup` (siempre activo, cualquier tipología): copias de UpdraftPlus desde Make. Sin parámetros devuelve el estado: la última copia (fecha, si terminó bien y sus errores), las cinco últimas del historial, si hay una en curso y el destino remoto. Con `run: true` lanza una copia completa (base de datos y archivos) con los ajustes de UpdraftPlus de la web, en segundo plano con el cron de WordPress. Si ya hay una en curso, no lanza otra.
+- Webs: test-cbarbacoa.com (copia antes de cambiar la tipografía). Sirve en todas las webs con UpdraftPlus.
+
+## 2.57.0 · 03/11/2026 · PR #108 (Claude)
+
+- `/wpml-strings` (nuevo, módulo de enlaces): lista y traduce cadenas de WPML String Translation (`context`, `name`, `set` con `id`/`lang`/`value`) y con `flush: true` regenera los enlaces permanentes y vacía WP Rocket. Sirve para traducir las bases de URL de WooCommerce (`producto` → `producte`).
+- `/redirect`: nuevo `regex` para guardar en Rank Math una redirección por expresión regular (p. ej. `^ca/producto/(.*)$` → `/ca/producte/$1`).
+- `/theme`: nuevo `lang_labels` (`{"ca": {"de": "a"}}`) cambia textos de widgets de Elementor solo en ese idioma de WPML, al pintar el widget; el estado devuelve `lang_labels`.
+- Webs: nilacakes.com (base de producto en catalán, redirecciones y «Ara personalitza'l…»). Sirve en todas con WPML.
+
+## 2.56.0 · 03/11/2026 · PR (Claude)
+
+- `/status`: nuevo `gone` (`410`, o `{"code": 301, "to": "/ruta/"}`). Al despublicar, guarda en cada entrada que estaba publicada la redirección de la URL que tenía en su idioma, con el mismo sistema que `/redirect` (Rank Math, Redirection o la lista propia del plugin). Con `with_translations` da de baja una página en todos los idiomas en una sola llamada, sin tener que buscar la URL traducida (WPML traduce el slug). Cada entrada devuelve `redirect` con `from`, `code` y `ok`.
+- Webs: desire-vips.com (bajas de perfiles: borrador en ES y EN + 410). Sirve en todas.
+
+## 2.55.0 · 02/11/2026 · PR (Claude)
+
+- `/template` con `id`: nuevo `insert_after` (`{"<id de elemento>": {elemento} o [elementos]}`) añade elementos nuevos justo detrás de ese elemento, en el mismo contenedor, sin reenviar el contenedor ni rehacer sus otros hijos (si el elemento nuevo no trae `id`, se le asigna uno). Devuelve `inserted_after`. Se combina con `patch`, `replace` y `remove` y guarda la copia en `_eg_pub_elementor_backup`.
+- `/template` con `id` y `get`: lee sin cambiar nada. `["<id>", …]` devuelve esos elementos completos (ajustes e hijos); `true` devuelve el árbol de la página o plantilla (id y tipo de cada elemento).
+- Webs: test-cbarbacoa.com (carrito de Elementor Pro en la cabecera junto al botón «Tienda Online»). Sirve en todas.
+
+## 2.54.0 · 02/11/2026 · PR (Claude)
+
+- `/seo-tech` (módulo SEO técnico): nuevo `rankmath_modules` (`{"redirections": "on"|"off", …}`) activa o desactiva módulos de Rank Math con su propia función; al activar, Rank Math crea las tablas que falten. Activar un módulo ya activo cuenta como cambio, para poder reparar sus tablas. El estado devuelve `rank_math_modules` y `rank_math_tables`. Solo con `apply: true`.
+- Motivo: en test-cbarbacoa.com el módulo de redirecciones estaba activo sin sus tablas; cada visita escribía errores de base de datos tan largos que nginx cortaba con 502 («upstream sent too big header») al añadir al carrito. Sirve en todas las webs con Rank Math.
+
+## 2.53.0 · 02/11/2026 · PR (Claude)
+
+- `/product` (módulo Productos): nuevos `upsell_ids` y `cross_sell_ids` en `set` para relacionar productos: ventas dirigidas («Quizás te interese…» en la ficha) y ventas cruzadas (en el carrito). Se dan como lista de IDs o SKU; `[]` los quita. No admite el propio producto ni repetidos, avisa en `notes` de los que no encuentra y con `dry_run` solo dice qué cambiaría. `list` devuelve además `tags`, `upsell_ids` y `cross_sell_ids` de cada producto.
+- Webs: test-cbarbacoa.com (relacionar los productos OFYR, Kamado Joe, accesorios y mobiliario). Sirve en todas las webs con WooCommerce.
+
+## 2.52.0 · 01/11/2026 · PR (Claude)
+
+- `/item` (módulo Fichas): nuevo `acf_new` (`[{"name", "label", "type"?}]`) añade campos al grupo de ACF de la entrada (el del campo que diga `group_of`, o el primero), de tipo interruptor (`true_false`) si no se indica otro (`text`, `textarea`, `number`, `image`, `url`). No duplica un campo que ya exista con ese nombre (sale en `existing`) y devuelve en `created` la clave de cada campo nuevo. Solo con grupos guardados en la base de datos. Con `dry_run` solo dice qué crearía. Para darles valor, una llamada `acf` aparte.
+- Webs: test-neptunoapartments.com (interruptores del equipamiento de los apartamentos). Sirve en todas las webs con ACF.
+
+## 2.51.1 · 01/11/2026 · PR #102 (Claude)
+
+- `/template` con `images`: si un ID de adjunto nuevo no existe en la biblioteca de medios ya no se ignora sin avisar; sale en `bad_images` (y si no queda ninguna foto válida que cambiar, la llamada da error `eg_bad_image`).
+- Webs: test-neptunoapartments.com. Sirve en todas.
+
+## 2.51.0 · 01/11/2026 · PR #101 (Claude)
+
+- `/template` con `id`: nuevo `images` (`{"<ID de adjunto actual>": <ID de adjunto nuevo>}`) cambia fotos en el sitio en una página o plantilla de Elementor, en cualquier control de imagen (imagen, fondo, fondo superpuesto o al pasar el ratón, diapositivas, cajas, galerías), sin tocar el resto ni los ids de los elementos. Devuelve en `images` cuántas veces cambió cada foto y en `missing` las que no estaban. Se puede combinar con `patch`, `replace` y `remove`, y guarda la copia en `_eg_pub_elementor_backup`.
+- Webs: test-neptunoapartments.com (cambiar las fotos heredadas del hotel por las de los apartamentos). Sirve en todas las webs con Elementor.
+
+## 2.50.0 · 01/11/2026 · PR #100 (Claude)
+
+- `/internal-links` (módulo Enlaces): busca en el JSON de Elementor de todas las páginas y plantillas los enlaces escritos a mano que apuntan a una entrada de la propia web (botones, imágenes, títulos, listas de iconos y cualquier control de enlace, también en repetidores) y, en los menús, los elementos con enlace personalizado a la web. Sin `apply` solo los lista; con `apply: true` les pone la etiqueta dinámica «Enlace interno» con el ID de la entrada (la URL queda de respaldo) y pasa los elementos de menú a enlace de entrada. `domains` añade otros dominios que cuentan como internos e `ids` limita a unas entradas. Deja fuera anclas, parámetros, tel:, mailto: y externos, y lista en `unresolved` los que no corresponden a ninguna entrada. Guarda la copia en `_eg_pub_elementor_backup`.
+- Webs: test-neptunoapartments.com (enlaces internos dinámicos para WPML y cambios de URL). Sirve en todas las webs con Elementor Pro.
+
+## 2.49.0 · 01/11/2026 · PR #99 (Claude)
+
+- `/cpt`: nuevo `rewrite` (`{"<post_type>": "<base>"}`) cambia la base de las URL de un tipo de contenido ya registrado, sea de CPT UI (no hace falta JetEngine) o de JetEngine. Regenera los enlaces permanentes en la petición siguiente, borra los indexables de Yoast de ese tipo para que el canonical y el sitemap salgan con la URL nueva y avisa si ya hay una página con esa ruta y el CPT tiene archivo. Con `dry_run` solo dice qué cambiaría.
+- Webs: test-neptunoapartments.com (las fichas de apartamento pasan de /habitacion/ a /apartamentos-calella-costa-barcelona/, como en la web actual).
+
+## 2.48.1 · 01/11/2026 · PR #98 (Claude)
+
+- `/form` con `settings`: rehace el CSS del formulario (Forminator solo lo rehacía al guardar desde el admin), así los cambios de color del botón se ven al momento.
+- Webs: hotelneptuno.com (botón de los formularios de eventos blanco sobre fondo blanco).
+
+## 2.48.0 · 01/11/2026 · PR #97 (Claude)
+
+- `/form`: `where: true` dice en qué entradas (páginas, plantillas de Elementor, contenido) se usa el formulario, con su idioma y el elemento de Elementor. `copy: true` (con `title`) crea una copia del formulario y devuelve su ID. `swap` (`{"to": ID, "pages": [IDs]}`) cambia en esas entradas el formulario por otro. Así cada idioma puede tener su propio formulario traducido cuando todos compartían uno.
+- Webs: hotelneptuno.com (el mismo formulario de contacto en castellano en todos los idiomas).
+
+## 2.47.0 · 01/11/2026 · PR #96 (Claude)
+
+- `/form` (módulo nuevo «Formularios», tipología Gestión de la web): lee y cambia los textos de un formulario de Forminator (etiquetas, placeholders, texto de aceptación, opciones, botón de enviar y mensajes) sin tocar el resto. Los cambios se mezclan con lo que hay.
+- Webs: hotelneptuno.com (formularios de contacto, trabaja con nosotros y eventos con los textos en castellano en ca/en/fr/de).
+
+## 2.46.1 · 01/11/2026 · PR #95 (Claude)
+
+- `/item`: al cambiar `slug`, `parent`, `title` o `status` en una web con Yoast, borra el indexable de Yoast de la entrada y de sus hijas para que lo rehaga en la siguiente visita. Como `/item` guarda sin `wp_update_post`, Yoast seguía sirviendo el canonical, el og:url y el sitemap con la URL antigua. La respuesta lo indica en `changes` (`yoast_indexable`).
+- Webs: shamaspa.com (canonical de /spa/ apuntando a /spa-2/). Afecta a todas las webs con Yoast cuando se use `/item` para esos campos.
+
+## 2.46.0 · 01/11/2026 · PR #94 (Claude)
+
+- `/redirect` sin Rank Math ni Redirection: la redirección la guarda el propio EG Publicación (opción `eg_pub_redirects`, `plugin: eg-publicacion` en la respuesta) y la aplica solo cuando la URL de origen da 404, en `template_redirect` antes de `redirect_canonical`, para que WordPress no adivine otra página. 410 y 451 devuelven ese código. Con Rank Math o Redirection no cambia nada.
+- Webs: shamaspa.com (sin plugin de redirecciones; quitar el «-2» de las URL de spa y de la página de litigios con su 301).
+
+## 2.45.0 · 01/11/2026 · PR #93 (Claude)
+
+- `/redirect`: si la web no tiene Rank Math, guarda la redirección en el plugin Redirection (primer grupo activo de WordPress, origen exacto con barra final; si ya hay una con ese origen, la cambia). 410 y 451 se guardan como error. La respuesta trae `plugin` (`rank-math` o `redirection`). Con Rank Math no cambia nada.
+- Webs: hotelneptuno.com (Yoast + Redirection; URL traducidas de equipo, servicios y ofertas con 301 desde las antiguas).
+
+## 2.44.0 · 30/10/2026 · PR #92 (Claude)
+
+- `/perf` `fixes`: ajustes de rendimiento del servidor que se activan o quitan desde el endpoint (opción `eg_pub_perf_fixes`). El primero, `jet_validator`: JetElements 2.9.2.7 vuelve a montar la lista completa de controles de cada elemento de Elementor (con los registros de iconos y animaciones) al pintarlo, al generar su CSS y al cargar cada documento. El ajuste cambia esos tres ganchos por los mismos pasos con la lista guardada por tipo de elemento durante la petición. Si no encuentra los tres ganchos (otra versión de JetElements), no toca nada y lo dice en `fixes.jet_validator.active`.
+- Webs: miriamtirado.com (0,7 s por página sin caché, 2 s en frío). En las demás no cambia nada mientras no se active.
+
+## 2.43.1 · 30/10/2026 · PR #91 (Claude)
+
+- `/perf`: `wait: false` lanza las páginas sin esperarlas (para las que tardan más de un minuto, como el carrito de miriamtirado.com) y `results: true` recoge después los perfiles guardados. El mu-plugin sigue midiendo aunque se corte la conexión.
+- Webs: miriamtirado.com.
+
+## 2.43.0 · 30/10/2026 · PR #90 (Claude)
+
+- `/perf` (módulo nuevo «Perfil», tipología Gestión de la web): mide en el propio servidor qué plugin se come el tiempo de cada página pública o del admin, sin caché: carga de cada plugin, funciones enganchadas por plugin, las más lentas, SQL, llamadas HTTP externas y memoria. Instala el mu-plugin `eg-pub-perfil.php`, inerte salvo con el token de un solo uso que genera el endpoint; `uninstall: true` lo quita.
+- Webs: miriamtirado.com (páginas sin caché de 3 a 8 s y admin lento). En las demás no cambia nada mientras no se use.
+
+## 2.42.0 · 30/10/2026 · PR #89 (Claude)
+
+- `/seo-tech` `ai_catalog`: sirve `/.well-known/ai-catalog.json` (catálogo de Agentic Resource Discovery, `specVersion` 1.0, `host` y una entrada con el `llms.txt` de la web si existe, con `representativeQueries`), como JSON con `Access-Control-Allow-Origin: *`. Se calcula al guardar con `apply: true`; `false` lo quita y la ruta vuelve a dar 404. PageSpeed (Lighthouse 13.5, categoría experimental «Agentic browsing») marcaba «El esquema ai-catalog.json no es válido».
+- Webs: nilacakes.com. En las demás no cambia nada mientras no se use.
+
+## 2.41.3 · 30/10/2026 · PR #88 (Claude)
+
+- `/rocket` `clear`: purga Cloudflare directamente con su API (purge_everything), usando el email, la clave y la zona guardados en el complemento de Cloudflare de WP Rocket. En la 2.41.2 el complemento no purgaba al vaciar desde la API REST. La respuesta trae `cloudflare` (`ok` y errores), o `null` si el complemento no está configurado.
+- Webs: sonovet.net.
+
+## 2.41.2 · 30/10/2026 · PR #87 (Claude)
+
+- `/rocket`: `clear: true` vacía la caché de WP Rocket igual que su botón, así que también purga Cloudflare cuando su complemento está activo (vaciar los ficheros por SSH no lo hace). La respuesta dice `cleared`.
+- Webs: sonovet.net (Cloudflare con caché de HTML). En las demás no cambia nada mientras no se use.
+
+## 2.41.1 · 30/10/2026 · PR #86 (Claude)
+
+- `/seo-tech` `inspect`: cada página trae `cache` con las cabeceras `cf-cache-status`, `cache-control`, `age`, `server` y `x-powered-by`, si el HTML lo ha servido WP Rocket (`rocket`) y los segundos que tardó (`seconds`). Para comprobar la caché de Cloudflare y de WP Rocket sin salir del servidor.
+- Webs: sonovet.net (Cloudflare). En las demás no cambia nada mientras no se use.
+
+## 2.41.0 · 30/10/2026 · PR #85 (Claude)
+
+- `/theme`: `sg_exclude` (`{"minify": [...], "combine": [...], "defer": [...]}`, y `remove` con la misma forma) añade o quita handles de scripts de las exclusiones de SiteGround Optimizer y, al guardar, vacía su caché. La respuesta trae las listas actuales. Para scripts que dejan de funcionar al volver a minificarlos, como los de Slider Revolution (`sr7`, `tp-tools`).
+- Webs: dulcelucca.com (slider de la home que se quedaba cargando). En las demás no cambia nada mientras no se use.
+
+## 2.40.1 · 30/10/2026 · PR #84 (Claude)
+
+- `/item`: `meta` no se leía de la petición en la 2.40.0, así que la llamada se quedaba en lectura sin cambiar nada. Corregido.
+- Webs: dulcelucca.com.
+
+## 2.40.0 · 30/10/2026 · PR #83 (Claude)
+
+- `/theme` (módulo nuevo «Tema», tipología Gestión de la web): lee y cambia los ajustes del tema guardados con Options Framework (The7) buscándolos con `find`, y `labels` cambia textos fijos del tema o de los plugins por su original (p. ej. la etiqueta «Out Of Stock» de las fotos de producto por «Muy pronto»), con gettext: al quitar el cambio o el plugin vuelve el texto original. Previsualiza salvo `apply: true`.
+- `/item`: `with_meta: true` lee los campos personalizados de la entrada y `meta` los cambia (p. ej. el sidebar de The7 de un producto). No toca los internos de WordPress.
+- Webs: dulcelucca.com (etiqueta «Muy pronto» hasta abrir la campaña y diseño de la ficha de producto). En las demás no cambia nada mientras no se use.
+
+## 2.39.0 · 30/10/2026 · PR #82 (Claude)
+
+- `/rocket`: nuevo `elementor` para los ajustes de rendimiento de Elementor que no se pueden tocar sin wp-admin: cómo se imprime el CSS (`css_print_method`: `internal` lo mete en el HTML y ahorra peticiones), iconos como SVG en lugar de las fuentes de Font Awesome (`font_icon_svg`), carga de CSS optimizada, compatibilidad con Font Awesome 4 y `font_display`. Previsualiza salvo `apply: true`; al guardar rehace el CSS de Elementor y vacía la caché de WP Rocket. La respuesta incluye los valores actuales en `elementor`.
+- Webs: sonovet.net (LCP en móvil). En las demás no cambia nada mientras no se use.
+
+## 2.38.3 · 30/10/2026 · PR #81 (Claude)
+
+- `/item`: `set.content_replace` (`[{"from", "to"}]`) cambia trozos exactos del contenido tal cual, shortcodes y HTML incluidos, sin reenviar ni volver a filtrar la página entera. Cada `from` tiene que salir exactamente una vez. Para páginas de WPBakery, donde `/text` no llega porque solo cambia el texto visible.
+- Webs: dulcelucca.com (ventanas «+ info» de la home). En las demás no cambia nada mientras no se use.
+
+## 2.38.2 · 30/10/2026 · PR #80 (Claude)
+
+- `/item`: `with_content: true` en la lectura (`dry_run` o sin cambios) devuelve el contenido completo de la entrada tal cual, shortcodes incluidos. Hace falta para preparar sustituciones exactas con `/text` en páginas de WPBakery.
+- Webs: dulcelucca.com (ventanas «+ info» de la home). En las demás no cambia nada mientras no se use.
+
+## 2.38.1 · 30/10/2026 · PR #79 (Claude)
+
+- `/product` (`image`, `gallery`), `/item` (imágenes de ACF y `featured_image`) y `/media` aceptan la imagen en base64 (`{"b64": "…", "filename": "…", "alt": "…"}`), para subir fotos ya optimizadas que no están en ninguna URL pública (p. ej. las de Drive del cliente). La misma imagen no se sube dos veces.
+- Webs: dulcelucca.com (fotos del panettone de pistacho). En las demás no cambia nada mientras no se use.
+
+## 2.38.0 · 30/10/2026 · PR #78 (Claude)
+
+- Nuevo `POST /seo-tech` (módulo «SEO técnico», tipología Gestión de la web): `inspect` lee el HTML de URLs de la propia web y resume canonical, hreflang, meta robots, JSON-LD, preloads e imágenes iniciales (`loading`, `fetchpriority`), y con `robots_txt` el robots.txt; `business` guarda el negocio local (p. ej. `VeterinaryCare` con dirección, teléfono y horarios), que con Yoast se fusiona en su Organization; `robots` añade líneas al robots.txt virtual (p. ej. bots de IA); `hreflang` activa los idiomas alternativos de WPML en el `<head>`. Previsualiza salvo `apply: true`.
+- Webs: sonovet.net (parte técnica del Plan SEO). En las demás no cambia nada mientras no se use.
+
+## 2.37.1 · 30/10/2026 · PR #77 (Claude)
+
+- `/product`: `sale_from` y `sale_to` programan o quitan las fechas de la rebaja, y `list` devuelve esas fechas, si está rebajado ahora (`on_sale`) y el precio que se cobra (`price`). Hacía falta para saber si las rebajas de 2025 siguen activas.
+- Webs: dulcelucca.com.
+
+## 2.37.0 · 30/10/2026 · PR #76 (Claude)
+
+- `/seo`: nuevo `indexar` para el ajuste global de Yoast que decide si las entradas, páginas, categorías u otros tipos salen en Google (`noindex-*` de `wpseo_titles`). Previsualiza por defecto; guarda con `apply: true` y vacía la caché de WP Rocket.
+- Webs: taxi-calella.com (todas las entradas del blog estaban en noindex). En las demás no cambia nada mientras no se use.
+
+## 2.36.0 · 30/10/2026 · PR #75 (Claude)
+
+- `/product` (tipología WooCommerce): cambia también precio normal y rebajado, SKU, peso, existencias, estado (también desde la papelera), imagen principal y galería (ID, URL o `{"url", "alt"}`). Nuevo `create` para crear un producto en borrador, vacío o copiado de otro (`from`, ID o SKU), y `list: true` para ver todos los productos con su estado, papelera incluida.
+- Webs: dulcelucca.com (catálogo de panettones 2026). En las demás no cambia nada mientras no se use.
+
+## 2.35.4 · 30/10/2026 · PR #74 (Claude)
+
+- FAQ: el margen entre el título «Preguntas frecuentes» y el primer desplegable baja a la mitad (0,75em); el de la 2.34.1 quedaba demasiado grande.
+- Webs: todas las que usan las FAQ del plugin (taxi-santasusanna.com, taxi-calella.com).
+
+## 2.35.3 · 30/10/2026 · PR #73 (Claude)
+
+- `/post-media`: en las entradas sin imagen del contenido registrada por el plugin (traducciones hechas por la traducción automática de WPML), usa la primera imagen del contenido.
+- Webs: taxi-calella.com.
+
+## 2.35.2 · 30/10/2026 · PR #72 (Claude)
+
+- `/post-media`: el cambio de imagen o de texto alternativo del contenido se guarda sin `wp_update_post`, así WPML no relanza la traducción automática de la entrada (en taxi-calella.com la creaba de nuevo en inglés). Vacía la caché de WP Rocket de esa entrada.
+- Webs: taxi-calella.com.
+
+## 2.35.1 · 30/10/2026 · PR #71 (Claude)
+
+- `/post-media`: `content_alt` cambia el texto alternativo de la imagen del contenido (con `update_attachment_alt: true` también en la biblioteca) y `featured_alt` el de la imagen destacada, sin volver a publicar la entrada.
+- Webs: taxi-calella.com (textos alternativos del post de Barcelona en los 5 idiomas).
+
+## 2.35.0 · 30/10/2026 · PR #70 (Claude)
+
+- `/post-media`: nuevo `content_attachment_id` para cambiar la imagen dentro del contenido de una entrada por otra de la biblioteca, sin volver a publicarla y conservando su texto alternativo. `attachment_id` pasa a ser opcional si se manda este.
+- Webs: taxi-calella.com (imagen del coche del post de La Roca Village y sus traducciones).
+
+## 2.34.1 · 30/10/2026 · PR #69 (Claude)
+
+- Preguntas frecuentes (tipología Blog): más margen entre el título «Preguntas frecuentes» y el primer desplegable (1,5em), en el estilo por defecto y también cuando la web tiene su propio CSS (`faq_css`). Antes el título quedaba pegado al acordeón.
+- Webs: taxi-santasusanna.com y taxi-calella.com (posts del blog con FAQ). En las demás solo cambia el espacio de las FAQ si las usan.
+
+## 2.34.0 · 29/10/2026 · PR #68 (Claude)
+
+- `/menu`: `items` acepta también enlaces personalizados `{url, title, position?, parent?}`, p. ej. el ancla de una sección de una página. Se reconocen por su URL: si ya existe uno con esa URL, se actualiza en vez de duplicarse. Antes solo se podían añadir páginas, y una misma página no podía estar dos veces en el menú.
+- Webs: sonovet.net (elemento «Per a clíniques veterinàries / Para clínicas veterinarias» al apartado de clínicas de Contacte). En las demás no cambia nada mientras no se use.
+
 ## 2.33.3 · 29/10/2026 · PR #67 (Claude)
 
 - `/import-wp`: reconoce las imágenes del origen con y sin `www` (en viajestauro.com las galerías no se trasladaban porque las imágenes iban con www). Quita el CSS de galería que imprime el origen y los `class=""` vacíos, y crea los posts con los comentarios cerrados.

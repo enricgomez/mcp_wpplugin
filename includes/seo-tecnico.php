@@ -1,0 +1,401 @@
+<?php
+/**
+ * Tipología «Gestión de la web»: SEO técnico de toda la web.
+ *   POST /wp-json/eg/v1/seo-tech
+ * Sin parámetros devuelve el estado: negocio local guardado, líneas añadidas a robots.txt, si hay un robots.txt
+ * físico (que tapa el virtual de WordPress) y si WPML imprime los hreflang en el <head>.
+ *   inspect   ["/serveis/", "https://…/es/…"]  lee el HTML de esas URL de la propia web (máx. 20) y devuelve
+ *             título, canonical, hreflang, meta robots, tipos de JSON-LD (también los del @graph de Yoast),
+ *             preloads y las primeras imágenes con loading / fetchpriority. Con "robots_txt": true, también robots.txt.
+ *   business  {"types": ["VeterinaryCare"], "name", "telephone", "address": {…}, "openingHoursSpecification": […], …}
+ *             datos del negocio local en schema.org. Con Yoast se fusionan en su Organization (una sola entidad, sin
+ *             duplicar); sin Yoast se imprime un JSON-LD propio en la portada. null lo quita.
+ *   robots    "líneas" que se añaden al final del robots.txt virtual de WordPress (p. ej. reglas para bots de IA). "" lo quita.
+ *   hreflang  true/false: activa o desactiva en WPML «mostrar idiomas alternativos en el HEAD».
+ *   ai_catalog true, o {"description": "…", "queries": ["…", "…"]}: sirve /.well-known/ai-catalog.json (catálogo de
+ *             Agentic Resource Discovery que revisa Lighthouse/PageSpeed) con la ficha de la web y su llms.txt si
+ *             existe. false lo quita y la ruta vuelve a dar 404.
+ *   rankmath_modules {"redirections": "off", "404-monitor": "on"}: activa o desactiva módulos de Rank Math con su
+ *             propia función (al activar, Rank Math crea las tablas que le falten al módulo). Sirve para reparar un
+ *             módulo activo sin tablas en la base de datos, que llena el log de errores en cada visita. El estado
+ *             devuelve los módulos activos y las tablas de Rank Math que hay.
+ * Como /seo y /rocket, los cambios solo se previsualizan; apply:true guarda y vacía la caché de WP Rocket.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+const EG_PUB_OPTION_BUSINESS = 'eg_pub_schema_business';
+const EG_PUB_OPTION_ROBOTS   = 'eg_pub_robots_extra';
+const EG_PUB_OPTION_AI_CAT   = 'eg_pub_ai_catalog';
+
+add_filter( 'eg_pub_modules', function ( $modules ) {
+	$modules['seo-tecnico'] = array( 'type' => 'gestion', 'routes' => array( 'seo-tech' ) );
+	return $modules;
+} );
+
+add_action( 'rest_api_init', function () {
+	if ( ! eg_pub_module_enabled( 'seo-tecnico' ) ) {
+		return;
+	}
+	register_rest_route( 'eg/v1', '/seo-tech', array(
+		'methods'             => 'POST',
+		'callback'            => 'eg_pub_seo_tech_handle',
+		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
+	) );
+} );
+
+/** Limpia en profundidad los datos del negocio: textos sin HTML y URLs válidas. */
+function eg_pub_seo_tech_clean( $value, $key = '' ) {
+	if ( is_array( $value ) ) {
+		$out = array();
+		foreach ( $value as $k => $v ) {
+			$out[ is_int( $k ) ? $k : preg_replace( '/[^A-Za-z0-9@_]/', '', (string) $k ) ] = eg_pub_seo_tech_clean( $v, is_int( $k ) ? $key : (string) $k );
+		}
+		return $out;
+	}
+	if ( is_bool( $value ) || is_int( $value ) || is_float( $value ) ) {
+		return $value;
+	}
+	$value = (string) $value;
+	return in_array( $key, array( 'url', 'sameAs', 'image', 'logo', 'hasMap' ), true ) ? esc_url_raw( $value ) : sanitize_text_field( $value );
+}
+
+/** Datos del negocio guardados (sin la clave «types»), y sus tipos. */
+function eg_pub_seo_tech_business() {
+	$data = get_option( EG_PUB_OPTION_BUSINESS, array() );
+	if ( ! is_array( $data ) || ! $data ) {
+		return array( array(), array() );
+	}
+	$types = array_values( array_filter( (array) ( $data['types'] ?? array() ), 'is_string' ) );
+	unset( $data['types'], $data['@type'], $data['@id'], $data['@context'] );
+	return array( $data, $types );
+}
+
+// Yoast: el negocio se fusiona en su Organization, así hay una sola entidad para la web.
+add_filter( 'wpseo_schema_graph', function ( $graph ) {
+	list( $data, $types ) = eg_pub_seo_tech_business();
+	if ( ! $data || ! is_array( $graph ) ) {
+		return $graph;
+	}
+	foreach ( $graph as &$piece ) {
+		$piece_types = isset( $piece['@type'] ) ? (array) $piece['@type'] : array();
+		if ( in_array( 'Organization', $piece_types, true ) ) {
+			$piece['@type'] = array_values( array_unique( array_merge( $piece_types, $types ) ) );
+			$piece          = array_merge( $piece, $data );
+			unset( $piece );
+			return $graph;
+		}
+	}
+	unset( $piece );
+	// Sin Organization en Yoast (web configurada como persona): el negocio va como pieza propia.
+	$graph[] = array_merge( array( '@type' => $types ? $types : 'LocalBusiness', '@id' => home_url( '/#localbusiness' ) ), $data );
+	return $graph;
+} );
+
+add_action( 'wp_head', function () {
+	if ( defined( 'WPSEO_VERSION' ) || ! is_front_page() ) {
+		return;
+	}
+	list( $data, $types ) = eg_pub_seo_tech_business();
+	if ( ! $data ) {
+		return;
+	}
+	$schema = array_merge( array( '@context' => 'https://schema.org', '@type' => $types ? $types : 'LocalBusiness' ), $data );
+	echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
+} );
+
+add_filter( 'robots_txt', function ( $output ) {
+	$extra = trim( (string) get_option( EG_PUB_OPTION_ROBOTS, '' ) );
+	return '' === $extra ? $output : rtrim( $output ) . "\n\n" . $extra . "\n";
+}, 99 );
+
+/**
+ * Catálogo de Agentic Resource Discovery para /.well-known/ai-catalog.json. Se calcula al guardar (así se sabe si
+ * llms.txt existe) y se sirve tal cual: specVersion, host y entries, con representativeQueries en cada entrada.
+ */
+function eg_pub_seo_tech_ai_catalog_build( $cfg ) {
+	$cfg     = is_array( $cfg ) ? $cfg : array();
+	$host    = (string) wp_parse_url( home_url(), PHP_URL_HOST );
+	$name    = wp_strip_all_tags( html_entity_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+	$desc    = isset( $cfg['description'] ) ? sanitize_text_field( $cfg['description'] ) : wp_strip_all_tags( html_entity_decode( get_bloginfo( 'description' ), ENT_QUOTES ) );
+	$queries = array_values( array_filter( array_map( 'sanitize_text_field', (array) ( $cfg['queries'] ?? array() ) ) ) );
+	if ( ! $queries ) {
+		$queries = array( sprintf( '¿Qué ofrece %s?', $name ), sprintf( '¿Cómo contactar con %s?', $name ) );
+	}
+	$catalog = array(
+		'specVersion' => '1.0',
+		'host'        => array( 'displayName' => $name, 'identifier' => $host ),
+		'entries'     => array(),
+	);
+	$llms = wp_remote_get( home_url( '/llms.txt' ), array( 'timeout' => 15, 'redirection' => 0 ) );
+	if ( ! is_wp_error( $llms ) && 200 === (int) wp_remote_retrieve_response_code( $llms ) ) {
+		$catalog['entries'][] = array(
+			'identifier'            => 'urn:air:' . $host . ':docs:llms-txt',
+			'displayName'           => $name . ' (llms.txt)',
+			'type'                  => 'text/markdown',
+			'url'                   => home_url( '/llms.txt' ),
+			'description'           => '' !== $desc ? $desc : $name,
+			'representativeQueries' => array_slice( $queries, 0, 5 ),
+		);
+	}
+	return $catalog;
+}
+
+add_action( 'init', function () {
+	$path = (string) wp_parse_url( isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '', PHP_URL_PATH );
+	if ( untrailingslashit( (string) wp_parse_url( home_url(), PHP_URL_PATH ) ) . '/.well-known/ai-catalog.json' !== $path ) {
+		return;
+	}
+	$catalog = get_option( EG_PUB_OPTION_AI_CAT, array() );
+	if ( ! is_array( $catalog ) || ! $catalog ) {
+		return;
+	}
+	status_header( 200 );
+	header( 'Content-Type: application/json; charset=utf-8' );
+	header( 'Access-Control-Allow-Origin: *' );
+	header( 'Cache-Control: public, max-age=86400' );
+	header( 'X-Robots-Tag: noindex' );
+	echo wp_json_encode( $catalog, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );
+	exit;
+}, 1 );
+
+/** Lee una URL de la propia web y resume lo que importa para el SEO técnico. */
+function eg_pub_seo_tech_inspect_url( $url ) {
+	$started = microtime( true );
+	$res = wp_remote_get( $url, array( 'timeout' => 20, 'redirection' => 0, 'headers' => array( 'User-Agent' => 'Mozilla/5.0 (Linux; Android 12) EG-Publicacion/' . EG_PUB_VERSION ) ) );
+	if ( is_wp_error( $res ) ) {
+		return array( 'url' => $url, 'error' => $res->get_error_message() );
+	}
+	$code = (int) wp_remote_retrieve_response_code( $res );
+	$html = (string) wp_remote_retrieve_body( $res );
+	$out  = array( 'url' => $url, 'status' => $code );
+	if ( $code >= 300 && $code < 400 ) {
+		$out['location'] = wp_remote_retrieve_header( $res, 'location' );
+		return $out;
+	}
+	$head = preg_match( '#<head[^>]*>(.*?)</head>#is', $html, $m ) ? $m[1] : $html;
+	$attr = function ( $tag, $name ) {
+		return preg_match( '/\s' . $name . '\s*=\s*(["\'])(.*?)\1/is', $tag, $a ) ? html_entity_decode( $a[2] ) : null;
+	};
+	$out['title'] = preg_match( '#<title[^>]*>(.*?)</title>#is', $head, $t ) ? trim( html_entity_decode( wp_strip_all_tags( $t[1] ) ) ) : null;
+	$out['canonical'] = array();
+	$out['hreflang']  = array();
+	$out['preload']   = array();
+	preg_match_all( '#<link\b[^>]*>#i', $head, $links );
+	foreach ( $links[0] as $tag ) {
+		$rel = strtolower( (string) $attr( $tag, 'rel' ) );
+		if ( 'canonical' === $rel ) {
+			$out['canonical'][] = $attr( $tag, 'href' );
+		} elseif ( 'alternate' === $rel && null !== $attr( $tag, 'hreflang' ) ) {
+			$out['hreflang'][ $attr( $tag, 'hreflang' ) ] = $attr( $tag, 'href' );
+		} elseif ( 'preload' === $rel ) {
+			$out['preload'][] = array_filter( array( 'as' => $attr( $tag, 'as' ), 'href' => $attr( $tag, 'href' ), 'imagesrcset' => $attr( $tag, 'imagesrcset' ) ? 'sí' : null, 'fetchpriority' => $attr( $tag, 'fetchpriority' ) ) );
+		}
+	}
+	$out['robots'] = array();
+	preg_match_all( '#<meta\b[^>]*>#i', $head, $metas );
+	foreach ( $metas[0] as $tag ) {
+		$name = strtolower( (string) $attr( $tag, 'name' ) );
+		if ( in_array( $name, array( 'robots', 'googlebot' ), true ) ) {
+			$out['robots'][ $name ] = $attr( $tag, 'content' );
+		}
+	}
+	$out['x_robots_tag'] = wp_remote_retrieve_header( $res, 'x-robots-tag' ) ? wp_remote_retrieve_header( $res, 'x-robots-tag' ) : null;
+	// Cabeceras de caché: dicen si la página sale de Cloudflare, de WP Rocket o de PHP, y cuánto tarda el servidor.
+	$out['cache'] = array();
+	foreach ( array( 'cf-cache-status', 'cache-control', 'age', 'server', 'x-powered-by' ) as $h ) {
+		$v = wp_remote_retrieve_header( $res, $h );
+		if ( $v ) {
+			$out['cache'][ $h ] = is_array( $v ) ? implode( ', ', $v ) : $v;
+		}
+	}
+	$out['cache']['rocket'] = false !== strpos( $html, 'This website is like a Rocket' );
+	$out['cache']['seconds'] = round( microtime( true ) - $started, 2 );
+	$out['jsonld'] = array();
+	preg_match_all( '#<script[^>]+application/ld\+json[^>]*>(.*?)</script>#is', $html, $scripts );
+	foreach ( $scripts[1] as $json ) {
+		$data = json_decode( trim( $json ), true );
+		if ( ! is_array( $data ) ) {
+			$out['jsonld'][] = 'JSON no válido';
+			continue;
+		}
+		$nodes = isset( $data['@graph'] ) ? (array) $data['@graph'] : ( isset( $data[0] ) ? $data : array( $data ) );
+		$block = array();
+		foreach ( $nodes as $node ) {
+			if ( is_array( $node ) && isset( $node['@type'] ) ) {
+				$item = implode( '+', (array) $node['@type'] );
+				if ( isset( $node['mainEntity'] ) && is_array( $node['mainEntity'] ) ) {
+					$item .= ' (' . count( $node['mainEntity'] ) . ' preguntas)';
+				}
+				if ( isset( $node['address'] ) ) {
+					$item .= ' (con dirección)';
+				}
+				if ( isset( $node['openingHoursSpecification'] ) || isset( $node['openingHours'] ) ) {
+					$item .= ' (con horario)';
+				}
+				$block[] = $item;
+			}
+		}
+		$out['jsonld'][] = implode( ', ', $block );
+	}
+	$body = preg_match( '#<body[^>]*>(.*)#is', $html, $b ) ? $b[1] : $html;
+	preg_match_all( '#<img\b[^>]*>#i', $body, $imgs );
+	$out['images'] = array();
+	foreach ( array_slice( $imgs[0], 0, 6 ) as $tag ) {
+		$src = $attr( $tag, 'src' );
+		if ( $src && 0 === strpos( $src, 'data:' ) ) {
+			$src = 'data:… (data-lazy-src: ' . $attr( $tag, 'data-lazy-src' ) . ')';
+		}
+		$out['images'][] = array_filter( array(
+			'src'           => $src,
+			'loading'       => $attr( $tag, 'loading' ),
+			'fetchpriority' => $attr( $tag, 'fetchpriority' ),
+			'width'         => $attr( $tag, 'width' ),
+			'height'        => $attr( $tag, 'height' ),
+			'class'         => $attr( $tag, 'class' ) ? mb_substr( $attr( $tag, 'class' ), 0, 80 ) : null,
+		) );
+	}
+	$out['bytes'] = strlen( $html );
+	return $out;
+}
+
+/** Ajuste de WPML «mostrar idiomas alternativos en el HEAD» (null si WPML no está). */
+function eg_pub_seo_tech_wpml_hreflang() {
+	if ( ! defined( 'ICL_SITEPRESS_VERSION' ) ) {
+		return null;
+	}
+	$settings = get_option( 'icl_sitepress_settings', array() );
+	return ! empty( $settings['seo']['head_langs'] );
+}
+
+function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
+	$p     = $r->get_params();
+	$apply = ! empty( $p['apply'] );
+	$out   = array( 'ok' => true, 'applied' => false, 'changes' => array() );
+
+	if ( isset( $p['inspect'] ) ) {
+		$urls = array_slice( array_values( array_filter( (array) $p['inspect'], 'is_string' ) ), 0, 20 );
+		$host = wp_parse_url( home_url(), PHP_URL_HOST );
+		$out['pages'] = array();
+		foreach ( $urls as $url ) {
+			$url = 0 === strpos( $url, '/' ) ? untrailingslashit( get_option( 'home' ) ) . $url : $url;
+			if ( wp_parse_url( $url, PHP_URL_HOST ) !== $host ) {
+				$out['pages'][] = array( 'url' => $url, 'error' => 'Solo URLs de esta web (' . $host . ').' );
+				continue;
+			}
+			$out['pages'][] = eg_pub_seo_tech_inspect_url( $url );
+		}
+	}
+	if ( ! empty( $p['robots_txt'] ) ) {
+		$res = wp_remote_get( home_url( '/robots.txt' ), array( 'timeout' => 15 ) );
+		$out['robots_txt'] = is_wp_error( $res ) ? $res->get_error_message() : wp_remote_retrieve_body( $res );
+	}
+
+	if ( array_key_exists( 'business', $p ) ) {
+		$before = get_option( EG_PUB_OPTION_BUSINESS, array() );
+		$after  = is_array( $p['business'] ) ? eg_pub_seo_tech_clean( $p['business'] ) : array();
+		if ( $before !== $after ) {
+			$out['changes']['business'] = array( 'before' => $before, 'after' => $after );
+			if ( $apply ) {
+				update_option( EG_PUB_OPTION_BUSINESS, $after, false );
+			}
+		}
+	}
+	if ( array_key_exists( 'robots', $p ) ) {
+		$before = (string) get_option( EG_PUB_OPTION_ROBOTS, '' );
+		$after  = trim( implode( "\n", array_map( 'sanitize_text_field', preg_split( '/\r\n|\r|\n/', (string) $p['robots'] ) ) ) );
+		if ( $before !== $after ) {
+			$out['changes']['robots'] = array( 'before' => $before, 'after' => $after );
+			if ( $apply ) {
+				update_option( EG_PUB_OPTION_ROBOTS, $after, false );
+			}
+		}
+	}
+	if ( array_key_exists( 'hreflang', $p ) ) {
+		$before = eg_pub_seo_tech_wpml_hreflang();
+		if ( null === $before ) {
+			return eg_pub_error( 'eg_wpml', 'WPML no está activo en esta web.' );
+		}
+		$after = rest_sanitize_boolean( $p['hreflang'] );
+		if ( $before !== $after ) {
+			$out['changes']['hreflang'] = array( 'before' => $before, 'after' => $after );
+			if ( $apply ) {
+				$settings                       = get_option( 'icl_sitepress_settings', array() );
+				$settings['seo']['head_langs'] = $after ? 1 : 0;
+				update_option( 'icl_sitepress_settings', $settings );
+			}
+		}
+	}
+	if ( array_key_exists( 'ai_catalog', $p ) ) {
+		$before = get_option( EG_PUB_OPTION_AI_CAT, array() );
+		$after  = ( false === $p['ai_catalog'] || null === $p['ai_catalog'] || 'false' === $p['ai_catalog'] ) ? array() : eg_pub_seo_tech_ai_catalog_build( $p['ai_catalog'] );
+		if ( $before !== $after ) {
+			$out['changes']['ai_catalog'] = array( 'before' => $before, 'after' => $after );
+			if ( $apply ) {
+				if ( $after ) {
+					update_option( EG_PUB_OPTION_AI_CAT, $after, false );
+				} else {
+					delete_option( EG_PUB_OPTION_AI_CAT );
+				}
+			}
+		}
+	}
+	if ( array_key_exists( 'rankmath_modules', $p ) ) {
+		if ( ! class_exists( '\\RankMath\\Helper' ) ) {
+			return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo en esta web.' );
+		}
+		$before = array_values( (array) get_option( 'rank_math_modules', array() ) );
+		$after  = $before;
+		$wanted = array();
+		foreach ( (array) $p['rankmath_modules'] as $mod => $state ) {
+			$mod = sanitize_key( $mod );
+			if ( '' === $mod ) {
+				continue;
+			}
+			$on             = in_array( $state, array( true, 1, '1', 'on', 'true' ), true );
+			$wanted[ $mod ] = $on ? 'on' : 'off';
+			$after          = $on ? array_values( array_unique( array_merge( $after, array( $mod ) ) ) ) : array_values( array_diff( $after, array( $mod ) ) );
+		}
+		if ( $wanted ) {
+			// Siempre cuenta como cambio: activar un módulo ya activo sirve para que Rank Math cree sus tablas.
+			$out['changes']['rankmath_modules'] = array( 'before' => $before, 'after' => $after, 'set' => $wanted );
+			if ( $apply ) {
+				if ( is_callable( array( '\\RankMath\\Helper', 'update_modules' ) ) ) {
+					\RankMath\Helper::update_modules( $wanted );
+				} else {
+					update_option( 'rank_math_modules', $after );
+				}
+				$on_mods = array_keys( array_filter( $wanted, function ( $v ) {
+					return 'on' === $v;
+				} ) );
+				if ( $on_mods && is_callable( array( '\\RankMath\\Installer', 'create_tables' ) ) ) {
+					\RankMath\Installer::create_tables( $on_mods );
+				}
+			}
+		}
+	}
+	if ( $apply && $out['changes'] ) {
+		$out['applied'] = true;
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+	}
+
+	$out['state'] = array(
+		'business'        => get_option( EG_PUB_OPTION_BUSINESS, array() ),
+		'robots'          => (string) get_option( EG_PUB_OPTION_ROBOTS, '' ),
+		'robots_physical' => file_exists( ABSPATH . 'robots.txt' ),
+		'ai_catalog'      => get_option( EG_PUB_OPTION_AI_CAT, array() ) ? home_url( '/.well-known/ai-catalog.json' ) : null,
+		'wpml_hreflang'   => eg_pub_seo_tech_wpml_hreflang(),
+		'yoast'           => defined( 'WPSEO_VERSION' ) ? WPSEO_VERSION : null,
+		'yoast_company'   => defined( 'WPSEO_VERSION' ) ? ( (array) get_option( 'wpseo_titles', array() ) )['company_or_person'] ?? null : null,
+	);
+	if ( class_exists( '\\RankMath\\Helper' ) ) {
+		global $wpdb;
+		$out['state']['rank_math_modules'] = array_values( (array) get_option( 'rank_math_modules', array() ) );
+		$out['state']['rank_math_tables']  = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->prefix . 'rank_math' ) . '%' ) );
+	}
+	return new WP_REST_Response( $out, 200 );
+}

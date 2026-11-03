@@ -14,6 +14,8 @@
  * `listings` crea o actualiza (por key) plantillas de listado de JetEngine hechas con Elementor para un CPT: key, title,
  * post_type, elements (JSON de Elementor del elemento del listado) y settings (ajustes de página opcionales). El ID que
  * devuelve es el que se pone en `lisitng_id` del widget Listing Grid.
+ * `rewrite` (`{"<post_type>": "<base>"}`) cambia la base de las URL de un CPT ya registrado, de JetEngine o de CPT UI
+ * (este no necesita JetEngine), y regenera los enlaces permanentes.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -150,10 +152,15 @@ function eg_pub_tax_terms( $slug, $terms ) {
 }
 
 function eg_pub_cpt_handle( WP_REST_Request $r ) {
+	$p = (array) $r->get_json_params();
+	// `rewrite` no depende de JetEngine: también sirve para los CPT de CPT UI.
+	if ( ! empty( $p['rewrite'] ) && is_array( $p['rewrite'] ) ) {
+		$res = eg_pub_cpt_rewrite( $p['rewrite'], ! empty( $p['dry_run'] ) );
+		return new WP_REST_Response( $res, $res['ok'] ? 200 : 207 );
+	}
 	if ( ! function_exists( 'jet_engine' ) || empty( jet_engine()->cpt ) ) {
 		return eg_pub_error( 'eg_no_jetengine', 'JetEngine no está activo en esta web.' );
 	}
-	$p      = (array) $r->get_json_params();
 	$before = eg_pub_cpt_list();
 	if ( ! empty( $p['dry_run'] ) || ( empty( $p['post_type'] ) && empty( $p['taxonomies'] ) && empty( $p['entries'] ) && empty( $p['listings'] ) ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true ) + $before );
@@ -233,6 +240,84 @@ function eg_pub_cpt_handle( WP_REST_Request $r ) {
 		update_option( EG_PUB_OPTION_FLUSH, 1, false );
 	}
 	return new WP_REST_Response( $result, $result['ok'] ? 200 : 207 );
+}
+
+/**
+ * Cambia la base de las URL (rewrite slug) de CPT ya registrados: `{"<post_type>": "<base>"}`.
+ * Funciona con los CPT de CPT UI (opción cptui_post_types) y de JetEngine (ajuste avanzado rewrite_slug).
+ * Regenera los enlaces permanentes en la petición siguiente y borra los indexables de Yoast de las entradas de ese
+ * tipo para que el canonical y el sitemap salgan con la URL nueva. Con dry_run solo dice qué cambiaría.
+ * Avisa si ya hay una página con esa ruta: no choca mientras el CPT no tenga archivo (has_archive).
+ */
+function eg_pub_cpt_rewrite( $map, $dry_run = false ) {
+	global $wpdb;
+	$out   = array( 'ok' => true, 'dry_run' => $dry_run, 'rewrite' => array() );
+	$cptui = get_option( 'cptui_post_types', array() );
+	$save  = false;
+	foreach ( $map as $pt => $slug ) {
+		$pt   = sanitize_key( $pt );
+		$slug = trim( implode( '/', array_map( 'sanitize_title', explode( '/', (string) $slug ) ) ), '/' );
+		$obj  = get_post_type_object( $pt );
+		$row  = array( 'post_type' => $pt, 'slug' => $slug, 'before' => ( $obj && is_array( $obj->rewrite ) ) ? $obj->rewrite['slug'] : null );
+		if ( ! $obj || '' === $slug ) {
+			$row['error'] = $obj ? 'Falta la base nueva.' : 'Ese tipo de contenido no existe.';
+			$out['ok']    = false;
+			$out['rewrite'][] = $row;
+			continue;
+		}
+		$page = get_page_by_path( $slug );
+		if ( $page ) {
+			$row['page'] = $page->ID;
+			if ( $obj->has_archive ) {
+				$row['warning'] = 'Hay una página con esa ruta y el CPT tiene archivo: la página dejaría de verse.';
+			}
+		}
+		if ( is_array( $cptui ) && isset( $cptui[ $pt ] ) ) {
+			$row['source'] = 'cptui';
+			$cptui[ $pt ]['rewrite']      = 'true';
+			$cptui[ $pt ]['rewrite_slug'] = $slug;
+			$save                         = true;
+		} elseif ( function_exists( 'jet_engine' ) && ! empty( jet_engine()->cpt ) && eg_pub_jet_cpt_rewrite( $pt, $slug, $dry_run ) ) {
+			$row['source'] = 'jetengine';
+		} else {
+			$row['error'] = 'Este tipo de contenido no es de CPT UI ni de JetEngine: su base se cambia en el código que lo registra.';
+			$out['ok']    = false;
+			$out['rewrite'][] = $row;
+			continue;
+		}
+		if ( ! $dry_run && defined( 'WPSEO_VERSION' ) ) {
+			$table = $wpdb->prefix . 'yoast_indexable';
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+				$row['yoast_indexables'] = (int) $wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE object_type = 'post' AND object_sub_type = %s", $pt ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			}
+		}
+		$out['rewrite'][] = $row;
+	}
+	if ( ! $dry_run ) {
+		if ( $save ) {
+			update_option( 'cptui_post_types', $cptui );
+		}
+		update_option( EG_PUB_OPTION_FLUSH, 1, false );
+	}
+	return $out;
+}
+
+/** Base de URL de un CPT de JetEngine (se guarda en sus ajustes avanzados). Devuelve false si no es de JetEngine. */
+function eg_pub_jet_cpt_rewrite( $pt, $slug, $dry_run ) {
+	foreach ( (array) jet_engine()->cpt->data->get_items() as $item ) {
+		if ( $item['slug'] !== $pt ) {
+			continue;
+		}
+		if ( ! $dry_run ) {
+			$args                 = (array) jet_engine_safe_unserialize_array( $item['args'], 'eg_pub_jet_cpt_rewrite' );
+			$args['rewrite']      = true;
+			$args['rewrite_slug'] = $slug;
+			global $wpdb;
+			$wpdb->update( $wpdb->prefix . 'jet_post_types', array( 'args' => maybe_serialize( $args ) ), array( 'id' => (int) $item['id'] ) );
+		}
+		return true;
+	}
+	return false;
 }
 
 /** Campos de JetEngine de un CPT: nombre => definición. */

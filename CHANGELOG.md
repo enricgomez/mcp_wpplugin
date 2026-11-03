@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.63.1 · 03/11/2026 · PR (Claude)
+
+- `/import-wp`: limpia los restos de maquetadores de la web de origen que aquí no existen. Quita los shortcodes de WPBakery (`[vc_row]`, `[vc_column_text]`…, conservando el texto y las imágenes de dentro; `[vc_btn]` desaparece), el envoltorio `wpb-content-wrapper`, los `<style>` que imprimen los shortcodes del tema (The7 y similares) y los párrafos vacíos que quedan. Los enlaces a páginas de la web de origen pasan al post importado con el mismo slug o, si no existe, se quedan solo en texto (avisa en `notes`).
+- Webs: test-viajestauro.com (14 posts antiguos con WPBakery que se veían como texto). Sirve en todas.
+
 ## 2.63.0 · 03/11/2026 · PR #114 (Claude)
 
 - `/wcpa-forms`: también lista (`type: "options"`), copia y traduce las listas de opciones globales de WCPA (`wcpa_pt_options`, JSON en `_wcpa_options_data`). Los formularios las usan por su clave y, si la traducción está vacía, WCPA muestra las opciones del idioma principal.

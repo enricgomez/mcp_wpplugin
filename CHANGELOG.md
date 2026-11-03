@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.66.1 · 03/11/2026 · PR (Claude)
+
+- Visibilidad `eg-si-meta-<clave>` (desde 2.65.0): los elementos con esa clase se marcan como dinámicos para la caché de elementos de Elementor. Antes la caché guardaba el elemento ya pintado y la condición solo se evaluaba una vez para todas las fichas (el bloque de la ficha técnica salía también en productos sin PDF).
+- Webs: comprabarbacoa.com (staging). Sirve en todas las que usan la clase.
+
 ## 2.66.0 · 03/11/2026 · PR #119 (Claude)
 
 - `/theme`: `lang_labels` también cambia, solo en ese idioma de WPML, textos fijos de plugins (gettext) por su original o por su traducción, p. ej. `{"ca": {"Pickup date": "Data de recollida"}}` para plugins sin traducción al catalán.

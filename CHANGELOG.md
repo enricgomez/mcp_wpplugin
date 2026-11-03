@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.71.1 · 03/11/2026 · PR (Claude)
+
+- `/template` (Elementor): al crear una plantilla nueva con `conditions` y `lang`, las condiciones se guardan después de asignar el idioma de WPML. Antes la caché de condiciones de Elementor Pro se rehacía cuando la plantilla aún no tenía idioma, la dejaba fuera y no se aplicaba hasta volver a guardarla.
+- Webs: campingelfar.com (plantilla de resultados de búsqueda). Afecta a cualquier web con WPML que cree plantillas con condiciones.
+
 ## 2.71.0 · 03/11/2026 · directo a main (Claude, a petición de Enric)
 
 - Ajustes → EG Publicación: en una web donde el plugin se instala por primera vez (sin ajustes guardados), vienen marcadas todas las tipologías que la web puede usar: Blog y Gestión de la web siempre, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Antes solo venía el Blog y los demás endpoints respondían 404 hasta marcarlos a mano. Mientras no se guarden los ajustes, una tipología que pase a cumplir su requisito (p. ej. instalar Elementor después) se activa sola; al guardar, manda lo marcado.

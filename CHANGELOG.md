@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.62.0 · 03/11/2026 · PR #113 (Claude)
+
+- Nuevo `POST /wcpa-forms` (módulo «WCPA», Gestión de la web): lista los formularios de Acowebs WooCommerce Custom Product Addons con su idioma de WPML, si tienen campos y sus textos. `copy` (`{"<origen>": <destino>}`) copia los ajustes y campos de WCPA de un formulario a otro y `translate` (`{"Bebida": "Beguda"}`) traduce los textos que se ven (no los valores internos de las opciones). Con `apply: true` vacía las cachés de WCPA, que no caducan, en todos los idiomas.
+- Motivo: la traducción automática de WPML crea los formularios traducidos sin campos, y la ficha en ese idioma no muestra opciones.
+- Webs: nilacakes.com (13 formularios en catalán). Sirve en todas las webs con WCPA y WPML.
+
 ## 2.61.0 · 03/11/2026 · PR #112 (Claude)
 
 - `/theme` `lang_labels`: también se aplica al HTML entero de cada plantilla o página de Elementor (`elementor/frontend/the_content`), porque con la caché de elementos de Elementor el widget no se vuelve a pintar y el texto no cambiaba. Al guardar un cambio de `lang_labels` vacía esa caché (`_elementor_element_cache`) y los CSS de Elementor.

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.69.0 · 03/11/2026 · PR (Claude)
+
+- `/comments`: `trash` (lista de IDs) manda comentarios a la papelera y `pings: false` desactiva pingbacks y trackbacks (no avisa a los enlazados, no los acepta en entradas nuevas y los cierra en las existentes). Solo previsualiza; guarda con `apply: true`.
+- Webs: hotelmiamicalella.com (autopingback del post del Ironman). Sirve en todas.
+
 ## 2.68.0 · 03/11/2026 · PR (Claude)
 
 - Aviso por email de post publicado: cada idioma lleva ya su enlace (/ca/, /en/, /fr/...). Antes, en el wp-cron WPML usaba el idioma por defecto y todas las traducciones salían con la URL del castellano. El original va primero.

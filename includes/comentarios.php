@@ -1,11 +1,14 @@
 <?php
 /**
- * Tipología «Gestión de la web»: revisar comentarios, pingbacks y trackbacks.
+ * Tipología «Gestión de la web»: revisar y limpiar comentarios, pingbacks y trackbacks.
  *   POST /wp-json/eg/v1/comments
  * Lista los más recientes de cualquier estado (pendientes incluidos), con autor, URL de origen, IP,
  * entrada a la que apuntan y texto. Filtros opcionales: type (comment, pingback, trackback, pings),
  * status (hold, approve, spam, trash, all; all por defecto), post_id, limit (20 por defecto, máx. 100).
- * Solo lectura: no aprueba, no marca spam ni borra.
+ * Acciones (solo previsualizan salvo apply:true):
+ *   trash   [ids]  manda esos comentarios a la papelera
+ *   pings   false  desactiva los pingbacks y trackbacks: deja de avisar a los blogs enlazados, no acepta los que
+ *                  lleguen a entradas nuevas y los cierra en las que ya existen
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,6 +54,27 @@ function eg_pub_comments_handle( WP_REST_Request $r ) {
 		$args['post_id'] = (int) $p['post_id'];
 	}
 
+	$apply   = ! empty( $p['apply'] );
+	$changes = array();
+	foreach ( array_unique( array_map( 'intval', (array) ( $p['trash'] ?? array() ) ) ) as $cid ) {
+		if ( ! $cid || ! get_comment( $cid ) ) {
+			$changes[] = array( 'trash' => $cid, 'ok' => false, 'message' => 'no existe' );
+			continue;
+		}
+		$changes[] = array( 'trash' => $cid, 'ok' => $apply ? (bool) wp_trash_comment( $cid ) : null );
+	}
+	if ( isset( $p['pings'] ) && false === filter_var( $p['pings'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE ) ) {
+		global $wpdb;
+		$open = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE ping_status = 'open'" );
+		if ( $apply ) {
+			update_option( 'default_pingback_flag', '' );
+			update_option( 'default_ping_status', 'closed' );
+			$wpdb->query( "UPDATE {$wpdb->posts} SET ping_status = 'closed' WHERE ping_status = 'open'" );
+			wp_cache_flush();
+		}
+		$changes[] = array( 'pings' => 'off', 'posts_closed' => $open, 'ok' => $apply ? true : null );
+	}
+
 	$items = array();
 	foreach ( get_comments( $args ) as $c ) {
 		$items[] = array(
@@ -71,6 +95,8 @@ function eg_pub_comments_handle( WP_REST_Request $r ) {
 
 	return new WP_REST_Response( array(
 		'ok'         => true,
+		'applied'    => $apply && $changes,
+		'changes'    => $changes,
 		'count'      => count( $items ),
 		'pings_open' => 'open' === get_option( 'default_ping_status' ),
 		'comments'   => $items,

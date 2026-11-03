@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.61.0 · 03/11/2026 · PR (Claude)
+## 2.61.0 · 03/11/2026 · PR #112 (Claude)
 
 - `/theme` `lang_labels`: también se aplica al HTML entero de cada plantilla o página de Elementor (`elementor/frontend/the_content`), porque con la caché de elementos de Elementor el widget no se vuelve a pintar y el texto no cambiaba. Al guardar un cambio de `lang_labels` vacía esa caché (`_elementor_element_cache`) y los CSS de Elementor.
 - Webs: nilacakes.com («Ara personalitza'l...» en la ficha de producto en catalán).

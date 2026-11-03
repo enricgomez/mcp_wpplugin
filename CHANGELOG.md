@@ -10,6 +10,13 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.57.0 · 03/11/2026 · PR (Claude)
+
+- `/wpml-strings` (nuevo, módulo de enlaces): lista y traduce cadenas de WPML String Translation (`context`, `name`, `set` con `id`/`lang`/`value`) y con `flush: true` regenera los enlaces permanentes y vacía WP Rocket. Sirve para traducir las bases de URL de WooCommerce (`producto` → `producte`).
+- `/redirect`: nuevo `regex` para guardar en Rank Math una redirección por expresión regular (p. ej. `^ca/producto/(.*)$` → `/ca/producte/$1`).
+- `/theme`: nuevo `lang_labels` (`{"ca": {"de": "a"}}`) cambia textos de widgets de Elementor solo en ese idioma de WPML, al pintar el widget; el estado devuelve `lang_labels`.
+- Webs: nilacakes.com (base de producto en catalán, redirecciones y «Ara personalitza'l…»). Sirve en todas con WPML.
+
 ## 2.56.0 · 03/11/2026 · PR (Claude)
 
 - `/status`: nuevo `gone` (`410`, o `{"code": 301, "to": "/ruta/"}`). Al despublicar, guarda en cada entrada que estaba publicada la redirección de la URL que tenía en su idioma, con el mismo sistema que `/redirect` (Rank Math, Redirection o la lista propia del plugin). Con `with_translations` da de baja una página en todos los idiomas en una sola llamada, sin tener que buscar la URL traducida (WPML traduce el slug). Cada entrada devuelve `redirect` con `from`, `code` y `ok`.

@@ -652,6 +652,26 @@ function eg_pub_redirect_handle( WP_REST_Request $r ) {
 	}
 	$rank_math   = class_exists( '\\RankMath\\Redirections\\Redirection' );
 	$redirection = class_exists( 'Red_Item' );
+	if ( $r->get_param( 'regex' ) ) {
+		// Patrón de Rank Math sobre la ruta sin barra inicial, p. ej. ^ca/producto/(.*)$ hacia /ca/producte/$1.
+		if ( ! $rank_math ) {
+			return eg_pub_error( 'eg_regex', 'Las redirecciones con patrón solo se pueden guardar con Rank Math.' );
+		}
+		if ( false === @preg_match( '#' . str_replace( '#', '\\#', $from ) . '#', '' ) ) { // phpcs:ignore WordPress.PHP.NoSilencedErrors
+			return eg_pub_error( 'eg_regex', 'El patrón no es una expresión regular válida: ' . $from );
+		}
+		$to = 0 === strpos( $to, '/' ) ? untrailingslashit( get_option( 'home' ) ) . $to : $to;
+		$id = \RankMath\Redirections\Redirection::from( array(
+			'url_to'      => $to,
+			'header_code' => $code,
+			'status'      => 'active',
+			'sources'     => array( array( 'pattern' => $from, 'comparison' => 'regex' ) ),
+		) )->save();
+		if ( ! $id ) {
+			return eg_pub_error( 'eg_redirect', 'Rank Math no ha guardado la redirección de ' . $from . '.', 409 );
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'plugin' => 'rank-math', 'id' => (int) $id, 'from' => $from, 'regex' => true, 'to' => $to, 'code' => $code ), 200 );
+	}
 	// La URL de origen sin dominio.
 	$path = trim( (string) wp_parse_url( $from, PHP_URL_PATH ), '/' );
 	if ( '' === $path ) {

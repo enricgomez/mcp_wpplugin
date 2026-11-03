@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.64.0 · 03/11/2026 · PR (Claude)
+
+- `/cpt`: `fields` añade, cambia o quita campos de un CPT de JetEngine que ya existe (antes solo se podían poner al crearlo) y `labels` cambia sus etiquetas. Mismo formato simplificado que al crear el CPT; los valores guardados no se tocan.
+- Webs: test-viajestauro.com (campo de vídeo de los eventos). Sirve en todas las que usan JetEngine.
+
 ## 2.63.2 · 03/11/2026 · PR (Claude)
 
 - `/import-wp`: el extracto del post también se limpia de shortcodes de WPBakery (antes se guardaba con `[vc_row]…` y salía así en los listados del blog).

@@ -472,7 +472,8 @@ function eg_pub_internal_links_resolve( $url, $hosts, &$why = '' ) {
  * Cadenas de WPML String Translation, p. ej. las bases de URL de la tienda que traduce WooCommerce Multilingual
  * («URL slug: product», «URL product_cat tax slug»):
  *   POST /wp-json/eg/v1/wpml-strings
- *   context  contexto de las cadenas (WordPress por defecto) y name  texto que contiene su nombre: las lista con su
+ *   context  contexto de las cadenas (WordPress por defecto; "*" = todos), name  texto que contiene su nombre y
+ *            value  texto que contiene su valor original: las lista con su
  *            valor original y sus traducciones.
  *   set      [{"id": 12, "lang": "ca", "value": "producte"}] guarda esas traducciones como completas.
  *   flush    true: regenera las reglas de URL después de guardar (hace falta al traducir bases de URL).
@@ -516,7 +517,9 @@ function eg_pub_wpml_strings_handle( WP_REST_Request $r ) {
 		}
 	}
 
-	$list = $wpdb->get_results( $wpdb->prepare( "SELECT id, context, name, value FROM {$strings} WHERE context = %s AND name LIKE %s ORDER BY id LIMIT 100", $context, '%' . $wpdb->esc_like( $name ) . '%' ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	// context "*" busca en todos los contextos; value busca también por el texto original.
+	$value = (string) ( $p['value'] ?? '' );
+	$list  = $wpdb->get_results( $wpdb->prepare( "SELECT id, context, name, value FROM {$strings} WHERE ( %s = '*' OR context = %s ) AND name LIKE %s AND value LIKE %s ORDER BY id LIMIT 100", $context, $context, '%' . $wpdb->esc_like( $name ) . '%', '%' . $wpdb->esc_like( $value ) . '%' ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	foreach ( $list as &$item ) {
 		$item['id']           = (int) $item['id'];
 		$item['translations'] = array();

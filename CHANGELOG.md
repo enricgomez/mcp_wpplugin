@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.63.0 · 03/11/2026 · PR (Claude)
+## 2.63.0 · 03/11/2026 · PR #114 (Claude)
 
 - `/wcpa-forms`: también lista (`type: "options"`), copia y traduce las listas de opciones globales de WCPA (`wcpa_pt_options`, JSON en `_wcpa_options_data`). Los formularios las usan por su clave y, si la traducción está vacía, WCPA muestra las opciones del idioma principal.
 - Webs: nilacakes.com (8 listas de opciones en catalán: entrepans, begudes, cookies…).

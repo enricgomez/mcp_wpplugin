@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.57.0 · 03/11/2026 · PR (Claude)
+## 2.57.0 · 03/11/2026 · PR #108 (Claude)
 
 - `/wpml-strings` (nuevo, módulo de enlaces): lista y traduce cadenas de WPML String Translation (`context`, `name`, `set` con `id`/`lang`/`value`) y con `flush: true` regenera los enlaces permanentes y vacía WP Rocket. Sirve para traducir las bases de URL de WooCommerce (`producto` → `producte`).
 - `/redirect`: nuevo `regex` para guardar en Rank Math una redirección por expresión regular (p. ej. `^ca/producto/(.*)$` → `/ca/producte/$1`).

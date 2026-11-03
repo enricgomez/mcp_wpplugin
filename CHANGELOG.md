@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.67.0 · 03/11/2026 · PR (Claude)
+## 2.67.0 · 03/11/2026 · PR #121 (Claude)
 
 - Nuevo `POST /wc-emails` (tipología Gestión de la web, requiere WooCommerce): lista los emails de WooCommerce y, con `extra` (`{"customer_completed_order": {"es": "…", "ca": "…"}}`), añade un texto al final del email en el idioma del pedido (WPML), p. ej. la petición de reseña con el enlace directo a Google. Se aplica con un filtro: el email de WooCommerce no cambia. Solo previsualiza; guarda con `apply: true`.
 - Webs: nilacakes.com (reseñas de Google en el email de pedido completado). Sirve en todas las tiendas.

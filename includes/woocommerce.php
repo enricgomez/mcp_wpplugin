@@ -23,6 +23,10 @@
  *                              "loop": {...}}; «single» es el de la ficha y «loop» el de listados y tarjetas. Cada clave es
  *                              el slug de una categoría de producto (o «*» para el resto); manda la primera categoría que
  *                              coincida. {} quita los textos propios. Solo previsualiza; guarda con apply: true.
+ * shop_settings revisa o cambia cómo se añade al carrito: {} devuelve los ajustes; {"ajax_archive": true,
+ *                              "ajax_single": true, "redirect_to_cart": false} los cambia (con apply: true). ajax_archive es
+ *                              el AJAX de WooCommerce en listados, ajax_single el AJAX de la ficha de JetWooBuilder (si está
+ *                              activo) y redirect_to_cart si tras añadir se va al carrito.
  * create crea un producto nuevo (en borrador salvo que set diga otro status), vacío o copiado de otro con
  * create.from (ID o SKU), y le aplica set. list devuelve todos los productos con su estado, papelera incluida.
  * Con dry_run devuelve lo que cambiaría sin guardar. Los textos se guardan sin wp_update_post para que WPML no
@@ -96,6 +100,43 @@ function eg_pub_cart_texts_handle( $texts, $apply ) {
 		}
 	}
 	return new WP_REST_Response( array( 'ok' => true, 'applied' => (bool) $apply, 'before' => (object) $before, 'cart_texts' => (object) $clean ), 200 );
+}
+
+/** Ajustes de añadir al carrito que /product shop_settings puede leer y cambiar. */
+function eg_pub_shop_settings_get() {
+	$out = array(
+		'ajax_archive'     => 'yes' === get_option( 'woocommerce_enable_ajax_add_to_cart', 'yes' ),
+		'redirect_to_cart' => 'yes' === get_option( 'woocommerce_cart_redirect_after_add', 'no' ),
+	);
+	$jet = get_option( 'jet_woo_builder', null );
+	if ( is_array( $jet ) ) {
+		$out['ajax_single'] = 'yes' === ( $jet['use_ajax_add_to_cart'] ?? 'no' );
+	}
+	return $out;
+}
+
+/** /product shop_settings: previsualiza y, con apply, guarda los ajustes de añadir al carrito. */
+function eg_pub_shop_settings_handle( $set, $apply ) {
+	$before = eg_pub_shop_settings_get();
+	$after  = $before;
+	foreach ( array( 'ajax_archive', 'redirect_to_cart', 'ajax_single' ) as $key ) {
+		if ( array_key_exists( $key, $set ) && array_key_exists( $key, $before ) ) {
+			$after[ $key ] = rest_sanitize_boolean( $set[ $key ] );
+		}
+	}
+	if ( $apply && $after !== $before ) {
+		update_option( 'woocommerce_enable_ajax_add_to_cart', $after['ajax_archive'] ? 'yes' : 'no' );
+		update_option( 'woocommerce_cart_redirect_after_add', $after['redirect_to_cart'] ? 'yes' : 'no' );
+		if ( array_key_exists( 'ajax_single', $after ) ) {
+			$jet                         = (array) get_option( 'jet_woo_builder', array() );
+			$jet['use_ajax_add_to_cart'] = $after['ajax_single'] ? 'yes' : 'no';
+			update_option( 'jet_woo_builder', $jet );
+		}
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'applied' => (bool) $apply, 'before' => $before, 'shop_settings' => $after ), 200 );
 }
 
 /** Campos de meta que se pueden cambiar: los de JetEngine para productos y los de SEO de Rank Math. */
@@ -188,6 +229,10 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 	}
 	if ( isset( $p['cart_texts'] ) && is_array( $p['cart_texts'] ) ) {
 		return eg_pub_cart_texts_handle( $p['cart_texts'], ! empty( $p['apply'] ) );
+	}
+
+	if ( isset( $p['shop_settings'] ) && is_array( $p['shop_settings'] ) ) {
+		return eg_pub_shop_settings_handle( $p['shop_settings'], ! empty( $p['apply'] ) );
 	}
 
 	$ids     = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );

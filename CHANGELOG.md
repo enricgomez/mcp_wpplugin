@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.75.0 · 04/11/2026 · PR (Claude)
+
+- `/product` (WooCommerce) admite `shop_settings`: revisa y cambia cómo se añade al carrito. `ajax_archive` (AJAX de WooCommerce en listados), `ajax_single` (AJAX en la ficha de JetWooBuilder, si está instalado) y `redirect_to_cart` (ir al carrito tras añadir). Solo previsualiza; guarda con `apply: true` y vacía la caché de WP Rocket.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (compra rápida sin salir de la página). En las demás no cambia nada mientras no se use.
+
 ## 2.74.0 · 04/11/2026 · PR (Claude)
 
 - `/product` (WooCommerce) admite `cart_texts`: cambia el texto del botón de añadir al carrito en la ficha (`single`) y en listados y tarjetas (`loop`), por categoría de producto (slug) o para todos (`*`). Solo previsualiza; guarda con `apply: true`. Vacía la caché de WP Rocket al guardar.

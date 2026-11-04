@@ -15,6 +15,8 @@
  *            fijos de plugins (gettext) por su original o su traducción, p. ej. {"Pickup date": "Data de recollida"}.
  *   sg_exclude {"minify": ["sr7", "tp-tools"], "combine": [...], "defer": [...]} añade handles de scripts a las
  *            exclusiones de SiteGround Optimizer (minificar, combinar y cargar en diferido); "remove" los quita.
+ *   gtranslate {"floating_language_selector": "no", "widget_look": "popup"} cambia ajustes que ya existen en la
+ *            opción de GTranslate (solo valores simples: texto, número o sí/no); la respuesta trae los actuales.
  * Como /seo, solo previsualiza; guarda con apply:true y vacía la caché de WP Rocket y de SiteGround.
  *
  * Solo lectura, para revisar plugins a medida sin acceso a los ficheros:
@@ -230,6 +232,22 @@ function eg_pub_theme_handle( WP_REST_Request $r ) {
 		}
 	}
 
+	$gt = get_option( 'GTranslate', null );
+	if ( isset( $p['gtranslate'] ) && ! is_array( $gt ) ) {
+		$notes[] = 'GTranslate no está instalado o no tiene ajustes guardados';
+	}
+	foreach ( is_array( $gt ) ? (array) ( $p['gtranslate'] ?? array() ) : array() as $key => $value ) {
+		if ( ! array_key_exists( $key, $gt ) || is_array( $gt[ $key ] ) || ! is_scalar( $value ) ) {
+			$notes[] = 'el ajuste ' . $key . ' de GTranslate no existe o no es un valor simple';
+			continue;
+		}
+		$value = is_string( $value ) ? sanitize_text_field( $value ) : $value;
+		if ( $gt[ $key ] !== $value ) {
+			$changes[]  = 'gtranslate.' . $key;
+			$gt[ $key ] = $value;
+		}
+	}
+
 	$sg_new = array();
 	foreach ( EG_PUB_SG_EXCLUDE as $kind => $option ) {
 		$list = array_values( (array) get_option( $option, array() ) );
@@ -253,6 +271,9 @@ function eg_pub_theme_handle( WP_REST_Request $r ) {
 		}
 		if ( $name ) {
 			update_option( $name, $opts );
+		}
+		if ( preg_grep( '/^gtranslate\./', $changes ) ) {
+			update_option( 'GTranslate', $gt );
 		}
 		if ( $labels ) {
 			update_option( EG_PUB_LABELS_OPT, $labels, true );
@@ -300,6 +321,7 @@ function eg_pub_theme_handle( WP_REST_Request $r ) {
 		'labels'       => $labels,
 		'lang_labels'  => $langlab,
 		'sg_exclude'   => $sg_new,
+		'gtranslate'   => is_array( $gt ) ? array_filter( $gt, 'is_scalar' ) : null,
 		'sg_optimizer' => defined( 'SiteGround_Optimizer\VERSION' ) || function_exists( 'sg_cachepress_purge_everything' ),
 	), 200 );
 }

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.76.0 · 04/11/2026 · PR (Claude)
+
+- `/theme` admite `gtranslate`: cambia ajustes que ya existen en la opción de GTranslate (solo valores simples), p. ej. quitar el selector flotante o cambiar el aspecto del selector. La respuesta trae los ajustes actuales. Solo previsualiza; guarda con `apply: true`.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (selector de idioma en la cabecera). En las demás no cambia nada mientras no se use.
+
 ## 2.75.0 · 04/11/2026 · PR (Claude)
 
 - `/product` (WooCommerce) admite `shop_settings`: revisa y cambia cómo se añade al carrito. `ajax_archive` (AJAX de WooCommerce en listados), `ajax_single` (AJAX en la ficha de JetWooBuilder, si está instalado) y `redirect_to_cart` (ir al carrito tras añadir). Solo previsualiza; guarda con `apply: true` y vacía la caché de WP Rocket.

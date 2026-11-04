@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.79.0 · 04/11/2026 · PR (Claude)
+
+- Nuevo `/cleanup` (tipología Gestión de la web, módulo «limpieza»): busca y quita scripts inyectados identificados por una firma (`signature`) del contenido de las entradas y de los metadatos de texto plano. Las opciones solo se listan. Solo previsualiza; con `apply: true` quita los bloques `<script>` con la firma sin cambiar la fecha de modificación y vacía WP Rocket.
+- `/seo-tech` `business` con Rank Math: los datos del negocio se fusionan en la entidad `publisher` de Rank Math (antes solo con Yoast; sin plugin SEO siguen saliendo como JSON-LD propio en la portada, que ya no se imprime si está Rank Math).
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (script de redirección a spam en 54 entradas; esquema del restaurante y del Express). En las demás no cambia nada mientras no se use.
+
 ## 2.78.0 · 04/11/2026 · PR (Claude)
 
 - `/wc-emails` admite `style` (colores, logo de cabecera, alineación, fuente y pie de los emails de WooCommerce), `css` (CSS propio que WooCommerce pasa a estilos en línea al enviar) y `preview` (HTML del email con el pedido de ejemplo de WooCommerce, mostrando los cambios aún sin guardar). Solo previsualiza; guarda con `apply: true`. Al desactivar el plugin el CSS propio deja de aplicarse; los colores y el logo quedan en los ajustes de WooCommerce.

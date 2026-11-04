@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.80.0 · 04/11/2026 · PR (Claude)
+
+- Nuevo `/hpos` (tipología Gestión de la web, módulo «hpos», requiere WooCommerce): estado de HPOS (almacenamiento principal, sincronización, pedidos pendientes y compatibilidad de los plugins activos), activar o desactivar la sincronización, sincronizar lotes al momento y cambiar el almacenamiento principal con la función de WooCommerce. Solo previsualiza; aplica con `apply: true`.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (prueba de HPOS antes de la web real). En las demás no cambia nada mientras no se use.
+
 ## 2.79.0 · 04/11/2026 · PR (Claude)
 
 - Nuevo `/cleanup` (tipología Gestión de la web, módulo «limpieza»): busca y quita scripts inyectados identificados por una firma (`signature`) del contenido de las entradas y de los metadatos de texto plano. Las opciones solo se listan. Solo previsualiza; con `apply: true` quita los bloques `<script>` con la firma sin cambiar la fecha de modificación y vacía WP Rocket.

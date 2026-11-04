@@ -47,6 +47,7 @@ function eg_pub_webapp_defaults() {
 		'icon'             => 0,
 		'icon_background'  => '',
 		'start_url'        => '/',
+		'splash'           => true,
 		'offline'          => array(
 			'title' => 'Sin conexión',
 			'text'  => 'Parece que no tienes internet ahora mismo. Vuelve a intentarlo en un momento.',
@@ -130,6 +131,7 @@ function eg_pub_webapp_sanitize( array $s ) {
 	$s['install']['delay']  = max( 0, min( 120, (int) $s['install']['delay'] ) );
 	$s['install']['days']   = max( 0, min( 365, (int) $s['install']['days'] ) );
 	$s['install']['bottom'] = preg_match( '/^[0-9.]+(px|em|rem|vh)$/', (string) $s['install']['bottom'] ) ? $s['install']['bottom'] : '1em';
+	$s['splash']              = ! empty( $s['splash'] );
 	$s['push']['enabled']     = ! empty( $s['push']['enabled'] );
 	$s['push']['replace_sms'] = ! empty( $s['push']['replace_sms'] );
 	foreach ( array( 'title', 'prompt_title', 'prompt_text', 'button', 'done_text' ) as $k ) {
@@ -339,17 +341,30 @@ function eg_pub_webapp_sw( array $s ) {
 	$cfg = array(
 		'v'       => eg_pub_webapp_version( $s ),
 		'offline' => home_url( '/?eg-webapp=offline', 'relative' ),
+		'start'   => home_url( $s['start_url'], 'relative' ),
 		'exclude' => array_values( $s['exclude'] ),
 		'icon'    => (string) ( ( (array) get_option( EG_PUB_WEBAPP_OPT . '_icons', array() ) )['icon-192'] ?? '' ),
 	);
 	return '/* EG Publicación · webapp */
 const CFG = ' . wp_json_encode( $cfg, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) . ';
 const STATIC_CACHE = "eg-static-" + CFG.v, PAGE_CACHE = "eg-page-" + CFG.v;
+const STATIC_RE = /\.(css|js|woff2?|ttf|png|jpe?g|webp|avif|gif|svg)$/i;
+function isStatic(url) { return url.origin === self.location.origin && /^\/wp-(content|includes)\//.test(url.pathname) && STATIC_RE.test(url.pathname); }
+// Al instalar, deja ya guardados el CSS, JS y fuentes de la portada: la app abre sin descargarlos otra vez.
+function precache() {
+  return fetch(CFG.start, {credentials: "same-origin"}).then(r => r.ok ? r.text() : "").then(html => {
+    const urls = new Set(), re = /(?:href|src)=["\']([^"\']+)["\']/g; let m;
+    while ((m = re.exec(html))) { try { const u = new URL(m[1].replace(/&#038;|&amp;/g, "&"), self.location.origin); if (isStatic(u) && !/\.(png|jpe?g|webp|avif|gif)$/i.test(u.pathname)) urls.add(u.href); } catch (err) {} }
+    return caches.open(STATIC_CACHE).then(c => Promise.all([...urls].slice(0, 60).map(u => c.add(u).catch(() => null))));
+  }).catch(() => null);
+}
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(PAGE_CACHE).then(c => c.add(new Request(CFG.offline, {cache: "reload"}))).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(PAGE_CACHE).then(c => c.add(new Request(CFG.offline, {cache: "reload"}))).then(precache).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("eg-") && k !== STATIC_CACHE && k !== PAGE_CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("eg-") && k !== STATIC_CACHE && k !== PAGE_CACHE).map(k => caches.delete(k))))
+    .then(() => self.registration.navigationPreload ? self.registration.navigationPreload.enable() : null)
+    .then(() => self.clients.claim()));
 });
 function excluded(url) { return CFG.exclude.some(x => url.pathname.indexOf(x) === 0 || url.href.indexOf(x) !== -1); }
 self.addEventListener("fetch", e => {
@@ -359,10 +374,11 @@ self.addEventListener("fetch", e => {
   if (url.origin !== self.location.origin || excluded(url) || url.searchParams.has("eg-webapp")) return;
   if (req.mode === "navigate") {
     // Las páginas siempre de la red (precios, carrito, horario); sin conexión, la página propia.
-    e.respondWith(fetch(req).catch(() => caches.match(CFG.offline)));
+    // Con «navigation preload» la página se pide a la vez que arranca el service worker.
+    e.respondWith(Promise.resolve(e.preloadResponse).then(pre => pre || fetch(req)).catch(() => caches.match(CFG.offline)));
     return;
   }
-  if (/^\/wp-(content|includes)\//.test(url.pathname) && /\.(css|js|woff2?|ttf|png|jpe?g|webp|avif|gif|svg)$/i.test(url.pathname)) {
+  if (isStatic(url)) {
     e.respondWith(caches.open(STATIC_CACHE).then(c => c.match(req).then(hit => {
       const net = fetch(req).then(res => { if (res && res.ok && res.type === "basic") c.put(req, res.clone()); return res; });
       return hit || net;
@@ -440,6 +456,22 @@ add_action( 'wp_head', function () {
 	echo '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="' . esc_attr( $s['short_name'] ) . '">' . "\n";
 	if ( ! empty( $icons['apple-180'] ) ) {
 		echo '<link rel="apple-touch-icon" href="' . esc_url( $icons['apple-180'] ) . '">' . "\n";
+	}
+	if ( $s['splash'] && ! empty( $icons['icon-512'] ) ) {
+		// Solo con la app instalada: pantalla de carga al abrirla y barra fina arriba al cambiar de página.
+		$bg = esc_attr( $s['background_color'] );
+		echo '<style id="eg-webapp-splash">html.eg-splash:before{content:"";position:fixed;inset:0;z-index:2147483646;background:' . $bg . ' url("' . esc_url( $icons['icon-512'] ) . '") center/112px 112px no-repeat;transition:opacity .35s}'
+			. 'html.eg-splash:after{content:"";position:fixed;left:50%;top:50%;z-index:2147483647;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#EFA54E;border-right-color:#E0662E;animation:egSpin .9s linear infinite;transition:opacity .35s}'
+			. 'html.eg-splash-out:before,html.eg-splash-out:after{opacity:0}'
+			. '.eg-navbar{position:fixed;left:0;top:0;z-index:2147483647;height:3px;width:0;background:linear-gradient(90deg,#E0662E,#B8202F,#EFA54E);box-shadow:0 0 8px rgba(224,102,46,.7);transition:width 8s cubic-bezier(.1,.9,.2,1)}'
+			. '@keyframes egSpin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){html.eg-splash:after{animation:none}}</style>' . "\n";
+		echo '<script id="eg-webapp-splash-js">(function(){var d=document.documentElement,sa=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;if(!sa)return;'
+			. 'var first=true;try{first=!sessionStorage.getItem("eg-wa-run");sessionStorage.setItem("eg-wa-run","1");}catch(e){}'
+			. 'function out(){if(!d.classList.contains("eg-splash"))return;d.classList.add("eg-splash-out");setTimeout(function(){d.classList.remove("eg-splash","eg-splash-out");},400);}'
+			. 'if(first){d.classList.add("eg-splash");window.addEventListener("load",function(){setTimeout(out,150);});setTimeout(out,5000);}'
+			. 'window.addEventListener("pageshow",function(e){if(e.persisted){out();var b=document.querySelector(".eg-navbar");if(b)b.remove();}});'
+			. 'document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href]");if(!a||a.target==="_blank"||e.defaultPrevented||e.metaKey||e.ctrlKey)return;var u=new URL(a.href,location.href);if(u.origin!==location.origin||u.href.split("#")[0]===location.href.split("#")[0]||/add-to-cart=|eg-webapp=/.test(u.search))return;'
+			. 'var b=document.createElement("div");b.className="eg-navbar";document.body.appendChild(b);requestAnimationFrame(function(){b.style.width="85%";});setTimeout(function(){b.remove();},10000);});})();</script>' . "\n";
 	}
 }, 2 );
 

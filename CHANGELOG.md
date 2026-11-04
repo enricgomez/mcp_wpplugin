@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.87.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp», carga más rápida con la app instalada: el service worker usa «navigation preload» (la página se pide a la vez que arranca) y, al instalarse, deja ya guardados el CSS, el JS y las fuentes de la página de inicio.
+- Pantalla de carga solo dentro de la app instalada (`settings.splash`, activada por defecto): el icono sobre el color de fondo con un aro girando al abrirla (una vez por sesión, se quita al cargar o a los 5 s como máximo) y una barra fina arriba al pasar de una página a otra. En el navegador no cambia nada.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
 ## 2.86.0 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp»: en iPhone, al abrir «Ver cómo» el aviso baja junto a la barra de Safari y una línea discontinua animada lo une con la flecha, que lleva un pulso para que se vea bien dónde tocar. Añade la clase `eg-wa-guide` al body mientras la guía está abierta (para ocultar barras fijas propias de la web).

@@ -19,6 +19,9 @@
  *             propia función (al activar, Rank Math crea las tablas que le falten al módulo). Sirve para reparar un
  *             módulo activo sin tablas en la base de datos, que llena el log de errores en cada visita. El estado
  *             devuelve los módulos activos y las tablas de Rank Math que hay.
+ *   rankmath_settings {"titles": {"local_business_type": "Restaurant", …}, "general": {…}, "sitemap": {…}}: cambia claves de
+ *             los ajustes de Rank Math (rank-math-options-titles / -general / -sitemap), p. ej. el SEO local o el título de
+ *             la portada. rankmath_get {"titles": ["local_address"]} (o "*") devuelve los valores actuales.
  * Como /seo y /rocket, los cambios solo se previsualizan; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -373,6 +376,40 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 				if ( $on_mods && is_callable( array( '\\RankMath\\Installer', 'create_tables' ) ) ) {
 					\RankMath\Installer::create_tables( $on_mods );
 				}
+			}
+		}
+	}
+	if ( array_key_exists( 'rankmath_settings', $p ) || array_key_exists( 'rankmath_get', $p ) ) {
+		if ( ! class_exists( '\\RankMath\\Helper' ) ) {
+			return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo en esta web.' );
+		}
+		$groups = array( 'titles' => 'rank-math-options-titles', 'general' => 'rank-math-options-general', 'sitemap' => 'rank-math-options-sitemap' );
+		foreach ( (array) ( $p['rankmath_settings'] ?? array() ) as $group => $values ) {
+			if ( ! isset( $groups[ $group ] ) || ! is_array( $values ) ) {
+				continue;
+			}
+			$opt    = (array) get_option( $groups[ $group ], array() );
+			$before = array();
+			$after  = array();
+			foreach ( $values as $key => $value ) {
+				if ( ! preg_match( '/^[a-z0-9_]+$/', (string) $key ) ) {
+					continue;
+				}
+				$before[ $key ] = $opt[ $key ] ?? null;
+				$after[ $key ]  = eg_pub_seo_tech_clean( $value, (string) $key );
+				$opt[ $key ]    = $after[ $key ];
+			}
+			if ( $after && $before !== $after ) {
+				$out['changes'][ 'rankmath_' . $group ] = array( 'before' => $before, 'after' => $after );
+				if ( $apply ) {
+					update_option( $groups[ $group ], $opt );
+				}
+			}
+		}
+		foreach ( (array) ( $p['rankmath_get'] ?? array() ) as $group => $keys ) {
+			if ( isset( $groups[ $group ] ) ) {
+				$opt = (array) get_option( $groups[ $group ], array() );
+				$out['rankmath'][ $group ] = '*' === $keys ? $opt : array_intersect_key( $opt, array_flip( array_map( 'strval', (array) $keys ) ) );
 			}
 		}
 	}

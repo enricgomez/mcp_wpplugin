@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.81.0 · 04/11/2026 · PR (Claude)
+
+- `/seo-tech` admite `rankmath_settings` (cambia claves de los ajustes de Rank Math: títulos y SEO local, generales y sitemap) y `rankmath_get` (lee esos ajustes). Solo previsualiza; guarda con `apply: true`.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (SEO local del restaurante y títulos con Rank Math). En las demás no cambia nada mientras no se use.
+
 ## 2.80.0 · 04/11/2026 · PR (Claude)
 
 - Nuevo `/hpos` (tipología Gestión de la web, módulo «hpos», requiere WooCommerce): estado de HPOS (almacenamiento principal, sincronización, pedidos pendientes y compatibilidad de los plugins activos), activar o desactivar la sincronización, sincronizar lotes al momento y cambiar el almacenamiento principal con la función de WooCommerce. Solo previsualiza; aplica con `apply: true`.

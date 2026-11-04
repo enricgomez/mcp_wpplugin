@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.73.0 · 04/11/2026 · PR (Claude)
+
+- `/theme` revisa plugins sin tocar nada: `plugins: true` los lista con versión, estado y actualización disponible; `widget` dice qué plugin y fichero pintan un widget de Elementor; `read` lista los ficheros de un plugin o devuelve uno (.php, .css, .js, .json, .txt, .md; máx. 300 KB). Sirve para revisar plugins a medida en webs alojadas fuera del servidor.
+- Webs: campingelfar.com (widget de alojamientos de la home). En las demás no cambia nada mientras no se use.
+
 ## 2.72.0 · 04/11/2026 · PR (Claude)
 
 - `/term` organiza categorías (y cualquier taxonomía pública): `list: true` lista los términos en todos los idiomas (id, nombre, slug, entradas, idioma y trid de WPML) y, con `posts: true`, las entradas publicadas, programadas y en borrador con su fecha, idioma y categorías. `create` crea términos en un idioma y los enlaza como traducción (`translation_of`); `assign` cambia las categorías de cada entrada. Sin `apply: true` solo previsualiza.

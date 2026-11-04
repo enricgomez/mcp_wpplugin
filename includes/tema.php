@@ -16,6 +16,12 @@
  *   sg_exclude {"minify": ["sr7", "tp-tools"], "combine": [...], "defer": [...]} añade handles de scripts a las
  *            exclusiones de SiteGround Optimizer (minificar, combinar y cargar en diferido); "remove" los quita.
  * Como /seo, solo previsualiza; guarda con apply:true y vacía la caché de WP Rocket y de SiteGround.
+ *
+ * Solo lectura, para revisar plugins a medida sin acceso a los ficheros:
+ *   plugins  true        lista los plugins (nombre, carpeta, versión, activo, actualización disponible, autor).
+ *   widget   "nombre"    dice qué clase y fichero pintan un widget de Elementor y de qué plugin es.
+ *   read     {"plugin": "carpeta", "file": "ruta/dentro.php"}  devuelve un fichero .php/.css/.js/.json/.txt
+ *            de ese plugin (máx. 300 KB); sin file, lista sus ficheros.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -45,6 +51,72 @@ add_action( 'rest_api_init', function () {
 		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
 	) );
 } );
+
+/** Lectura de plugins: lista, widget de Elementor → fichero, y ficheros de un plugin. Nunca escribe. */
+function eg_pub_theme_inspect( $p ) {
+	require_once ABSPATH . 'wp-admin/includes/plugin.php';
+	$out = array( 'ok' => true );
+	if ( ! empty( $p['plugins'] ) ) {
+		$updates = get_site_transient( 'update_plugins' );
+		$out['plugins'] = array();
+		foreach ( get_plugins() as $file => $data ) {
+			$out['plugins'][] = array(
+				'file'    => $file,
+				'name'    => $data['Name'],
+				'version' => $data['Version'],
+				'author'  => wp_strip_all_tags( $data['Author'] ),
+				'active'  => is_plugin_active( $file ),
+				'update'  => isset( $updates->response[ $file ] ) ? $updates->response[ $file ]->new_version : '',
+			);
+		}
+	}
+	if ( ! empty( $p['widget'] ) && did_action( 'elementor/loaded' ) ) {
+		$widget = \Elementor\Plugin::$instance->widgets_manager->get_widget_types( sanitize_key( (string) $p['widget'] ) );
+		if ( $widget ) {
+			$file = ( new ReflectionClass( $widget ) )->getFileName();
+			$rel  = 0 === strpos( $file, WP_PLUGIN_DIR . '/' ) ? substr( $file, strlen( WP_PLUGIN_DIR ) + 1 ) : '';
+			$out['widget'] = array(
+				'class'  => get_class( $widget ),
+				'title'  => $widget->get_title(),
+				'plugin' => $rel ? strtok( $rel, '/' ) : '',
+				'file'   => $rel ? $rel : basename( $file ),
+			);
+		} else {
+			$out['widget'] = null;
+		}
+	}
+	if ( ! empty( $p['read'] ) && is_array( $p['read'] ) ) {
+		$dir  = sanitize_file_name( (string) ( $p['read']['plugin'] ?? '' ) );
+		$base = realpath( WP_PLUGIN_DIR . '/' . $dir );
+		if ( '' === $dir || ! $base || ! is_dir( $base ) || 0 !== strpos( $base, realpath( WP_PLUGIN_DIR ) . '/' ) ) {
+			return eg_pub_error( 'eg_plugin', 'No existe esa carpeta de plugin.' );
+		}
+		$rel = ltrim( (string) ( $p['read']['file'] ?? '' ), '/' );
+		if ( '' === $rel ) {
+			$files = array();
+			$it    = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base, FilesystemIterator::SKIP_DOTS ) );
+			foreach ( $it as $f ) {
+				if ( count( $files ) >= 500 ) {
+					break;
+				}
+				$files[] = array( 'file' => substr( $f->getPathname(), strlen( $base ) + 1 ), 'size' => $f->getSize() );
+			}
+			$out['files'] = $files;
+		} else {
+			$path = realpath( $base . '/' . $rel );
+			$ext  = strtolower( pathinfo( (string) $path, PATHINFO_EXTENSION ) );
+			if ( ! $path || 0 !== strpos( $path, $base . '/' ) || ! in_array( $ext, array( 'php', 'css', 'js', 'json', 'txt', 'md' ), true ) ) {
+				return eg_pub_error( 'eg_plugin_file', 'Fichero no válido (solo .php, .css, .js, .json, .txt o .md dentro del plugin).' );
+			}
+			if ( filesize( $path ) > 300 * 1024 ) {
+				return eg_pub_error( 'eg_plugin_file', 'El fichero pasa de 300 KB.' );
+			}
+			$out['file']    = $rel;
+			$out['content'] = file_get_contents( $path ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+		}
+	}
+	return new WP_REST_Response( $out, 200 );
+}
 
 /** Textos cambiados: se buscan por el original, en cualquier dominio de traducción. */
 function eg_pub_labels_filter( $translation, $text ) {
@@ -106,6 +178,9 @@ function eg_pub_theme_option_name() {
 
 function eg_pub_theme_handle( WP_REST_Request $r ) {
 	$p       = $r->get_params();
+	if ( ! empty( $p['plugins'] ) || ! empty( $p['widget'] ) || ! empty( $p['read'] ) ) {
+		return eg_pub_theme_inspect( $p );
+	}
 	$apply   = ! empty( $p['apply'] );
 	$name    = eg_pub_theme_option_name();
 	$opts    = $name ? (array) get_option( $name ) : array();

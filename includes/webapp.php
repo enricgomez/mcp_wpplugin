@@ -5,8 +5,8 @@
  * Sin parámetros devuelve los ajustes y el estado (iconos, claves push, pedidos con push).
  *   settings  {"enabled": true, "name": "…", "short_name": "…", "theme_color": "#0E0A08", "background_color": "#0E0A08",
  *              "icon": 1036, "icon_background": "#0E0A08", "offline": {"title","text","phone"},
- *              "install": {"enabled", "title", "text", "button", "ios_button", "ios_step1", "ios_step2", "delay", "days", "bottom"},
- *                         (iPhone: botón «Cómo» que abre 2 pasos con iconos; {share} y {add} se cambian por el icono)
+ *              "install": {"enabled", "title", "text", "button", "ios_button", "ios_step1", "ios_step2", "ios_step3", "ios_arrow", "delay", "days", "bottom"},
+ *                         (iPhone: botón «Ver cómo» que abre hasta 3 pasos con iconos; {menu}, {share} y {add} se cambian por el icono; ios_arrow = posición de la flecha, p. ej. "18%")
  *              "push": {"enabled", "title", "prompt_title", "prompt_text", "button", "done_text", "subject",
  *                       "statuses": ["processing", …], "messages": {"processing": "…"}, "replace_sms": true},
  *              "exclude": ["/carrito", …]}  cambia solo las claves que se envían.
@@ -58,8 +58,10 @@ function eg_pub_webapp_defaults() {
 			'text'     => 'Pide en dos toques desde tu pantalla de inicio.',
 			'button'   => 'Instalar',
 			'ios_button' => 'Ver cómo',
-			'ios_step1'  => 'Toca {share} Compartir en la barra de Safari (si no lo ves, toca antes ···).',
-			'ios_step2'  => 'Elige {add} «Añadir a pantalla de inicio».',
+			'ios_step1'  => 'Toca {menu} a la izquierda de la barra de direcciones.',
+			'ios_step2'  => 'Toca {share} Compartir.',
+			'ios_step3'  => 'Elige {add} «Añadir a pantalla de inicio».',
+			'ios_arrow'  => '18%',
 			'delay'    => 8,
 			'days'     => 14,
 			'bottom'   => '6.6em',
@@ -121,9 +123,10 @@ function eg_pub_webapp_sanitize( array $s ) {
 		$s['offline'][ $k ] = $text( $s['offline'][ $k ] ?? '' );
 	}
 	$s['install']['enabled'] = ! empty( $s['install']['enabled'] );
-	foreach ( array( 'title', 'text', 'button', 'ios_button', 'ios_step1', 'ios_step2' ) as $k ) {
+	foreach ( array( 'title', 'text', 'button', 'ios_button', 'ios_step1', 'ios_step2', 'ios_step3' ) as $k ) {
 		$s['install'][ $k ] = $text( $s['install'][ $k ] ?? '' );
 	}
+	$s['install']['ios_arrow'] = preg_match( '/^[0-9.]{1,5}%$/', (string) ( $s['install']['ios_arrow'] ?? '' ) ) ? $s['install']['ios_arrow'] : '50%';
 	$s['install']['delay']  = max( 0, min( 120, (int) $s['install']['delay'] ) );
 	$s['install']['days']   = max( 0, min( 365, (int) $s['install']['days'] ) );
 	$s['install']['bottom'] = preg_match( '/^[0-9.]+(px|em|rem|vh)$/', (string) $s['install']['bottom'] ) ? $s['install']['bottom'] : '1em';
@@ -456,6 +459,8 @@ add_action( 'wp_footer', function () {
 			'ios_button' => $s['install']['ios_button'],
 			'ios_step1'  => $s['install']['ios_step1'],
 			'ios_step2'  => $s['install']['ios_step2'],
+			'ios_step3'  => $s['install']['ios_step3'],
+			'ios_arrow'  => $s['install']['ios_arrow'],
 			'delay'  => (int) $s['install']['delay'],
 			'days'   => (int) $s['install']['days'],
 			'icon'   => (string) ( $icons['icon-192'] ?? '' ),
@@ -476,7 +481,7 @@ function show(isIos){if(document.querySelector(".eg-wa"))return;var el=document.
 el.innerHTML=(I.icon?'<img src="'+esc(I.icon)+'" alt="">':"")+'<div class="eg-wa__txt"><b>'+esc(I.title)+'</b><span>'+esc(I.text)+'</span></div><button class="eg-wa__go" type="button">'+esc(isIos?I.ios_button:I.button)+'</button><button class="eg-wa__x" type="button" aria-label="Cerrar">×</button>';
 document.body.appendChild(el);requestAnimationFrame(function(){el.classList.add("is-on");});
 var arrow=null;function close(){el.classList.remove("is-on");if(arrow){arrow.remove();arrow=null;}try{localStorage.setItem(K,String(Date.now()));}catch(e){}setTimeout(function(){el.remove();},500);}
-el.querySelector(".eg-wa__x").onclick=close;var go=el.querySelector(".eg-wa__go");if(isIos){go.onclick=function(){go.remove();el.classList.add("is-open");var sh='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg></span>',ad='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span>';var ol=document.createElement("ol");ol.className="eg-wa__steps";ol.innerHTML='<li><span class="eg-wa__n">1</span><span>'+esc(I.ios_step1).replace("{share}",sh)+'</span></li><li><span class="eg-wa__n">2</span><span>'+esc(I.ios_step2).replace("{add}",ad)+'</span></li>';el.appendChild(ol);if(/iphone|ipod/i.test(ua)){arrow=document.createElement("div");arrow.className="eg-wa__arrow";arrow.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg>';document.body.appendChild(arrow);}};return;}if(go)go.onclick=function(){if(!deferred)return close();deferred.prompt();deferred.userChoice.then(function(){deferred=null;close();});};}
+el.querySelector(".eg-wa__x").onclick=close;var go=el.querySelector(".eg-wa__go");if(isIos){go.onclick=function(){go.remove();el.classList.add("is-open");var sh='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg></span>',ad='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span>';var mn='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h9"/></svg></span>';var ol=document.createElement("ol");ol.className="eg-wa__steps";var h="",n=0;[I.ios_step1,I.ios_step2,I.ios_step3].forEach(function(t){if(!t)return;n++;h+='<li><span class="eg-wa__n">'+n+'</span><span>'+esc(t).replace("{menu}",mn).replace("{share}",sh).replace("{add}",ad)+'</span></li>';});ol.innerHTML=h;el.appendChild(ol);if(/iphone|ipod/i.test(ua)){arrow=document.createElement("div");arrow.className="eg-wa__arrow";arrow.style.left=I.ios_arrow;arrow.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg>';document.body.appendChild(arrow);}};return;}if(go)go.onclick=function(){if(!deferred)return close();deferred.prompt();deferred.userChoice.then(function(){deferred=null;close();});};}
 window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferred=e;setTimeout(function(){show(false);},I.delay*1000);});
 window.addEventListener("appinstalled",function(){var el=document.querySelector(".eg-wa");if(el)el.remove();});
 if(ios)setTimeout(function(){show(true);},I.delay*1000);})();</script>

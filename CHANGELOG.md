@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.77.0 · 04/11/2026 · PR (Claude)
+
+- `/template` admite `id` + `conditions` sin más datos: cambia solo las condiciones de visualización de una plantilla que ya existe (p. ej. una hecha a mano en Elementor), sin tocar su diseño. Rehace la caché de condiciones de Elementor Pro y vacía WP Rocket. La respuesta trae `conditions_before` y `conditions`. Antes las condiciones solo se guardaban al crear o reescribir una plantilla con `key`.
+- Webs: campingelfar.com (el listado del blog, plantilla 8982, también para categorías y etiquetas). En las demás no cambia nada mientras no se use.
+
 ## 2.76.0 · 04/11/2026 · PR (Claude)
 
 - `/theme` admite `gtranslate`: cambia ajustes que ya existen en la opción de GTranslate (solo valores simples), p. ej. quitar el selector flotante o cambiar el aspecto del selector. La respuesta trae los ajustes actuales. Solo previsualiza; guarda con `apply: true`.

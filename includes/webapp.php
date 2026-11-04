@@ -466,9 +466,9 @@ add_action( 'wp_head', function () {
 			. '.eg-navbar{position:fixed;left:0;top:0;z-index:2147483647;height:3px;width:0;background:linear-gradient(90deg,#E0662E,#B8202F,#EFA54E);box-shadow:0 0 8px rgba(224,102,46,.7);transition:width 8s cubic-bezier(.1,.9,.2,1)}'
 			. '@keyframes egSpin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){html.eg-splash:after{animation:none}}</style>' . "\n";
 		echo '<script id="eg-webapp-splash-js">(function(){var d=document.documentElement,sa=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;if(!sa)return;'
-			. 'var first=true;try{first=!sessionStorage.getItem("eg-wa-run");sessionStorage.setItem("eg-wa-run","1");}catch(e){}'
+			. 'var t0=Date.now(),first=!document.referrer&&history.length<2;'
 			. 'function out(){if(!d.classList.contains("eg-splash"))return;d.classList.add("eg-splash-out");setTimeout(function(){d.classList.remove("eg-splash","eg-splash-out");},400);}'
-			. 'if(first){d.classList.add("eg-splash");window.addEventListener("load",function(){setTimeout(out,150);});setTimeout(out,5000);}'
+			. 'if(first){d.classList.add("eg-splash");window.addEventListener("load",function(){setTimeout(out,Math.max(150,1100-(Date.now()-t0)));});setTimeout(out,5000);}'
 			. 'window.addEventListener("pageshow",function(e){if(e.persisted){out();var b=document.querySelector(".eg-navbar");if(b)b.remove();}});'
 			. 'document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href]");if(!a||a.target==="_blank"||e.defaultPrevented||e.metaKey||e.ctrlKey)return;var u=new URL(a.href,location.href);if(u.origin!==location.origin||u.href.split("#")[0]===location.href.split("#")[0]||/add-to-cart=|eg-webapp=/.test(u.search))return;'
 			. 'var b=document.createElement("div");b.className="eg-navbar";document.body.appendChild(b);requestAnimationFrame(function(){b.style.width="85%";});setTimeout(function(){b.remove();},10000);});})();</script>' . "\n";

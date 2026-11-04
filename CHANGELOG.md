@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.87.1 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: la pantalla de carga sale cada vez que se abre la app (primera página sin página anterior), no una vez por sesión, porque iOS conserva la sesión al volver a abrirla; se mantiene al menos 1,1 s para que se vea.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
 ## 2.87.0 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp», carga más rápida con la app instalada: el service worker usa «navigation preload» (la página se pide a la vez que arranca) y, al instalarse, deja ya guardados el CSS, el JS y las fuentes de la página de inicio.

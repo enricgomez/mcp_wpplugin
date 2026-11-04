@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.74.0 · 04/11/2026 · PR (Claude)
+
+- `/product` (WooCommerce) admite `cart_texts`: cambia el texto del botón de añadir al carrito en la ficha (`single`) y en listados y tarjetas (`loop`), por categoría de producto (slug) o para todos (`*`). Solo previsualiza; guarda con `apply: true`. Vacía la caché de WP Rocket al guardar.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud («¡Al horno!» en pizzas, «¡Al pedido!» en bebidas, postres y vinos). En las demás no cambia nada mientras no se use.
+
 ## 2.73.0 · 04/11/2026 · PR (Claude)
 
 - `/theme` revisa plugins sin tocar nada: `plugins: true` los lista con versión, estado y actualización disponible; `widget` dice qué plugin y fichero pintan un widget de Elementor; `read` lista los ficheros de un plugin o devuelve uno (.php, .css, .js, .json, .txt, .md; máx. 300 KB). Sirve para revisar plugins a medida en webs alojadas fuera del servidor.

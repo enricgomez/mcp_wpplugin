@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.72.0 · 04/11/2026 · PR (Claude)
+
+- `/term` organiza categorías (y cualquier taxonomía pública): `list: true` lista los términos en todos los idiomas (id, nombre, slug, entradas, idioma y trid de WPML) y, con `posts: true`, las entradas publicadas, programadas y en borrador con su fecha, idioma y categorías. `create` crea términos en un idioma y los enlaza como traducción (`translation_of`); `assign` cambia las categorías de cada entrada. Sin `apply: true` solo previsualiza.
+- Webs: campingelfar.com (categorías del blog). En las demás no cambia nada mientras no se use.
+
 ## 2.71.1 · 03/11/2026 · PR (Claude)
 
 - `/template` (Elementor): al crear una plantilla nueva con `conditions` y `lang`, las condiciones se guardan después de asignar el idioma de WPML. Antes la caché de condiciones de Elementor Pro se rehacía cuando la plantilla aún no tenía idioma, la dejaba fuera y no se aplicaba hasta volver a guardarla.

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.88.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: pantalla de carga más ágil. Se quita en cuanto el HTML está listo (antes esperaba a todas las imágenes), con un mínimo de 0,6 s y un máximo de 3 s, y el aro gira más rápido. El logo sale redondo: se genera `round-256.png` (círculo del color de fondo con el logo y esquinas transparentes) junto al resto de iconos.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
 ## 2.87.1 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp»: la pantalla de carga sale cada vez que se abre la app (primera página sin página anterior), no una vez por sesión, porque iOS conserva la sesión al volver a abrirla; se mantiene al menos 1,1 s para que se vea.

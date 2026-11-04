@@ -271,6 +271,26 @@ function eg_pub_webapp_build_icons( array $s ) {
 		imagedestroy( $im );
 		$icons[ $name ] = trailingslashit( $up['baseurl'] ) . 'eg-webapp/' . $name . '.png?v=' . $ver;
 	}
+	// Versión redonda (para la pantalla de carga): círculo del color de fondo con el logo, esquinas transparentes.
+	$big = imagecreatetruecolor( 512, 512 );
+	imagesavealpha( $big, true );
+	imagealphablending( $big, false );
+	imagefill( $big, 0, 0, imagecolorallocatealpha( $big, 0, 0, 0, 127 ) );
+	imagealphablending( $big, true );
+	imagefilledellipse( $big, 256, 256, 510, 510, imagecolorallocate( $big, $rgb[0], $rgb[1], $rgb[2] ) );
+	$scale = min( 512 * .66 / $sw, 512 * .66 / $sh );
+	$w     = (int) round( $sw * $scale );
+	$h     = (int) round( $sh * $scale );
+	imagecopyresampled( $big, $src, (int) ( ( 512 - $w ) / 2 ), (int) ( ( 512 - $h ) / 2 ), 0, 0, $w, $h, $sw, $sh );
+	$round = imagecreatetruecolor( 256, 256 );
+	imagesavealpha( $round, true );
+	imagealphablending( $round, false );
+	imagefill( $round, 0, 0, imagecolorallocatealpha( $round, 0, 0, 0, 127 ) );
+	imagecopyresampled( $round, $big, 0, 0, 0, 0, 256, 256, 512, 512 );
+	imagepng( $round, $dir . '/round-256.png', 9 );
+	imagedestroy( $big );
+	imagedestroy( $round );
+	$icons['round-256'] = trailingslashit( $up['baseurl'] ) . 'eg-webapp/round-256.png?v=' . $ver;
 	imagedestroy( $src );
 	update_option( EG_PUB_WEBAPP_OPT . '_icons', $icons, false );
 	return $icons;
@@ -459,16 +479,17 @@ add_action( 'wp_head', function () {
 	}
 	if ( $s['splash'] && ! empty( $icons['icon-512'] ) ) {
 		// Solo con la app instalada: pantalla de carga al abrirla y barra fina arriba al cambiar de página.
-		$bg = esc_attr( $s['background_color'] );
-		echo '<style id="eg-webapp-splash">html.eg-splash:before{content:"";position:fixed;inset:0;z-index:2147483646;background:' . $bg . ' url("' . esc_url( $icons['icon-512'] ) . '") center/112px 112px no-repeat;transition:opacity .35s}'
-			. 'html.eg-splash:after{content:"";position:fixed;left:50%;top:50%;z-index:2147483647;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#EFA54E;border-right-color:#E0662E;animation:egSpin .9s linear infinite;transition:opacity .35s}'
+		$bg   = esc_attr( $s['background_color'] );
+		$logo = $icons['round-256'] ?? $icons['icon-512'];
+		echo '<style id="eg-webapp-splash">html.eg-splash:before{content:"";position:fixed;inset:0;z-index:2147483646;background:' . $bg . ' url("' . esc_url( $logo ) . '") center/104px 104px no-repeat;transition:opacity .3s}'
+			. 'html.eg-splash:after{content:"";position:fixed;left:50%;top:50%;z-index:2147483647;width:128px;height:128px;margin:-64px 0 0 -64px;box-sizing:border-box;border-radius:50%;border:3px solid rgba(255,255,255,.1);border-top-color:#EFA54E;border-right-color:#E0662E;animation:egSpin .7s linear infinite;transition:opacity .3s}'
 			. 'html.eg-splash-out:before,html.eg-splash-out:after{opacity:0}'
 			. '.eg-navbar{position:fixed;left:0;top:0;z-index:2147483647;height:3px;width:0;background:linear-gradient(90deg,#E0662E,#B8202F,#EFA54E);box-shadow:0 0 8px rgba(224,102,46,.7);transition:width 8s cubic-bezier(.1,.9,.2,1)}'
 			. '@keyframes egSpin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){html.eg-splash:after{animation:none}}</style>' . "\n";
 		echo '<script id="eg-webapp-splash-js">(function(){var d=document.documentElement,sa=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;if(!sa)return;'
 			. 'var t0=Date.now(),first=!document.referrer&&history.length<2;'
 			. 'function out(){if(!d.classList.contains("eg-splash"))return;d.classList.add("eg-splash-out");setTimeout(function(){d.classList.remove("eg-splash","eg-splash-out");},400);}'
-			. 'if(first){d.classList.add("eg-splash");window.addEventListener("load",function(){setTimeout(out,Math.max(150,1100-(Date.now()-t0)));});setTimeout(out,5000);}'
+			. 'if(first){d.classList.add("eg-splash");document.addEventListener("DOMContentLoaded",function(){setTimeout(out,Math.max(80,600-(Date.now()-t0)));});setTimeout(out,3000);}'
 			. 'window.addEventListener("pageshow",function(e){if(e.persisted){out();var b=document.querySelector(".eg-navbar");if(b)b.remove();}});'
 			. 'document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[href]");if(!a||a.target==="_blank"||e.defaultPrevented||e.metaKey||e.ctrlKey)return;var u=new URL(a.href,location.href);if(u.origin!==location.origin||u.href.split("#")[0]===location.href.split("#")[0]||/add-to-cart=|eg-webapp=/.test(u.search))return;'
 			. 'var b=document.createElement("div");b.className="eg-navbar";document.body.appendChild(b);requestAnimationFrame(function(){b.style.width="85%";});setTimeout(function(){b.remove();},10000);});})();</script>' . "\n";

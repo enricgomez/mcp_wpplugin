@@ -125,7 +125,7 @@ function eg_pub_webapp_sanitize( array $s ) {
 		$s['install'][ $k ] = $text( $s['install'][ $k ] ?? '' );
 	}
 	$s['install']['delay']  = max( 0, min( 120, (int) $s['install']['delay'] ) );
-	$s['install']['days']   = max( 1, min( 365, (int) $s['install']['days'] ) );
+	$s['install']['days']   = max( 0, min( 365, (int) $s['install']['days'] ) );
 	$s['install']['bottom'] = preg_match( '/^[0-9.]+(px|em|rem|vh)$/', (string) $s['install']['bottom'] ) ? $s['install']['bottom'] : '1em';
 	$s['push']['enabled']     = ! empty( $s['push']['enabled'] );
 	$s['push']['replace_sms'] = ! empty( $s['push']['replace_sms'] );

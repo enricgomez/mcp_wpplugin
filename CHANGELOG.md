@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.84.1 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: `install.days` admite 0, para que el aviso de instalación vuelva a salir en cada visita aunque se cierre (útil para pruebas). Con 1 o más, los días que tarda en volver a salir tras cerrarlo.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
 ## 2.84.0 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp»: el aviso de instalación en iPhone ya no es solo texto. Muestra un botón «Ver cómo» que despliega dos pasos con el icono real de Compartir y el de «Añadir a pantalla de inicio», y una flecha animada que señala la barra de Safari (solo iPhone; sin animación si el móvil pide menos movimiento). Ajustes nuevos `install.ios_button`, `install.ios_step1` e `install.ios_step2` ({share} y {add} se cambian por los iconos); `install.ios_text` desaparece. Apple no deja instalar con un botón, así que el último paso sigue siendo del usuario.

@@ -9,8 +9,7 @@
  *             preloads y las primeras imágenes con loading / fetchpriority. Con "robots_txt": true, también robots.txt.
  *   business  {"types": ["VeterinaryCare"], "name", "telephone", "address": {…}, "openingHoursSpecification": […], …}
  *             datos del negocio local en schema.org. Con Yoast se fusionan en su Organization (una sola entidad, sin
- *             duplicar); con Rank Math, en su entidad «publisher»; sin ninguno se imprime un JSON-LD propio en la
- *             portada. null lo quita.
+ *             duplicar); sin Yoast se imprime un JSON-LD propio en la portada. null lo quita.
  *   robots    "líneas" que se añaden al final del robots.txt virtual de WordPress (p. ej. reglas para bots de IA). "" lo quita.
  *   hreflang  true/false: activa o desactiva en WPML «mostrar idiomas alternativos en el HEAD».
  *   ai_catalog true, o {"description": "…", "queries": ["…", "…"]}: sirve /.well-known/ai-catalog.json (catálogo de
@@ -95,26 +94,8 @@ add_filter( 'wpseo_schema_graph', function ( $graph ) {
 	return $graph;
 } );
 
-// Rank Math: el negocio se fusiona en su entidad «publisher» (Organization o negocio local) para no duplicarla.
-add_filter( 'rank_math/json_ld', function ( $data ) {
-	list( $biz, $types ) = eg_pub_seo_tech_business();
-	if ( ! $biz || ! is_array( $data ) ) {
-		return $data;
-	}
-	if ( isset( $data['publisher'] ) && is_array( $data['publisher'] ) ) {
-		$piece_types        = isset( $data['publisher']['@type'] ) ? (array) $data['publisher']['@type'] : array();
-		$data['publisher']['@type'] = array_values( array_unique( array_merge( $types ? $types : array( 'LocalBusiness' ), array_diff( $piece_types, array( 'Organization', 'Person' ) ) ) ) );
-		$data['publisher']  = array_merge( $data['publisher'], $biz );
-		return $data;
-	}
-	if ( is_front_page() ) {
-		$data['eg_localbusiness'] = array_merge( array( '@type' => $types ? $types : 'LocalBusiness', '@id' => home_url( '/#localbusiness' ) ), $biz );
-	}
-	return $data;
-}, 99 );
-
 add_action( 'wp_head', function () {
-	if ( defined( 'WPSEO_VERSION' ) || defined( 'RANK_MATH_VERSION' ) || ! is_front_page() ) {
+	if ( defined( 'WPSEO_VERSION' ) || ! is_front_page() ) {
 		return;
 	}
 	list( $data, $types ) = eg_pub_seo_tech_business();

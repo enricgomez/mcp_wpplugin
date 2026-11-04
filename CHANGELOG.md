@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.78.0 · 04/11/2026 · PR (Claude)
+
+- `/wc-emails` admite `style` (colores, logo de cabecera, alineación, fuente y pie de los emails de WooCommerce), `css` (CSS propio que WooCommerce pasa a estilos en línea al enviar) y `preview` (HTML del email con el pedido de ejemplo de WooCommerce, mostrando los cambios aún sin guardar). Solo previsualiza; guarda con `apply: true`. Al desactivar el plugin el CSS propio deja de aplicarse; los colores y el logo quedan en los ajustes de WooCommerce.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (emails con el diseño de la web). En las demás no cambia nada mientras no se use.
+
 ## 2.77.0 · 04/11/2026 · PR (Claude)
 
 - `/template` admite `id` + `conditions` sin más datos: cambia solo las condiciones de visualización de una plantilla que ya existe (p. ej. una hecha a mano en Elementor), sin tocar su diseño. Rehace la caché de condiciones de Elementor Pro y vacía WP Rocket. La respuesta trae `conditions_before` y `conditions`. Antes las condiciones solo se guardaban al crear o reescribir una plantilla con `key`.

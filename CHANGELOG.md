@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.86.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: en iPhone, al abrir «Ver cómo» el aviso baja junto a la barra de Safari y una línea discontinua animada lo une con la flecha, que lleva un pulso para que se vea bien dónde tocar. Añade la clase `eg-wa-guide` al body mientras la guía está abierta (para ocultar barras fijas propias de la web).
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
 ## 2.85.0 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp»: la guía de instalación en iPhone admite hasta 3 pasos (`install.ios_step3`) y el icono `{menu}` (el botón de la izquierda de la barra de Safari en iOS 26). Por defecto: menú de la barra → Compartir → «Añadir a pantalla de inicio». `install.ios_arrow` coloca la flecha (p. ej. `18%`, debajo del botón del menú).

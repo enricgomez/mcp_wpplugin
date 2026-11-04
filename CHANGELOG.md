@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.85.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: la guía de instalación en iPhone admite hasta 3 pasos (`install.ios_step3`) y el icono `{menu}` (el botón de la izquierda de la barra de Safari en iOS 26). Por defecto: menú de la barra → Compartir → «Añadir a pantalla de inicio». `install.ios_arrow` coloca la flecha (p. ej. `18%`, debajo del botón del menú).
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
 ## 2.84.1 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp»: `install.days` admite 0, para que el aviso de instalación vuelva a salir en cada visita aunque se cierre (útil para pruebas). Con 1 o más, los días que tarda en volver a salir tras cerrarlo.

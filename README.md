@@ -53,7 +53,7 @@ En `/publish`, `author` (desde la v2.32.0; ID, nombre de usuario o email) hace q
 
 ### Qué hace en cada web: tipologías (desde la v2.8.0)
 
-En Ajustes → EG Publicación → «Qué hace en esta web» se marca, por tipología, lo que usa cada web. Lo que está apagado no registra sus endpoints (responden 404) ni sus abilities. Todo usa la misma clave `X-EG-Key`.
+En Ajustes → EG Publicación → «Qué hace en esta web» se marca, por tipología, lo que usa cada web. Lo que está apagado no registra sus endpoints (responden 404) ni sus abilities. Todo usa la misma clave `X-EG-Key`. Desde la v2.71.0, en una instalación nueva vienen marcadas todas las tipologías que la web puede usar (Elementor y WooCommerce solo si esos plugins están activos), hasta que se guardan los ajustes.
 
 | Tipología | Endpoints | Capacidad del autor |
 | --- | --- | --- |

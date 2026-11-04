@@ -10,6 +10,28 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.73.0 · 04/11/2026 · PR (Claude)
+
+- `/theme` revisa plugins sin tocar nada: `plugins: true` los lista con versión, estado y actualización disponible; `widget` dice qué plugin y fichero pintan un widget de Elementor; `read` lista los ficheros de un plugin o devuelve uno (.php, .css, .js, .json, .txt, .md; máx. 300 KB). Sirve para revisar plugins a medida en webs alojadas fuera del servidor.
+- Webs: campingelfar.com (widget de alojamientos de la home). En las demás no cambia nada mientras no se use.
+
+## 2.72.0 · 04/11/2026 · PR (Claude)
+
+- `/term` organiza categorías (y cualquier taxonomía pública): `list: true` lista los términos en todos los idiomas (id, nombre, slug, entradas, idioma y trid de WPML) y, con `posts: true`, las entradas publicadas, programadas y en borrador con su fecha, idioma y categorías. `create` crea términos en un idioma y los enlaza como traducción (`translation_of`); `assign` cambia las categorías de cada entrada. Sin `apply: true` solo previsualiza.
+- Webs: campingelfar.com (categorías del blog). En las demás no cambia nada mientras no se use.
+
+## 2.71.1 · 03/11/2026 · PR (Claude)
+
+- `/template` (Elementor): al crear una plantilla nueva con `conditions` y `lang`, las condiciones se guardan después de asignar el idioma de WPML. Antes la caché de condiciones de Elementor Pro se rehacía cuando la plantilla aún no tenía idioma, la dejaba fuera y no se aplicaba hasta volver a guardarla.
+- Webs: campingelfar.com (plantilla de resultados de búsqueda). Afecta a cualquier web con WPML que cree plantillas con condiciones.
+
+## 2.71.0 · 03/11/2026 · directo a main (Claude, a petición de Enric)
+
+- Ajustes → EG Publicación: en una web donde el plugin se instala por primera vez (sin ajustes guardados), vienen marcadas todas las tipologías que la web puede usar: Blog y Gestión de la web siempre, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Antes solo venía el Blog y los demás endpoints respondían 404 hasta marcarlos a mano. Mientras no se guarden los ajustes, una tipología que pase a cumplir su requisito (p. ej. instalar Elementor después) se activa sola; al guardar, manda lo marcado.
+- IndexNow (Ajustes → EG IndexNow): si nunca se ha guardado el ajuste, viene activado, salvo en webs ocultas a los buscadores (staging) o si ya avisa otro plugin (Rank Math con Instant Indexing, All in One SEO, SEOPress o el plugin IndexNow), para no enviar dos veces. Un ajuste guardado se respeta.
+- Webs que ya guardaron los ajustes o que vienen de la 2.7.x o anterior: no cambia nada. Una web que nunca guardó los ajustes pasa también a tener todas las tipologías disponibles (todos los endpoints siguen pidiendo la clave `X-EG-Key`).
+- Webs: test-nuriagrima.cat.egserver.cloud (staging nuevo). Afecta a las instalaciones nuevas.
+
 ## 2.70.0 · 03/11/2026 · PR (Claude)
 
 - `/template` (Elementor) admite `list: true`: devuelve, sin cambiar nada, las plantillas de Elementor de todos los idiomas (id, título, tipo, estado, idioma de WPML, condiciones del Theme Builder, clave de EG) y la portada y la página de entradas de Ajustes → Lectura.

@@ -19,6 +19,10 @@
  *   image, gallery               imagen principal y galería: ID de la biblioteca, URL o {"url"|"b64", "alt", "filename"}
  *   upsell_ids, cross_sell_ids   productos relacionados: ventas dirigidas («Quizás te interese…» en la ficha) y
  *                                ventas cruzadas (en el carrito), como lista de IDs o SKU ([] los quita)
+ * cart_texts cambia el texto del botón de añadir al carrito: {"single": {"*": "¡Al horno!", "bebidas": "¡Al pedido!"},
+ *                              "loop": {...}}; «single» es el de la ficha y «loop» el de listados y tarjetas. Cada clave es
+ *                              el slug de una categoría de producto (o «*» para el resto); manda la primera categoría que
+ *                              coincida. {} quita los textos propios. Solo previsualiza; guarda con apply: true.
  * create crea un producto nuevo (en borrador salvo que set diga otro status), vacío o copiado de otro con
  * create.from (ID o SKU), y le aplica set. list devuelve todos los productos con su estado, papelera incluida.
  * Con dry_run devuelve lo que cambiaría sin guardar. Los textos se guardan sin wp_update_post para que WPML no
@@ -44,6 +48,55 @@ add_action( 'rest_api_init', function () {
 		'permission_callback' => eg_pub_module_permission( 'edit_others_products' ),
 	) );
 } );
+
+const EG_PUB_CART_TEXTS_OPT = 'eg_pub_cart_texts';
+
+/** Texto propio del botón de añadir al carrito para este producto ("single" o "loop"), o el de WooCommerce. */
+function eg_pub_cart_text( $where, $text, $product ) {
+	$map = (array) ( get_option( EG_PUB_CART_TEXTS_OPT, array() )[ $where ] ?? array() );
+	if ( ! $map || ! $product instanceof WC_Product ) {
+		return $text;
+	}
+	if ( 'loop' === $where && ( ! $product->is_purchasable() || ! $product->is_in_stock() || ! $product->is_type( 'simple' ) ) ) {
+		return $text;
+	}
+	$id   = $product->get_parent_id() ? $product->get_parent_id() : $product->get_id();
+	$cats = wp_get_post_terms( $id, 'product_cat', array( 'fields' => 'slugs' ) );
+	foreach ( $map as $slug => $label ) {
+		if ( '*' !== $slug && is_array( $cats ) && in_array( (string) $slug, $cats, true ) ) {
+			return $label;
+		}
+	}
+	return $map['*'] ?? $text;
+}
+add_filter( 'woocommerce_product_single_add_to_cart_text', function ( $text, $product = null ) {
+	return eg_pub_cart_text( 'single', $text, $product );
+}, 20, 2 );
+add_filter( 'woocommerce_product_add_to_cart_text', function ( $text, $product = null ) {
+	return eg_pub_cart_text( 'loop', $text, $product );
+}, 20, 2 );
+
+/** /product cart_texts: valida el mapa, lo previsualiza y, con apply, lo guarda. */
+function eg_pub_cart_texts_handle( $texts, $apply ) {
+	$clean = array();
+	foreach ( array( 'single', 'loop' ) as $where ) {
+		foreach ( (array) ( $texts[ $where ] ?? array() ) as $slug => $label ) {
+			$slug  = '*' === $slug ? '*' : sanitize_title( (string) $slug );
+			$label = trim( wp_strip_all_tags( (string) $label ) );
+			if ( '' !== $slug && '' !== $label ) {
+				$clean[ $where ][ $slug ] = $label;
+			}
+		}
+	}
+	$before = get_option( EG_PUB_CART_TEXTS_OPT, array() );
+	if ( $apply ) {
+		update_option( EG_PUB_CART_TEXTS_OPT, $clean );
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'applied' => (bool) $apply, 'before' => (object) $before, 'cart_texts' => (object) $clean ), 200 );
+}
 
 /** Campos de meta que se pueden cambiar: los de JetEngine para productos y los de SEO de Rank Math. */
 function eg_pub_product_meta_keys() {
@@ -132,6 +185,9 @@ function eg_pub_product_handle( WP_REST_Request $r ) {
 
 	if ( ! empty( $p['list'] ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'products' => eg_pub_product_list() ), 200 );
+	}
+	if ( isset( $p['cart_texts'] ) && is_array( $p['cart_texts'] ) ) {
+		return eg_pub_cart_texts_handle( $p['cart_texts'], ! empty( $p['apply'] ) );
 	}
 
 	$ids     = array_map( 'intval', (array) ( $p['ids'] ?? array() ) );

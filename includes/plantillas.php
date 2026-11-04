@@ -92,6 +92,10 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 		}
 		return new WP_REST_Response( array( 'ok' => true, 'id' => $tid, 'conditions_before' => $before ? $before : array(), 'conditions' => $saved ), 200 );
 	}
+	// build: pasa a Elementor una página o entrada que aún no lo usa (p. ej. un texto legal hecho con el editor clásico).
+	if ( ! empty( $p['id'] ) && isset( $p['build'] ) ) {
+		return eg_pub_template_build( (int) $p['id'], $p['build'], $p['page_template'] ?? 'elementor_header_footer' );
+	}
 	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) || isset( $p['images'] ) || isset( $p['insert_after'] ) ) ) {
 		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array(), array(), $p['images'] ?? array(), $p['insert_after'] ?? array() );
 	}
@@ -607,4 +611,41 @@ function eg_pub_append_handle( WP_REST_Request $r ) {
 		'pages'       => $done,
 		'message'     => implode( ' | ', $notes ),
 	), 200 );
+}
+
+/**
+ * Pasa a Elementor un contenido que aún no lo usa: guarda "build" (JSON de Elementor) como su diseño, lo marca como
+ * hecho con Elementor y le pone la plantilla de página (por defecto elementor_header_footer). El contenido clásico
+ * (post_content) se queda como estaba. Si ya tiene JSON de Elementor no hace nada: para eso están patch y replace.
+ */
+function eg_pub_template_build( $id, $elements, $page_template ) {
+	$post = get_post( $id );
+	if ( ! $post || 'elementor_library' === $post->post_type ) {
+		return eg_pub_error( 'eg_not_found', 'No existe una página o entrada con ese id.', 404 );
+	}
+	if ( ! current_user_can( 'edit_post', $id ) ) {
+		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );
+	}
+	if ( ! is_array( $elements ) || ! $elements ) {
+		return eg_pub_error( 'eg_missing', 'Falta build (JSON de Elementor).' );
+	}
+	$current = json_decode( (string) get_post_meta( $id, '_elementor_data', true ), true );
+	if ( is_array( $current ) && $current ) {
+		return eg_pub_error( 'eg_already_elementor', 'Ese contenido ya está hecho con Elementor: usa patch o replace.', 400 );
+	}
+	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( eg_pub_template_ids( $elements ) ) ) );
+	update_post_meta( $id, '_elementor_edit_mode', 'builder' );
+	if ( defined( 'ELEMENTOR_VERSION' ) ) {
+		update_post_meta( $id, '_elementor_version', ELEMENTOR_VERSION );
+	}
+	$page_template = sanitize_text_field( (string) $page_template );
+	if ( in_array( $page_template, array( 'default', 'elementor_header_footer', 'elementor_canvas', 'elementor_theme' ), true ) ) {
+		update_post_meta( $id, '_wp_page_template', $page_template );
+	}
+	delete_post_meta( $id, '_elementor_css' );
+	delete_post_meta( $id, '_elementor_element_cache' );
+	if ( function_exists( 'rocket_clean_post' ) ) {
+		rocket_clean_post( $id );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'built' => true, 'page_template' => get_post_meta( $id, '_wp_page_template', true ) ), 200 );
 }

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.82.0 · 04/11/2026 · PR (Claude)
+
+- `/template` admite `id` + `build`: pasa a Elementor una página o entrada hecha con el editor clásico (guarda el JSON, la marca como Elementor y pone la plantilla de página). No sobrescribe contenidos que ya usan Elementor.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (Términos y condiciones de compra con el diseño nuevo). En las demás no cambia nada mientras no se use.
+
 ## 2.81.0 · 04/11/2026 · PR (Claude)
 
 - `/seo-tech` admite `rankmath_settings` (cambia claves de los ajustes de Rank Math: títulos y SEO local, generales y sitemap) y `rankmath_get` (lee esos ajustes). Solo previsualiza; guarda con `apply: true`.

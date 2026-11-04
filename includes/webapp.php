@@ -5,7 +5,8 @@
  * Sin parámetros devuelve los ajustes y el estado (iconos, claves push, pedidos con push).
  *   settings  {"enabled": true, "name": "…", "short_name": "…", "theme_color": "#0E0A08", "background_color": "#0E0A08",
  *              "icon": 1036, "icon_background": "#0E0A08", "offline": {"title","text","phone"},
- *              "install": {"enabled", "title", "text", "button", "ios_text", "delay", "days", "bottom"},
+ *              "install": {"enabled", "title", "text", "button", "ios_button", "ios_step1", "ios_step2", "delay", "days", "bottom"},
+ *                         (iPhone: botón «Cómo» que abre 2 pasos con iconos; {share} y {add} se cambian por el icono)
  *              "push": {"enabled", "title", "prompt_title", "prompt_text", "button", "done_text", "subject",
  *                       "statuses": ["processing", …], "messages": {"processing": "…"}, "replace_sms": true},
  *              "exclude": ["/carrito", …]}  cambia solo las claves que se envían.
@@ -56,7 +57,9 @@ function eg_pub_webapp_defaults() {
 			'title'    => 'Instala la app',
 			'text'     => 'Pide en dos toques desde tu pantalla de inicio.',
 			'button'   => 'Instalar',
-			'ios_text' => 'Pulsa Compartir y después «Añadir a pantalla de inicio».',
+			'ios_button' => 'Ver cómo',
+			'ios_step1'  => 'Toca {share} Compartir en la barra de Safari (si no lo ves, toca antes ···).',
+			'ios_step2'  => 'Elige {add} «Añadir a pantalla de inicio».',
 			'delay'    => 8,
 			'days'     => 14,
 			'bottom'   => '6.6em',
@@ -118,7 +121,7 @@ function eg_pub_webapp_sanitize( array $s ) {
 		$s['offline'][ $k ] = $text( $s['offline'][ $k ] ?? '' );
 	}
 	$s['install']['enabled'] = ! empty( $s['install']['enabled'] );
-	foreach ( array( 'title', 'text', 'button', 'ios_text' ) as $k ) {
+	foreach ( array( 'title', 'text', 'button', 'ios_button', 'ios_step1', 'ios_step2' ) as $k ) {
 		$s['install'][ $k ] = $text( $s['install'][ $k ] ?? '' );
 	}
 	$s['install']['delay']  = max( 0, min( 120, (int) $s['install']['delay'] ) );
@@ -450,7 +453,9 @@ add_action( 'wp_footer', function () {
 			'title'  => $s['install']['title'],
 			'text'   => $s['install']['text'],
 			'button' => $s['install']['button'],
-			'ios'    => $s['install']['ios_text'],
+			'ios_button' => $s['install']['ios_button'],
+			'ios_step1'  => $s['install']['ios_step1'],
+			'ios_step2'  => $s['install']['ios_step2'],
 			'delay'  => (int) $s['install']['delay'],
 			'days'   => (int) $s['install']['days'],
 			'icon'   => (string) ( $icons['icon-192'] ?? '' ),
@@ -458,7 +463,7 @@ add_action( 'wp_footer', function () {
 	);
 	if ( $install ) {
 		$bottom = $s['install']['bottom'];
-		echo '<style id="eg-webapp-css">.eg-wa{position:fixed;left:max(.75em,env(safe-area-inset-left));right:max(.75em,env(safe-area-inset-right));bottom:calc(' . esc_html( $bottom ) . ' + env(safe-area-inset-bottom));z-index:9995;display:flex;align-items:center;gap:.8em;padding:.8em .9em;border-radius:18px;background:rgba(26,19,16,.96);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(239,165,78,.22);box-shadow:0 20px 44px -14px rgba(0,0,0,.85);color:#F7EEE3;font:14px/1.35 "DM Sans",system-ui,sans-serif;transform:translateY(140%);opacity:0;transition:transform .45s cubic-bezier(.2,.9,.3,1.2),opacity .3s}.eg-wa.is-on{transform:none;opacity:1}.eg-wa img{width:44px;height:44px;border-radius:12px;flex:0 0 44px}.eg-wa b{display:block;font-size:15px}.eg-wa span{opacity:.75}.eg-wa__txt{flex:1;min-width:0}.eg-wa__go{flex:0 0 auto;border:0;border-radius:999px;padding:.7em 1.1em;font:700 14px "DM Sans",system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#E0662E,#B8202F 52%,#7A1022);cursor:pointer}.eg-wa__x{flex:0 0 auto;background:none;border:0;color:inherit;opacity:.55;font-size:22px;line-height:1;padding:.2em;cursor:pointer}@media(min-width:1025px){.eg-wa{left:auto;right:1.5em;bottom:1.5em;max-width:380px}}</style>' . "\n";
+		echo '<style id="eg-webapp-css">.eg-wa{position:fixed;left:max(.75em,env(safe-area-inset-left));right:max(.75em,env(safe-area-inset-right));bottom:calc(' . esc_html( $bottom ) . ' + env(safe-area-inset-bottom));z-index:9995;display:flex;align-items:center;gap:.8em;padding:.8em .9em;border-radius:18px;background:rgba(26,19,16,.96);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(239,165,78,.22);box-shadow:0 20px 44px -14px rgba(0,0,0,.85);color:#F7EEE3;font:14px/1.35 "DM Sans",system-ui,sans-serif;transform:translateY(140%);opacity:0;transition:transform .45s cubic-bezier(.2,.9,.3,1.2),opacity .3s}.eg-wa.is-on{transform:none;opacity:1}.eg-wa img{width:44px;height:44px;border-radius:12px;flex:0 0 44px}.eg-wa b{display:block;font-size:15px}.eg-wa span{opacity:.75}.eg-wa__txt{flex:1;min-width:0}.eg-wa__go{flex:0 0 auto;border:0;border-radius:999px;padding:.7em 1.1em;font:700 14px "DM Sans",system-ui,sans-serif;color:#fff;background:linear-gradient(135deg,#E0662E,#B8202F 52%,#7A1022);cursor:pointer}.eg-wa__x{flex:0 0 auto;background:none;border:0;color:inherit;opacity:.55;font-size:22px;line-height:1;padding:.2em;cursor:pointer}.eg-wa.is-open{flex-wrap:wrap}.eg-wa__steps{flex:1 0 100%;margin:.2em 0 0;padding:.75em 0 0;border-top:1px solid rgba(247,238,227,.12);list-style:none;display:grid;gap:.6em}.eg-wa__steps li{display:flex;align-items:center;gap:.65em}.eg-wa__n{flex:0 0 1.6em;height:1.6em;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:12px;background:rgba(239,165,78,.16);color:#EFA54E}.eg-wa__ic{display:inline-grid;place-items:center;width:1.9em;height:1.9em;margin:0 .15em;border-radius:8px;background:rgba(247,238,227,.1);vertical-align:middle}.eg-wa__ic svg{width:1.15em;height:1.15em;stroke:#5AA9FF;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.eg-wa__arrow{position:fixed;left:50%;bottom:calc(.4em + env(safe-area-inset-bottom));z-index:9996;width:34px;height:34px;margin-left:-17px;color:#EFA54E;pointer-events:none;animation:egWaB 1.1s ease-in-out infinite}.eg-wa__arrow svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 3px 6px rgba(0,0,0,.6))}@keyframes egWaB{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}@media(prefers-reduced-motion:reduce){.eg-wa__arrow{animation:none}}@media(min-width:1025px){.eg-wa{left:auto;right:1.5em;bottom:1.5em;max-width:380px}}</style>' . "\n";
 	}
 	?>
 <script id="eg-webapp-js">(function(){var C=<?php echo wp_json_encode( $cfg, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ); ?>;
@@ -468,10 +473,10 @@ var K="eg-wa-dismissed",now=Date.now();try{var t=+localStorage.getItem(K)||0;if(
 var ua=navigator.userAgent,ios=/iphone|ipad|ipod/i.test(ua)&&!/crios|fxios|edgios/i.test(ua),deferred=null;
 function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML;}
 function show(isIos){if(document.querySelector(".eg-wa"))return;var el=document.createElement("div");el.className="eg-wa";el.setAttribute("role","dialog");
-el.innerHTML=(I.icon?'<img src="'+esc(I.icon)+'" alt="">':"")+'<div class="eg-wa__txt"><b>'+esc(I.title)+'</b><span>'+esc(isIos?I.ios:I.text)+'</span></div>'+(isIos?"":'<button class="eg-wa__go" type="button">'+esc(I.button)+'</button>')+'<button class="eg-wa__x" type="button" aria-label="Cerrar">×</button>';
+el.innerHTML=(I.icon?'<img src="'+esc(I.icon)+'" alt="">':"")+'<div class="eg-wa__txt"><b>'+esc(I.title)+'</b><span>'+esc(I.text)+'</span></div><button class="eg-wa__go" type="button">'+esc(isIos?I.ios_button:I.button)+'</button><button class="eg-wa__x" type="button" aria-label="Cerrar">×</button>';
 document.body.appendChild(el);requestAnimationFrame(function(){el.classList.add("is-on");});
-function close(){el.classList.remove("is-on");try{localStorage.setItem(K,String(Date.now()));}catch(e){}setTimeout(function(){el.remove();},500);}
-el.querySelector(".eg-wa__x").onclick=close;var go=el.querySelector(".eg-wa__go");if(go)go.onclick=function(){if(!deferred)return close();deferred.prompt();deferred.userChoice.then(function(){deferred=null;close();});};}
+var arrow=null;function close(){el.classList.remove("is-on");if(arrow){arrow.remove();arrow=null;}try{localStorage.setItem(K,String(Date.now()));}catch(e){}setTimeout(function(){el.remove();},500);}
+el.querySelector(".eg-wa__x").onclick=close;var go=el.querySelector(".eg-wa__go");if(isIos){go.onclick=function(){go.remove();el.classList.add("is-open");var sh='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg></span>',ad='<span class="eg-wa__ic"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg></span>';var ol=document.createElement("ol");ol.className="eg-wa__steps";ol.innerHTML='<li><span class="eg-wa__n">1</span><span>'+esc(I.ios_step1).replace("{share}",sh)+'</span></li><li><span class="eg-wa__n">2</span><span>'+esc(I.ios_step2).replace("{add}",ad)+'</span></li>';el.appendChild(ol);if(/iphone|ipod/i.test(ua)){arrow=document.createElement("div");arrow.className="eg-wa__arrow";arrow.innerHTML='<svg viewBox="0 0 24 24"><path d="M12 4v15M6 13l6 6 6-6"/></svg>';document.body.appendChild(arrow);}};return;}if(go)go.onclick=function(){if(!deferred)return close();deferred.prompt();deferred.userChoice.then(function(){deferred=null;close();});};}
 window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferred=e;setTimeout(function(){show(false);},I.delay*1000);});
 window.addEventListener("appinstalled",function(){var el=document.querySelector(".eg-wa");if(el)el.remove();});
 if(ios)setTimeout(function(){show(true);},I.delay*1000);})();</script>

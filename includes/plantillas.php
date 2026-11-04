@@ -79,6 +79,19 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	if ( ! empty( $p['list'] ) ) {
 		return eg_pub_template_list();
 	}
+	// Solo condiciones en una plantilla que ya existe (p. ej. hecha a mano en Elementor): sin tocar su diseño.
+	if ( ! empty( $p['id'] ) && isset( $p['conditions'] ) && is_array( $p['conditions'] ) && ! isset( $p['patch'] ) && ! isset( $p['replace'] ) && ! isset( $p['remove'] ) && ! isset( $p['images'] ) && ! isset( $p['insert_after'] ) && ! isset( $p['elements'] ) ) {
+		$tid = (int) $p['id'];
+		if ( 'elementor_library' !== get_post_type( $tid ) ) {
+			return eg_pub_error( 'eg_not_found', 'No existe una plantilla de Elementor con ese id.', 404 );
+		}
+		$before = get_post_meta( $tid, '_elementor_conditions', true );
+		$saved  = eg_pub_template_conditions( $tid, $p['conditions'] );
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'id' => $tid, 'conditions_before' => $before ? $before : array(), 'conditions' => $saved ), 200 );
+	}
 	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) || isset( $p['images'] ) || isset( $p['insert_after'] ) ) ) {
 		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array(), array(), $p['images'] ?? array(), $p['insert_after'] ?? array() );
 	}

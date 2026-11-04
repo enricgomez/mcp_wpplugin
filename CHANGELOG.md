@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.83.0 · 04/11/2026 · PR (Claude)
+
+- Nuevo módulo «webapp» (tipología Gestión de la web, `POST /webapp`): la web como aplicación instalable (PWA). Manifiesto e iconos generados a partir de una imagen (192, 512, maskable y Apple), metas de iOS/Android, service worker (las páginas siempre de la red, caché solo de CSS/JS/fuentes/imágenes, página propia sin conexión con teléfono, nunca carrito, checkout ni mi cuenta) y aviso de instalación (botón en Android/Chrome, instrucciones en iPhone). Apagado por defecto (`settings.enabled`); al apagarlo, los móviles que lo tenían reciben un service worker que se desinstala solo.
+- Avisos push de pedido (Web Push con VAPID, cifrado aes128gcm propio, sin librerías): en la página de pedido recibido se ofrece «¿Te avisamos?»; al cambiar el estado del pedido se envía el aviso con el mismo texto del SMS de Twilio. Si el aviso llega, el SMS de WooCommerce Twilio SMS Notifications de ese cambio no se envía (`replace_sms`); sin push, el SMS sale como siempre. Ruta pública `POST /webapp-subscribe` (valida la clave del pedido) y `test_push` para probar.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud. En las demás no cambia nada mientras no se active.
+
 ## 2.82.0 · 04/11/2026 · PR (Claude)
 
 - `/template` admite `id` + `build`: pasa a Elementor una página o entrada hecha con el editor clásico (guarda el JSON, la marca como Elementor y pone la plantilla de página). No sobrescribe contenidos que ya usan Elementor.

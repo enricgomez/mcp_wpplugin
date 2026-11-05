@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.90.0 · 05/11/2026 · PR (Claude)
+
+- `/template` (módulo Plantillas): nuevo `{"export": true}` de solo lectura que devuelve el JSON de Elementor completo, con los ajustes de página, de todo lo publicado hecho con Elementor (páginas, entradas, productos, plantillas y kit); con una lista de IDs, solo esos. Sirve para revisar el diseño de toda una web de una vez en vez de pedirlo elemento a elemento.
+- Primer uso: rediseño de oidfa-spain.org.
+- Webs: todas (sin cambios de comportamiento; solo lectura).
+
 ## 2.89.0 · 05/11/2026 · PR (Claude)
 
 - Nuevo módulo «css» (tipología Gestión de la web, `POST /css`, `includes/css.php`): hojas de estilo propias por clave que se pintan en el `<head>`, con historial de 10 versiones, `rollback` y `delete`. Cada hoja se enciende o apaga (`enabled`) y puede ir solo en unas páginas (`pages`, con sus traducciones de WPML). Para probar antes de publicar, `?eg_css=<clave>` la pinta en esa visita aunque esté apagada y `?eg_css=off` quita todas. Las hojas siguen pintándose aunque se apague la tipología: se quitan apagándolas o borrándolas.

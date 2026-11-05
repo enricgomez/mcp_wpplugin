@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.89.0 · 05/11/2026 · PR (Claude)
+
+- Nuevo módulo «css» (tipología Gestión de la web, `POST /css`, `includes/css.php`): hojas de estilo propias por clave que se pintan en el `<head>`, con historial de 10 versiones, `rollback` y `delete`. Cada hoja se enciende o apaga (`enabled`) y puede ir solo en unas páginas (`pages`, con sus traducciones de WPML). Para probar antes de publicar, `?eg_css=<clave>` la pinta en esa visita aunque esté apagada y `?eg_css=off` quita todas. Las hojas siguen pintándose aunque se apague la tipología: se quitan apagándolas o borrándolas.
+- Primer uso: el motor de reservas de Roiback en hotelneptuno.com (clave `roiback`), con la copia de los estilos originales guardada aparte.
+- Webs: hotelneptuno.com.
+
 ## 2.88.0 · 04/11/2026 · PR (Claude)
 
 - Módulo «webapp»: pantalla de carga más ágil. Se quita en cuanto el HTML está listo (antes esperaba a todas las imágenes), con un mínimo de 0,6 s y un máximo de 3 s, y el aro gira más rápido. El logo sale redondo: se genera `round-256.png` (círculo del color de fondo con el logo y esquinas transparentes) junto al resto de iconos.

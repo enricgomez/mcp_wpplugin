@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.91.0 · 06/11/2026 · PR (Claude)
+
+- `/promo` (módulo nuevo «Campañas», tipología WooCommerce): `rules` lista las reglas de Woo Discount Rules; `clone` copia una regla (filtros y exclusiones incluidos) en otra con fechas, porcentaje, etiqueta del carrito e insignia nuevas, y `update` cambia una existente. `closure` programa el aviso de la tienda de WooCommerce en cada idioma y un cierre en el que no se puede comprar ni pagar. En cada inicio y fin se vacía la caché de WP Rocket con el cron, para que las páginas cambien a su hora. Solo previsualiza; guarda con `apply: true`.
+- Webs: miriamtirado.com (campaña de Navidad y cierre del 24/12 al 6/1). En las demás no cambia nada mientras no se use.
+
 ## 2.90.0 · 05/11/2026 · PR (Claude)
 
 - `/template` (módulo Plantillas): nuevo `{"export": true}` de solo lectura que devuelve el JSON de Elementor completo, con los ajustes de página, de todo lo publicado hecho con Elementor (páginas, entradas, productos, plantillas y kit); con una lista de IDs, solo esos. Sirve para revisar el diseño de toda una web de una vez en vez de pedirlo elemento a elemento.

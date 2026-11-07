@@ -9,6 +9,6 @@ $d = json_decode( get_post_meta( 6, '_elementor_data', true ), true ); $pid = nu
 $f = function ( $els ) use ( &$f, &$pid ) { foreach ( $els as $e ) { if ( ( $e['editor_settings']['title'] ?? '' ) === 'Blog rejilla' ) $pid = $e['id']; if ( ! empty( $e['elements'] ) ) $f( $e['elements'] ); } }; $f( $d );
 echo "rejilla=$pid\n"; if ( ! $pid ) return;
 $in = $cfg['build']['input']; $in['parent_id'] = $pid;
-echo 'build: ', substr( json_encode( $run( 'elementor/build-composition', $in ) ), 0, 200 ), "\n";
+echo 'build: ', substr( json_encode( $run( 'elementor/build-composition', $in ), JSON_UNESCAPED_UNICODE ), 0, 900 ), "\n";
 echo 'pub: ', substr( json_encode( $run( 'elementor/publish-document', [ 'post_id' => 6 ] ) ), 0, 80 ), "\n";
 file_put_contents( '/tmp/eg-dyn.json', json_encode( $cfg['dyn'] ) ); include '/tmp/eg-dynfix.php';

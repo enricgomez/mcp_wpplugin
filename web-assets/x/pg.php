@@ -14,9 +14,9 @@ foreach ( $cfg['pages'] as $pg ) {
 		$id = wp_insert_post( [ 'post_type' => 'page', 'post_status' => 'publish', 'post_title' => $pg['title'], 'post_name' => $pg['slug'], 'post_parent' => $parent ? $parent->ID : 0, 'post_author' => get_user_by( 'login', 'enric' )->ID ] );
 	}
 	foreach ( [ '_wp_page_template', '_elementor_edit_mode', '_elementor_template_type', '_elementor_version', '_elementor_pro_version', '_elementor_page_settings' ] as $k ) { $v = get_post_meta( 6, $k, true ); if ( '' !== $v ) update_post_meta( $id, $k, $v ); }
-	$err = '';
-	foreach ( $pg['reqs'] as $i => $in ) { $in['post_id'] = $id; $r = $run( 'elementor/build-composition', $in ); if ( empty( $r['success'] ) ) { $err .= " [req $i: " . substr( json_encode( $r, JSON_UNESCAPED_UNICODE ), 0, 400 ) . ']'; break; } }
-	$run( 'elementor/publish-document', [ 'post_id' => $id ] );
+	$err = ""; echo "antes tpl=", get_post_meta( $id, "_wp_page_template", true ), "\n";
+	foreach ( $pg['reqs'] as $i => $in ) { $in['post_id'] = $id; $r = $run( 'elementor/build-composition', $in ); echo "  req $i: ", ( $r["success"] ?? 0 ) ? "ok" : "FALLO", " els=", count( json_decode( get_post_meta( $id, "_elementor_data", true ), true ) ?: [] ), " tpl=", get_post_meta( $id, "_wp_page_template", true ), "\n"; if ( empty( $r["success"] ) ) { $err .= " [req $i: " . substr( json_encode( $r, JSON_UNESCAPED_UNICODE ), 0, 400 ) . ']'; break; } }
+	$run( "elementor/publish-document", [ "post_id" => $id ] ); echo " tras pub tpl=", get_post_meta( $id, "_wp_page_template", true ), " els=", count( json_decode( get_post_meta( $id, "_elementor_data", true ), true ) ?: [] ), "\n";
 	update_post_meta( $id, 'rank_math_title', $pg['seo'][0] ); update_post_meta( $id, 'rank_math_description', $pg['seo'][1] );
 	$ids[ $path ] = $id; echo "$id /$path/", $err ?: ' ok', "\n";
 }

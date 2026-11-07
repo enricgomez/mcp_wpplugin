@@ -13,6 +13,7 @@ function eg_walk(&$els, $imgs, $urls, &$n) {
     if (!empty($e['elements'])) eg_walk($e['elements'], $imgs, $urls, $n);
   } unset($e);
 }
+}
 $cfg = json_decode(file_get_contents('/tmp/eg-dyn.json'), true);
 foreach ($cfg as $c) {
   $id = (int)$c['post_id']; $d = json_decode(get_post_meta($id, '_elementor_data', true), true); $n = 0;

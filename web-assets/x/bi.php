@@ -57,7 +57,7 @@ $conv = function ( $html, $p, $pid ) use ( $img, $slugs ) {
 		preg_match( '/alt="([^"]*)"/', $m[0], $a ); $id = $img( $i['f'], ( $a[1] ?? '' ) ?: $p['title'], $pid );
 		return $id ? wp_get_attachment_image( $id, 'large', false, [ 'loading' => 'lazy' ] ) : ''; }, $html );
 	// enlaces internos a posts: /<slug>/ -> /blog/<slug>/
-	$html = preg_replace_callback( '#https?://(?:www\.)?enricgomez\.com/([a-z0-9-]+)/?(?=["\'#?])#', fn( $m ) => in_array( $m[1], $slugs, true ) ? home_url( '/blog/' . $m[1] . '/' ) : $m[0], $html );
+	$html = preg_replace_callback( '~https?://(?:www\.)?enricgomez\.com/([a-z0-9-]+)/?(?=["\'#?])~', fn( $m ) => in_array( $m[1], $slugs, true ) ? home_url( '/blog/' . $m[1] . '/' ) : $m[0], $html );
 	$html = preg_replace( "/(\r?\n){3,}/", "\n\n", $html );
 	return trim( $html );
 };
@@ -70,7 +70,7 @@ foreach ( $posts as $p ) {
 	$pid = wp_insert_post( [ 'post_type' => 'post', 'post_status' => 'draft', 'post_title' => $p['title'], 'post_name' => $p['slug'], 'post_author' => $uid, 'post_date' => $p['date'], 'post_date_gmt' => $p['date_gmt'], 'post_excerpt' => $p['excerpt'], 'comment_status' => 'closed', 'ping_status' => 'closed', 'post_category' => [ $cid[ $cat ] ] ], true );
 	if ( is_wp_error( $pid ) ) { $log( 'ERROR ' . $p['slug'] . ' ' . $pid->get_error_message() ); continue; }
 	update_post_meta( $pid, '_eg_old_id', $p['id'] ); update_post_meta( $pid, '_eg_old_url', $p['url'] ); update_post_meta( $pid, '_eg_old_cats', implode( ',', $p['cats'] ) );
-	$content = $conv( $p['content'], $p, $pid );
+	$content = $conv( $p['content'], $p, $pid ); if ( '' === $content ) $log( 'AVISO contenido vacío ' . $p['slug'] );
 	if ( ! empty( $p['imgs']['t'] ) ) { $tid = $img( $p['imgs']['t']['f'], $p['imgs']['t']['alt'] ?: $p['title'], $pid ); if ( $tid ) set_post_thumbnail( $pid, $tid ); }
 	$y = fn( $s ) => preg_replace( '/%%(\w+)%%/', '%$1%', (string) $s );
 	if ( $p['seo']['title'] ) update_post_meta( $pid, 'rank_math_title', $y( $p['seo']['title'] ) );

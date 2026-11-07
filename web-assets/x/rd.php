@@ -19,7 +19,7 @@ $map = [ 'acceso-no-permitido' => '/', 'consultor-wordpress' => '/servicios/cons
 	'politica-de-privacidad' => '/privacidad/', 'politica-de-cookies' => '/cookies/', 'terminos-y-condiciones-de-uso' => '/condiciones/', 'novedades-ia' => '/blog/categoria/ia/' ];
 foreach ( $map as $f => $to ) $add( $f, $to );
 foreach ( [ '^shop(/.*)?$' => '/servicios/web/', '^producto/.*' => '/servicios/web/', '^categoria-producto/.*' => '/servicios/web/', '^etiqueta-producto/.*' => '/servicios/web/',
-	'^categoria/.*' => '/blog/', '^etiqueta/.*' => '/blog/', '^project-category/.*' => '/proyectos/', '^proyecto/.*' => '/proyectos/' ] as $f => $to ) $add( $f, $to, 'regex' );
+	'^categoria/.*' => '/blog/', '^etiqueta/.*' => '/blog/', '^project-category/.*' => '/proyectos/' ] as $f => $to ) $add( $f, $to, 'regex' );
 $ok = 0; $skip = 0;
 foreach ( $R as $r ) {
 	[ $from, $to, $cmp ] = $r;

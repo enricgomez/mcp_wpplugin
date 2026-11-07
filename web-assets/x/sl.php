@@ -4,9 +4,6 @@ $req = json_decode(file_get_contents('/tmp/eg-slider.json'), true); $pid = $req[
 $d = json_decode(get_post_meta($pid,'_elementor_data',true), true); $pista=null;
 $f = function($els) use (&$f, &$pista) { foreach ($els as $e) { if (($e['editor_settings']['title'] ?? '') === 'Proyectos pista') $pista = $e['id']; if (!empty($e['elements'])) $f($e['elements']); } }; $f($d);
 echo "pista=$pista\n"; if (!$pista) return;
-// clase eg-bucle si no existe
-$gc = wp_get_ability('elementor/manage-classes');
-$r = $gc->execute(['operations'=>[['action'=>'create','label'=>'eg-bucle','props'=>[]]]]); echo 'clase: ', substr(json_encode($r),0,200), "\n";
 $req['input']['parent_id'] = $pista;
 $r = wp_get_ability($req['ability'])->execute($req['input']); echo substr(json_encode(is_wp_error($r)?[$r->get_error_message(),$r->get_error_data()]:$r, JSON_UNESCAPED_UNICODE),0,600),"\n";
 copy('/tmp/eg-slider-dyn.json','/tmp/eg-dyn.json'); include '/tmp/eg-dynfix.php';

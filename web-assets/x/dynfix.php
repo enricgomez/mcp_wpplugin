@@ -1,7 +1,7 @@
 <?php
 // Convierte marcadores en _elementor_data a etiquetas dinámicas propias.
 // Texto "{{campo}}" -> eg-dato; imágenes/enlaces por etiqueta del elemento (mapa) -> eg-imagen / eg-url / post-url
-function eg_dyn($name, $campo = null) { $v = ['name'=>$name,'group'=>'eg','settings'=>$campo===null?[]:['campo'=>['$$type'=>'string','value'=>$campo]]]; if ($campo===null) $v['group']='post'; return ['$$type'=>'dynamic','value'=>$v]; }
+if ( ! function_exists( 'eg_dyn' ) ) { function eg_dyn($name, $campo = null) { $v = ['name'=>$name,'group'=>'eg','settings'=>$campo===null?[]:['campo'=>['$$type'=>'string','value'=>$campo]]]; if ($campo===null) $v['group']='post'; return ['$$type'=>'dynamic','value'=>$v]; }
 function eg_walk(&$els, $imgs, $urls, &$n) {
   foreach ($els as &$e) {
     $lab = $e['editor_settings']['title'] ?? '';

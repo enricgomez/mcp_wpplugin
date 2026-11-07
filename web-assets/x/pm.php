@@ -1,2 +1,0 @@
-<?php
-foreach ( [ 6, 1431, 1433, 1435, 1443 ] as $id ) { echo $id, ' tpl=', get_post_meta( $id, '_wp_page_template', true ), ' mode=', get_post_meta( $id, '_elementor_edit_mode', true ), ' type=', get_post_meta( $id, '_elementor_template_type', true ), ' settings=', json_encode( get_post_meta( $id, '_elementor_page_settings', true ) ), ' els=', count( json_decode( get_post_meta( $id, '_elementor_data', true ), true ) ?: [] ), "\n"; }

@@ -1,0 +1,9 @@
+<?php
+// Reordena las clases globales según una lista de labels ($args[0] = json {"order_labels":[...]})
+do_action( 'rest_api_init' );
+$want = json_decode( file_get_contents( $args[0] ), true )['order_labels'];
+$r = json_decode( wp_get_ability( 'elementor/global-classes-resource' )->execute( null ), true );
+$map = []; foreach ( $r['classes'] as $c ) { $map[ $c['label'] ] = $c['id']; }
+$order = []; foreach ( $want as $l ) { if ( isset( $map[ $l ] ) ) { $order[] = $map[ $l ]; } else { echo "falta $l\n"; } }
+$res = wp_get_ability( 'elementor/reorder-classes' )->execute( [ 'order' => $order ] );
+echo is_wp_error( $res ) ? 'ERROR ' . $res->get_error_message() : 'reorder ok ' . count( $order ) . ' de ' . count( $map ), "\n";

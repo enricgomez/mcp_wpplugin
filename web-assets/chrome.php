@@ -15,7 +15,9 @@ if ( $q ) { $logo = $q[0]->ID; } else {
 $o['logo'] = $logo;
 // 2. clases (las existentes fallan sin romper nada)
 $o['classes'] = [];
-foreach ( array_chunk( $cfg['classes'], 40 ) as $ch ) { $r = $run( 'elementor/manage-classes', [ 'operations' => $ch ] ); $o['classes'][] = substr( json_encode( $r ), 0, 300 ); }
+$have = wp_json_encode( $run( 'elementor/global-classes-resource', [] ) );
+$new = array_values( array_filter( $cfg['classes'], fn( $c ) => false === strpos( $have, '"' . $c['label'] . '"' ) && false === strpos( $have, '\\"' . $c['label'] . '\\"' ) ) );
+foreach ( array_chunk( $new, 40 ) as $ch ) { $r = $run( 'elementor/manage-classes', [ 'operations' => $ch ] ); $o['classes'][] = substr( json_encode( $r ), 0, 300 ); }
 // 3. plantillas
 foreach ( [ 'header' => 'Cabecera', 'footer' => 'Pie' ] as $t => $title ) {
 	$ex = get_posts( [ 'post_type' => 'elementor_library', 'title' => $title, 'numberposts' => 1, 'post_status' => 'any', 'meta_key' => '_elementor_template_type', 'meta_value' => $t ] );

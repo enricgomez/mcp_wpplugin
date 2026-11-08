@@ -4,7 +4,7 @@ $cfg = json_decode( file_get_contents( '/tmp/eg-pg.json' ), true ); $only = gete
 $run = function ( $n, $in ) { $r = wp_get_ability( $n )->execute( $in ); return is_wp_error( $r ) ? [ 'error' => $r->get_error_code(), 'msg' => $r->get_error_message() ] : $r; };
 $have = wp_json_encode( $run( 'elementor/global-classes-resource', [] ) );
 $ops = array_map( function ( $o ) use ( $have ) { if ( false !== strpos( $have, '"' . $o['label'] . '"' ) || false !== strpos( $have, '\\"' . $o['label'] . '\\"' ) ) { $o['action'] = 'update'; $o['mode'] = 'replace'; } return $o; }, $cfg['classes'] );
-$r = $run( 'elementor/manage-classes', [ 'operations' => $ops ] ); echo 'clases: ', substr( json_encode( $r ), 0, 200 ), "\n";
+foreach ( array_chunk( $ops, 40 ) as $ch ) { $r = $run( 'elementor/manage-classes', [ 'operations' => $ch ] ); echo 'clases: ', substr( json_encode( $r ), 0, 200 ), "\n"; }
 $ids = [];
 foreach ( $cfg['pages'] as $pg ) {
 	$path = ( $pg['parent'] ? $pg['parent'] . '/' : '' ) . $pg['slug']; if ( $only && ! in_array( $pg['slug'], explode( ',', $only ), true ) ) continue;

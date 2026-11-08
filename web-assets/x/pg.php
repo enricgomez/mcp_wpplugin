@@ -17,7 +17,7 @@ foreach ( $cfg['pages'] as $pg ) {
 	$err = ""; echo "antes tpl=", get_post_meta( $id, "_wp_page_template", true ), "\n";
 	foreach ( $pg['reqs'] as $i => $in ) { $in['post_id'] = $id; $r = $run( 'elementor/build-composition', $in ); echo "  req $i: ", ( $r["success"] ?? 0 ) ? "ok" : "FALLO", " els=", count( json_decode( get_post_meta( $id, "_elementor_data", true ), true ) ?: [] ), " tpl=", get_post_meta( $id, "_wp_page_template", true ), "\n"; if ( empty( $r["success"] ) ) { $err .= " [req $i: " . substr( json_encode( $r, JSON_UNESCAPED_UNICODE ), 0, 400 ) . ']'; break; } }
 	$run( "elementor/publish-document", [ "post_id" => $id ] ); echo " tras pub tpl=", get_post_meta( $id, "_wp_page_template", true ), " els=", count( json_decode( get_post_meta( $id, "_elementor_data", true ), true ) ?: [] ), "\n";
-	update_post_meta( $id, 'rank_math_title', $pg['seo'][0] ); update_post_meta( $id, 'rank_math_description', $pg['seo'][1] );
+	update_post_meta( $id, 'rank_math_title', $pg['seo'][0] ); update_post_meta( $id, 'rank_math_description', $pg['seo'][1] ); if ( ! empty( $pg['seo'][2] ) ) update_post_meta( $id, 'rank_math_focus_keyword', $pg['seo'][2] );
 	$ids[ $path ] = $id; echo "$id /$path/", $err ?: ' ok', "\n";
 }
 \Elementor\Plugin::$instance->files_manager->clear_cache(); wp_cache_flush();

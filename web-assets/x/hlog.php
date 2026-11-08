@@ -1,2 +1,2 @@
 <?php
-echo @file_get_contents("/tmp/eg-imgo.log"), substr(@file_get_contents("/tmp/eg-imgo.out"),-1500);
+$l=@file_get_contents("/tmp/eg-webs.log"); echo implode("\n", array_filter(explode("\n",$l), fn($x)=>strpos($x," | ")!==false || strpos($x,"server ip")!==false));

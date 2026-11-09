@@ -136,7 +136,7 @@ function eg_pub_settings_page() {
 								<?php echo $eg_pub_missing ? '<em>(' . esc_html( $type['label'] ) . ' no está activo en esta web)</em>' : ''; ?>
 							</label>
 						<?php endforeach; ?>
-						<p class="description">Todas usan la misma clave. Lo que está apagado no responde (404) ni aparece como ability.</p>
+						<p class="description">Todas usan la misma clave. Vienen activadas todas las que la web puede usar (Elementor y WooCommerce se encienden solos al activar esos plugins); desmarca solo lo que no quieras en esta web. Lo que está apagado no responde (404) ni aparece como ability.</p>
 					</td>
 				</tr>
 				<tr>

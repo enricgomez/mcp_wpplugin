@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.92.0 · 09/11/2026 · PR (Claude, a petición de Enric)
+
+- Ajustes → EG Publicación: todas las tipologías que la web puede usar están activas siempre, sin marcarlas a mano: Blog y Gestión de la web en todas, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Si uno de esos plugins se activa más tarde, su tipología se enciende sola.
+- Cambia también en las webs que ya habían guardado los ajustes: la lista de tipologías marcadas que guardaban las versiones anteriores deja de contar y, al actualizar, cada web pasa a tener todo lo que puede usar. Para apagar algo en una web concreta se desmarca y se guarda (se guarda como «apagado», opción `eg_pub_types_off`). Todos los endpoints siguen pidiendo la clave `X-EG-Key`.
+- Webs: todas al actualizar. Motivo: las webs nuevas de IGCAT (7) y no tener que ir web a web activando tipologías.
+
 ## 2.91.0 · 06/11/2026 · PR #148 (Claude)
 
 - `/promo` (módulo nuevo «Campañas», tipología WooCommerce): `rules` lista las reglas de Woo Discount Rules; `clone` copia una regla (filtros y exclusiones incluidos) en otra con fechas, porcentaje, etiqueta del carrito e insignia nuevas, y `update` cambia una existente. `closure` programa el aviso de la tienda de WooCommerce en cada idioma y un cierre en el que no se puede comprar ni pagar. En cada inicio y fin se vacía la caché de WP Rocket con el cron, para que las páginas cambien a su hora. Solo previsualiza; guarda con `apply: true`.

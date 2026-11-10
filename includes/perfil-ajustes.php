@@ -202,6 +202,39 @@ function eg_pub_cdn_fonts_patch_min() {
 	return $done;
 }
 
+/**
+ * WP Rocket guarda en {prefijo}wpr_preload_fonts las fuentes que precarga en cada página (las detecta el navegador).
+ * Si Elementor ha renombrado sus ficheros de fuentes, esas filas siguen pidiendo los nombres viejos (404) y Rocket
+ * no las vuelve a medir mientras existan. Borra solo las filas que apuntan a fuentes de wp-content que no existen;
+ * Rocket las recoge de nuevo en las siguientes visitas. Devuelve cuántas filas ha borrado (o null si no hay tabla).
+ */
+function eg_pub_cdn_fonts_clean_preloads() {
+	global $wpdb;
+	$table = $wpdb->prefix . 'wpr_preload_fonts';
+	if ( $table !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) ) {
+		return null;
+	}
+	$cols = (array) $wpdb->get_col( "SHOW COLUMNS FROM `$table`" );
+	if ( ! in_array( 'id', $cols, true ) || ! in_array( 'fonts', $cols, true ) ) {
+		return null;
+	}
+	$deleted = 0;
+	$rows    = (array) $wpdb->get_results( "SELECT id, fonts FROM `$table`", ARRAY_A );
+	foreach ( $rows as $row ) {
+		$text = str_replace( '\\/', '/', (string) $row['fonts'] );
+		if ( ! preg_match_all( '~(/wp-content/[^\'"()\s?#\\\\]+?\.(?:woff2?|ttf|otf|eot))~i', $text, $m ) ) {
+			continue;
+		}
+		foreach ( array_unique( $m[1] ) as $rel ) {
+			if ( ! file_exists( ABSPATH . ltrim( $rel, '/' ) ) ) {
+				$deleted += (int) $wpdb->delete( $table, array( 'id' => (int) $row['id'] ), array( '%d' ) );
+				break;
+			}
+		}
+	}
+	return $deleted;
+}
+
 add_action( 'plugins_loaded', function () {
 	$fixes = eg_pub_perf_fixes();
 	if ( ! empty( $fixes['cdn_fonts'] ) ) {

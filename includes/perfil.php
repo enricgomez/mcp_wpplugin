@@ -108,6 +108,7 @@ function eg_pub_perf_handle( WP_REST_Request $request ) {
 		$fixes_state = eg_pub_perf_fixes_state();
 		if ( ! empty( $fixes['cdn_fonts'] ) && ( ! $was_fonts || ! empty( $p['patch_min'] ) ) ) {
 			$fixes_state['cdn_fonts']['patched'] = eg_pub_cdn_fonts_patch_min();
+			$fixes_state['cdn_fonts']['preloads_deleted'] = eg_pub_cdn_fonts_clean_preloads();
 		}
 		if ( empty( $p['urls'] ) && empty( $p['admin_urls'] ) ) {
 			return new WP_REST_Response( array( 'ok' => true, 'fixes' => $fixes_state ), 200 );

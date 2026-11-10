@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.93.3 · 10/11/2026 · PR (Claude)
+
+- `/perf` `cdn_fonts` con `patch_min`: borra también las filas de `wpr_preload_fonts` (precarga automática de fuentes de WP Rocket) que apuntan a ficheros de fuentes que ya no existen; Rocket las vuelve a medir en las siguientes visitas. En miriamtirado.com las páginas precargaban las Poppins con nombres viejos (404). La respuesta indica `preloads_deleted`.
+- Webs: miriamtirado.com.
+
 ## 2.93.2 · 10/11/2026 · PR (Claude)
 
 - `/perf` `cdn_fonts` con `patch_min`: las copias minificadas de Rocket del CSS de fuentes locales de Elementor se rehacen desde el CSS original de `uploads/elementor/google-fonts/css/`. En miriamtirado.com Elementor había regenerado las fuentes con nombres nuevos y la copia de Rocket seguía pidiendo las antiguas (404 en todas las Poppins). La copia `.gz` se deja siempre igual que el `.css`.

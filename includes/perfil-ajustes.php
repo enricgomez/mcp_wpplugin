@@ -172,9 +172,20 @@ function eg_pub_cdn_fonts_patch_min() {
 		}
 		$path = $file->getPathname();
 		$css  = file_get_contents( $path );
+		if ( is_file( $path . '.gz' ) && function_exists( 'gzdecode' ) && function_exists( 'gzencode' ) ) {
+			$gz = gzdecode( (string) file_get_contents( $path . '.gz' ) );
+			if ( is_string( $gz ) && $gz !== $css && eg_pub_cdn_fonts_rewrite( $gz ) !== $gz ) {
+				file_put_contents( $path . '.gz', gzencode( eg_pub_cdn_fonts_rewrite( $gz ), 9 ) );
+				$done[] = substr( $path, strlen( WP_CONTENT_DIR ) ) . '.gz';
+			}
+		}
 		$new  = eg_pub_cdn_fonts_rewrite( $css );
 		if ( is_string( $new ) && $new !== $css && false !== file_put_contents( $path, $new ) ) {
 			$done[] = substr( $path, strlen( WP_CONTENT_DIR ) );
+			// Rocket deja al lado una copia .gz que nginx sirve tal cual (gzip_static): hay que rehacerla también.
+			if ( is_file( $path . '.gz' ) && function_exists( 'gzencode' ) ) {
+				file_put_contents( $path . '.gz', gzencode( $new, 9 ) );
+			}
 		}
 	}
 	return $done;

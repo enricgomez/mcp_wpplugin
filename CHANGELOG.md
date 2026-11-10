@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.93.1 · 10/11/2026 · PR (Claude)
+
+- `/perf` `cdn_fonts`: al corregir los CSS minificados existentes rehace también su copia `.gz`, que nginx sirve directamente a los navegadores y al CDN; en la 2.93.0 el `.css` quedaba bien pero el `.gz` seguía con las URL antiguas. Con `patch_min: true` se repara en webs donde ya estaba activo.
+- Webs: miriamtirado.com.
+
 ## 2.93.0 · 10/11/2026 · PR (Claude, a petición de Enric)
 
 - `/perf` `fixes`: nuevo ajuste `cdn_fonts`. Las fuentes locales de Elementor (`uploads/elementor/google-fonts`) llevan la URL absoluta de la web dentro de su CSS y el CDN de WP Rocket no la cambia, así que el CSS salía del CDN pero las fuentes se pedían al servidor. Con el ajuste, las URL de fuentes de `wp-content` pasan al CNAME del CDN de Rocket en el CSS minificado (`rocket_css_content`) y en el HTML cacheado (`rocket_buffer`). Al activarlo corrige en su sitio los CSS minificados que ya existen (`patched` en la respuesta; `patch_min: true` lo repite), sin vaciar la caché. Solo actúa si el CDN de Rocket está activo.

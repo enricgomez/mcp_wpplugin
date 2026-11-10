@@ -170,21 +170,32 @@ function eg_pub_cdn_fonts_patch_min() {
 		if ( ! $file->isFile() || 'css' !== strtolower( $file->getExtension() ) || $file->getSize() > 2 * MB_IN_BYTES ) {
 			continue;
 		}
-		$path = $file->getPathname();
-		$css  = file_get_contents( $path );
-		if ( is_file( $path . '.gz' ) && function_exists( 'gzdecode' ) && function_exists( 'gzencode' ) ) {
-			$gz = gzdecode( (string) file_get_contents( $path . '.gz' ) );
-			if ( is_string( $gz ) && $gz !== $css && eg_pub_cdn_fonts_rewrite( $gz ) !== $gz ) {
-				file_put_contents( $path . '.gz', gzencode( eg_pub_cdn_fonts_rewrite( $gz ), 9 ) );
-				$done[] = substr( $path, strlen( WP_CONTENT_DIR ) ) . '.gz';
+		$path    = $file->getPathname();
+		$current = (string) file_get_contents( $path );
+		$source  = $current;
+		// Copias minificadas de las fuentes locales de Elementor: si Elementor ha regenerado sus ficheros de fuentes
+		// (nombres nuevos), la copia de Rocket apunta a fuentes que ya no existen. Se rehace desde el CSS original.
+		$rel = substr( $path, strlen( $base ) );
+		if ( preg_match( '#^/[^/]+(/wp-content/uploads/elementor/google-fonts/css/[^/]+\.css)$#', $rel, $m ) ) {
+			$src = ABSPATH . ltrim( $m[1], '/' );
+			$fresh = is_file( $src ) ? (string) file_get_contents( $src ) : '';
+			if ( '' !== $fresh ) {
+				$source = $fresh;
 			}
 		}
-		$new  = eg_pub_cdn_fonts_rewrite( $css );
-		if ( is_string( $new ) && $new !== $css && false !== file_put_contents( $path, $new ) ) {
-			$done[] = substr( $path, strlen( WP_CONTENT_DIR ) );
-			// Rocket deja al lado una copia .gz que nginx sirve tal cual (gzip_static): hay que rehacerla también.
-			if ( is_file( $path . '.gz' ) && function_exists( 'gzencode' ) ) {
-				file_put_contents( $path . '.gz', gzencode( $new, 9 ) );
+		$target = eg_pub_cdn_fonts_rewrite( $source );
+		if ( ! is_string( $target ) || '' === $target ) {
+			continue;
+		}
+		$rel_out = substr( $path, strlen( WP_CONTENT_DIR ) );
+		if ( $target !== $current && false !== file_put_contents( $path, $target ) ) {
+			$done[] = $rel_out;
+		}
+		// Rocket deja al lado una copia .gz que nginx sirve tal cual (gzip_static): tiene que decir lo mismo.
+		if ( is_file( $path . '.gz' ) && function_exists( 'gzdecode' ) && function_exists( 'gzencode' ) ) {
+			$gz = gzdecode( (string) file_get_contents( $path . '.gz' ) );
+			if ( $gz !== $target && false !== file_put_contents( $path . '.gz', gzencode( $target, 9 ) ) ) {
+				$done[] = $rel_out . '.gz';
 			}
 		}
 	}

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.93.2 · 10/11/2026 · PR (Claude)
+
+- `/perf` `cdn_fonts` con `patch_min`: las copias minificadas de Rocket del CSS de fuentes locales de Elementor se rehacen desde el CSS original de `uploads/elementor/google-fonts/css/`. En miriamtirado.com Elementor había regenerado las fuentes con nombres nuevos y la copia de Rocket seguía pidiendo las antiguas (404 en todas las Poppins). La copia `.gz` se deja siempre igual que el `.css`.
+- Webs: miriamtirado.com.
+
 ## 2.93.1 · 10/11/2026 · PR (Claude)
 
 - `/perf` `cdn_fonts`: al corregir los CSS minificados existentes rehace también su copia `.gz`, que nginx sirve directamente a los navegadores y al CDN; en la 2.93.0 el `.css` quedaba bien pero el `.gz` seguía con las URL antiguas. Con `patch_min: true` se repara en webs donde ya estaba activo.

@@ -1,0 +1,4 @@
+
+/* 10/11/2026 portada v2 (montaje del estudio al atardecer) */
+html .elementor .eg-hero-fondo{filter:none;object-position:60% 55%}
+@media (max-width:767px){html .elementor .eg-hero-fondo{object-position:80% 55%}}

@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.93.0 · 10/11/2026 · PR (Claude, a petición de Enric)
+
+- `/perf` `fixes`: nuevo ajuste `cdn_fonts`. Las fuentes locales de Elementor (`uploads/elementor/google-fonts`) llevan la URL absoluta de la web dentro de su CSS y el CDN de WP Rocket no la cambia, así que el CSS salía del CDN pero las fuentes se pedían al servidor. Con el ajuste, las URL de fuentes de `wp-content` pasan al CNAME del CDN de Rocket en el CSS minificado (`rocket_css_content`) y en el HTML cacheado (`rocket_buffer`). Al activarlo corrige en su sitio los CSS minificados que ya existen (`patched` en la respuesta; `patch_min: true` lo repite), sin vaciar la caché. Solo actúa si el CDN de Rocket está activo.
+- Webs: miriamtirado.com (Bunny). En las demás no cambia nada mientras no se active.
+
 ## 2.92.0 · 09/11/2026 · PR (Claude, a petición de Enric)
 
 - Ajustes → EG Publicación: todas las tipologías que la web puede usar están activas siempre, sin marcarlas a mano: Blog y Gestión de la web en todas, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Si uno de esos plugins se activa más tarde, su tipología se enciende sola.

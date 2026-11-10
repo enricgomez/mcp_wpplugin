@@ -1,0 +1,7 @@
+
+/* 10/11/2026 ajustes móvil: header, ticker y logo */
+@media (max-width:63.75rem){html .elementor .eg-bar{width:auto}}
+@media (max-width:767px){html .elementor .eg-ticker-fila{animation-duration:30s}}
+@media (hover:none){html .elementor .eg-ticker:hover .eg-ticker-fila{animation-play-state:running}}
+@media (max-width:767px) and (prefers-reduced-motion:no-preference){html .elementor .eg-nav.eg-stuck .eg-logo svg>path:nth-of-type(-n+4){animation:eg-ciclo 12s ease-in-out infinite}html .elementor .eg-nav.eg-stuck .eg-logo svg>path:nth-of-type(1){--c:#5DBCE9;animation-delay:-9s}html .elementor .eg-nav.eg-stuck .eg-logo svg>path:nth-of-type(2){--c:#3E8FC4;animation-delay:-8.85s}html .elementor .eg-nav.eg-stuck .eg-logo svg>path:nth-of-type(3){--c:#ED71A8;animation-delay:-8.7s}html .elementor .eg-nav.eg-stuck .eg-logo svg>path:nth-of-type(4){--c:#fff;animation-delay:-8.55s}}
+@keyframes eg-ciclo{0%,80%{fill:var(--c)}85%,88%{fill:#2C3A42}95%,100%{fill:var(--c)}}

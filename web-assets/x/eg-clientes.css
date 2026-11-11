@@ -1,0 +1,22 @@
+/* logos clientes 1111 */
+html .elementor .eg-clientes-fila{width:max-content!important;max-width:none!important;gap:4.5rem;padding-inline-end:4.5rem;align-items:center;animation:eg-tick 38s linear infinite!important;will-change:transform}
+html .elementor .eg-clientes-fila>.eg-cliente{flex:0 0 auto;width:var(--w);height:var(--h);font-size:0!important;line-height:0;color:transparent!important;background-color:#7a868d;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;transition:background-color .3s}
+html .elementor .eg-clientes-fila>.eg-cliente:hover{background-color:var(--eg-ink)}
+@media (hover:none){html .elementor .eg-clientes:hover .eg-clientes-fila{animation-play-state:running}}
+@media (max-width:767px){html .elementor .eg-clientes-fila{gap:3rem;padding-inline-end:3rem;animation-duration:30s!important}html .elementor .eg-clientes-fila>.eg-cliente{width:calc(var(--w)*.78);height:calc(var(--h)*.78)}}
+@media (prefers-reduced-motion:reduce){html .elementor .eg-clientes-fila{animation-duration:120s!important}}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+1){--m:url(/wp-content/uploads/eg-clientes/cliente-miami.webp);--w:74px;--h:58px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+2){--m:url(/wp-content/uploads/eg-clientes/cliente-igcat.webp);--w:141px;--h:45px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+3){--m:url(/wp-content/uploads/eg-clientes/cliente-neptuno.webp);--w:124px;--h:51px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+4){--m:url(/wp-content/uploads/eg-clientes/cliente-byko.webp);--w:124px;--h:38px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+5){--m:url(/wp-content/uploads/eg-clientes/cliente-elfar.webp);--w:68px;--h:58px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+6){--m:url(/wp-content/uploads/eg-clientes/cliente-mcapital.webp);--w:185px;--h:34px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+7){--m:url(/wp-content/uploads/eg-clientes/cliente-shama.webp);--w:128px;--h:50px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+8){--m:url(/wp-content/uploads/eg-clientes/cliente-taxicalella.webp);--w:145px;--h:44px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+9){--m:url(/wp-content/uploads/eg-clientes/cliente-oidfa.webp);--w:65px;--h:58px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+10){--m:url(/wp-content/uploads/eg-clientes/cliente-miriam.webp);--w:158px;--h:40px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+11){--m:url(/wp-content/uploads/eg-clientes/cliente-sonovet.webp);--w:94px;--h:58px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+12){--m:url(/wp-content/uploads/eg-clientes/cliente-tauro.webp);--w:170px;--h:37px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+13){--m:url(/wp-content/uploads/eg-clientes/cliente-nila.webp);--w:111px;--h:57px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+14){--m:url(/wp-content/uploads/eg-clientes/cliente-taxiss.webp);--w:200px;--h:26px}
+html .elementor .eg-clientes-fila>.eg-cliente:nth-child(15n+15){--m:url(/wp-content/uploads/eg-clientes/cliente-bowling.webp);--w:140px;--h:46px}

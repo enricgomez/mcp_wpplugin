@@ -25,3 +25,19 @@ foreach ($d as $i => $top) {
 $c = get_page_by_path('contacto'); echo 'contacto id: ' . ($c ? $c->ID : 'no') . "\n";
 foreach (['servicios/web/experto-wordpress','servicios/web/mantenimiento','estudio'] as $p) { $o = get_page_by_path($p); echo "$p: " . ($o ? $o->ID : 'no') . "\n"; }
 echo 'autor: ' . wp_json_encode(get_userdata(get_post_field('post_author', 6))->data->display_name) . "\n";
+// Esquema de la página Experto en WordPress (plantilla para las páginas nuevas).
+$ew = get_page_by_path('servicios/web/experto-wordpress');
+if ($ew) {
+  echo "EW id={$ew->ID} tpl=" . get_post_meta($ew->ID, '_wp_page_template', true) . " parent={$ew->post_parent}\n";
+  $tree = function ($els, $dep) use (&$tree) {
+    foreach ($els as $e) {
+      $s = wp_json_encode($e['settings'] ?? [], JSON_UNESCAPED_UNICODE);
+      preg_match_all('/"value":"((?:[^"\\\\]|\\\\.){2,120})"/u', $s, $m);
+      $txt = implode(' ¦ ', array_slice(array_filter($m[1], fn($t) => !preg_match('/^(e-|g-|[a-z0-9]{7}$|#|http)/', $t)), 0, 4));
+      echo str_repeat(' ', $dep) . ($e['widgetType'] ?? $e['elType']) . " {$e['id']} " . mb_substr($txt, 0, 160) . "\n";
+      if (!empty($e['elements'])) $tree($e['elements'], $dep + 1);
+    }
+  };
+  $tree(json_decode(get_post_meta($ew->ID, '_elementor_data', true), true), 0);
+  echo "EW meta: " . implode(',', array_filter(array_keys(get_post_meta($ew->ID)), fn($k) => strpos($k, '_elementor') === 0 || strpos($k, 'rank_math') === 0)) . "\n";
+}

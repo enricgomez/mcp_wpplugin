@@ -10,10 +10,25 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.94.0 · 13/11/2026 · PR (Claude)
+## 2.97.0 · 13/11/2026 · PR #157 (Claude)
 
 - `/seo-tech` `ga4`: `"G-XXXXXXX"` guarda la ID de medición de Google Analytics 4 e imprime la etiqueta gtag.js en el `<head>` de toda la web; `""` o `null` la quita. Solo previsualiza; guarda con `apply: true`. El estado devuelve `ga4`. Sirve para webs sin Google Tag Manager, sin tocar plantillas ni fragmentos de código de Elementor.
 - Webs: neptunoapartments.com (staging).
+
+## 2.96.0 · 13/11/2026 · PR (Claude, a petición de Enric)
+
+- `/perf` `fixes`: nuevo ajuste `img_sizes`, un mapa de id de adjunto → atributo `sizes` (filtro `wp_calculate_image_sizes`). WordPress pone «100vw hasta el ancho del tamaño elegido» y, si en el móvil la imagen ocupa menos que la pantalla, el navegador descarga una versión más grande de la necesaria (PageSpeed: «Mejorar la entrega de imágenes»). Vale para las imágenes que se pintan con `wp_get_attachment_image`, como los widgets de imagen de Elementor. Al guardarlo se vacía la caché de WP Rocket; `{}` lo quita.
+- Webs: nilacakes.com (imágenes de la home). En las demás no cambia nada mientras no se active.
+
+## 2.95.0 · 13/11/2026 · PR (Claude, a petición de Enric)
+
+- `/promo` (tipología WooCommerce, módulo campañas): cupones de WooCommerce con fecha de inicio y de fin. `coupons: true` los lista. `coupon` crea o cambia el cupón con ese código: porcentaje (`percent`) o importe fijo (`amount`), categorías por slug o id (con WPML se añaden sus traducciones), productos, uso individual, sin productos rebajados, envío gratis, mínimo y límites de uso. WooCommerce solo tiene fecha de caducidad: la de inicio se guarda en `_eg_pub_valid_from` y, antes de esa hora, el cupón responde «todavía no está activo» (en catalán en las páginas en catalán). `delete: true` lo manda a la papelera. Como el resto de `/promo`, sin `apply: true` solo previsualiza.
+- Webs: nilacakes.com (cupón de Black Friday en cookies). En las demás no cambia nada.
+
+## 2.94.0 · 13/11/2026 · PR (Claude)
+
+- `/seo`: nuevo campo `noindex` (true/false) en `set` o `langs` para sacar de buscadores un contenido concreto (Yoast `_yoast_wpseo_meta-robots-noindex`, Rank Math `rank_math_robots`); `false` lo devuelve al valor por defecto. La lectura muestra `seo.noindex`. Para páginas de confirmación o de uso interno.
+- Webs: sonovet.net (/app-cita-confirmada/).
 
 ## 2.93.3 · 10/11/2026 · PR (Claude)
 

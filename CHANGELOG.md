@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.94.0 · 13/11/2026 · PR (Claude)
+
+- `/seo`: nuevo campo `noindex` (true/false) en `set` o `langs` para sacar de buscadores un contenido concreto (Yoast `_yoast_wpseo_meta-robots-noindex`, Rank Math `rank_math_robots`); `false` lo devuelve al valor por defecto. La lectura muestra `seo.noindex`. Para páginas de confirmación o de uso interno.
+- Webs: sonovet.net (/app-cita-confirmada/).
+
 ## 2.93.3 · 10/11/2026 · PR (Claude)
 
 - `/perf` `cdn_fonts` con `patch_min`: borra también las filas de `wpr_preload_fonts` (precarga automática de fuentes de WP Rocket) que apuntan a ficheros de fuentes que ya no existen; Rocket las vuelve a medir en las siguientes visitas. En miriamtirado.com las páginas precargaban las Poppins con nombres viejos (404). La respuesta indica `preloads_deleted`.

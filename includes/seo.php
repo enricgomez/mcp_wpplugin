@@ -4,6 +4,7 @@
  * POST /wp-json/eg/v1/seo. Por defecto solo previsualiza; apply:true guarda.
  * Con "indexar" ({"post": true, "category": true}) cambia si Yoast deja indexar
  * todo un tipo de contenido o taxonomía (opción wpseo_titles, noindex-*).
+ * El campo "noindex" (true/false) saca o vuelve a meter un contenido concreto en buscadores.
  */
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -33,6 +34,30 @@ function eg_pub_seo_meta_map() {
 		'focus_keyword'   => array( 'yoast' => '_yoast_wpseo_focuskw', 'rank_math' => 'rank_math_focus_keyword' ),
 		'canonical_url'   => array( 'yoast' => '_yoast_wpseo_canonical', 'rank_math' => 'rank_math_canonical_url' ),
 	);
+}
+
+/** Si el contenido está marcado como noindex en Yoast o Rank Math. */
+function eg_pub_seo_get_noindex( $post_id ) {
+	if ( defined( 'WPSEO_VERSION' ) ) {
+		return '1' === (string) get_post_meta( $post_id, '_yoast_wpseo_meta-robots-noindex', true );
+	}
+	return in_array( 'noindex', (array) get_post_meta( $post_id, 'rank_math_robots', true ), true );
+}
+
+/** Marca o desmarca noindex en los plugins SEO activos (false vuelve al valor por defecto). */
+function eg_pub_seo_set_noindex( $post_id, $noindex ) {
+	if ( defined( 'WPSEO_VERSION' ) ) {
+		if ( $noindex ) {
+			update_post_meta( $post_id, '_yoast_wpseo_meta-robots-noindex', '1' );
+		} else {
+			delete_post_meta( $post_id, '_yoast_wpseo_meta-robots-noindex' );
+		}
+	}
+	if ( defined( 'RANK_MATH_VERSION' ) ) {
+		$robots = array_values( array_diff( (array) get_post_meta( $post_id, 'rank_math_robots', true ), array( 'index', 'noindex' ) ) );
+		$robots[] = $noindex ? 'noindex' : 'index';
+		update_post_meta( $post_id, 'rank_math_robots', $robots );
+	}
 }
 
 /** Reutilizable desde blog y Elementor. No escribe en plugins SEO inactivos. */
@@ -160,6 +185,7 @@ function eg_pub_seo_handle( WP_REST_Request $r ) {
 			$key = defined( 'WPSEO_VERSION' ) ? $keys['yoast'] : $keys['rank_math'];
 			$values[ $field ] = (string) get_post_meta( $id, $key, true );
 		}
+		$values['noindex'] = eg_pub_seo_get_noindex( $id );
 		$changes = array();
 		$incoming = (array) ( $p['set'] ?? array() );
 		if ( $lang && isset( $p['langs'][ $lang ] ) && is_array( $p['langs'][ $lang ] ) ) {
@@ -175,8 +201,18 @@ function eg_pub_seo_handle( WP_REST_Request $r ) {
 				$values[ $field ] = $new;
 			}
 		}
+		if ( array_key_exists( 'noindex', $incoming ) && is_scalar( $incoming['noindex'] ) ) {
+			$new = rest_sanitize_boolean( $incoming['noindex'] );
+			if ( $new !== $values['noindex'] ) {
+				$changes['noindex'] = array( 'before' => $values['noindex'], 'after' => $new );
+				$values['noindex'] = $new;
+			}
+		}
 		if ( $apply && $changes ) {
-			eg_pub_seo_save( $id, array_map( function ( $change ) { return $change['after']; }, $changes ) );
+			if ( isset( $changes['noindex'] ) ) {
+				eg_pub_seo_set_noindex( $id, $changes['noindex']['after'] );
+			}
+			eg_pub_seo_save( $id, array_map( function ( $change ) { return $change['after']; }, array_diff_key( $changes, array( 'noindex' => 1 ) ) ) );
 			if ( function_exists( 'rocket_clean_post' ) ) {
 				rocket_clean_post( $id );
 			}

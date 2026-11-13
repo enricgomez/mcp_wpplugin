@@ -14,6 +14,15 @@
  *                aviso de la tienda de WooCommerce (la barra de «Aviso de la tienda», en el idioma de cada página)
  *                entre notice_from y notice_to, y tienda cerrada (nada se puede comprar ni pagar) entre closed_from y
  *                closed_to. `false` lo quita. Sin `closure` ni el resto, la respuesta enseña el cierre guardado
+ *   coupons      true lista los cupones de WooCommerce (código, descuento, fechas, categorías, usos)
+ *   coupon       {"code": "BLACKFRIDAY20", "percent": 20, "date_from": "2026-11-23 00:00", "date_to": "2026-11-30 23:59",
+ *                 "categories": ["cookies"], "exclude_categories": [], "products": [], "individual_use": true,
+ *                 "exclude_sale_items": true, "usage_limit_per_user": 0, "minimum_amount": 0, "free_shipping": false,
+ *                 "description": "…"}
+ *                crea el cupón o cambia el que ya tiene ese código. Las categorías van por slug o id, y con WPML se
+ *                añaden solas sus traducciones. WooCommerce no tiene fecha de inicio: antes de date_from el cupón
+ *                responde «todavía no está activo». date_to es el último minuto en que vale. {"code": "…", "delete": true}
+ *                lo manda a la papelera
  * Como /seo, solo previsualiza; apply:true guarda. En cada fecha de inicio o fin (de una regla guardada aquí o del
  * cierre) se vacía la caché de WP Rocket con el cron de WordPress, para que las páginas en caché cambien de precio o
  * de aviso a su hora.
@@ -193,6 +202,12 @@ function eg_pub_promo_handle( WP_REST_Request $request ) {
 	if ( array_key_exists( 'closure', $p ) ) {
 		return eg_pub_promo_closure_handle( $p['closure'], $apply );
 	}
+	if ( ! empty( $p['coupons'] ) ) {
+		return eg_pub_promo_coupons_list();
+	}
+	if ( is_array( $p['coupon'] ?? null ) ) {
+		return eg_pub_promo_coupon_handle( $p['coupon'], $apply );
+	}
 	if ( empty( $p['rules'] ) && empty( $p['clone'] ) && empty( $p['update'] ) ) {
 		return new WP_REST_Response( array( 'ok' => true, 'closure' => eg_pub_promo_closure_view( get_option( EG_PUB_PROMO_CLOSURE ) ) ), 200 );
 	}
@@ -252,6 +267,180 @@ function eg_pub_promo_handle( WP_REST_Request $request ) {
 	}
 	return new WP_REST_Response( $out, 200 );
 }
+
+/* ----- Cupones de WooCommerce ----- */
+
+const EG_PUB_PROMO_COUPON_FROM = '_eg_pub_valid_from';
+
+/** Ids de categorías de producto (slug o id) con sus traducciones de WPML. */
+function eg_pub_promo_cat_ids( $list, &$missing ) {
+	$ids = array();
+	foreach ( (array) $list as $item ) {
+		$term = is_numeric( $item ) ? get_term( (int) $item, 'product_cat' ) : get_term_by( 'slug', sanitize_title( $item ), 'product_cat' );
+		if ( ! $term || is_wp_error( $term ) ) {
+			$missing[] = $item;
+			continue;
+		}
+		$ids[] = (int) $term->term_id;
+		foreach ( array_keys( (array) apply_filters( 'wpml_active_languages', null ) ) as $lang ) {
+			$tr = apply_filters( 'wpml_object_id', $term->term_id, 'product_cat', false, $lang );
+			if ( $tr ) {
+				$ids[] = (int) $tr;
+			}
+		}
+	}
+	return array_values( array_unique( $ids ) );
+}
+
+function eg_pub_promo_coupon_view( WC_Coupon $c ) {
+	$names = function ( $ids ) {
+		return array_values( array_filter( array_map( function ( $id ) {
+			$t = get_term( (int) $id, 'product_cat' );
+			return ( $t && ! is_wp_error( $t ) ) ? $t->slug . ' (' . $t->term_id . ')' : null;
+		}, (array) $ids ) ) );
+	};
+	$from    = (int) get_post_meta( $c->get_id(), EG_PUB_PROMO_COUPON_FROM, true );
+	$expires = $c->get_date_expires();
+	$now     = time();
+	return array(
+		'id'                   => $c->get_id(),
+		'code'                 => $c->get_code(),
+		'status'               => $c->get_id() ? get_post_status( $c->get_id() ) : null,
+		'type'                 => $c->get_discount_type(),
+		'amount'               => (float) $c->get_amount(),
+		'date_from'            => eg_pub_promo_local( $from ),
+		'date_to'              => $expires ? eg_pub_promo_local( $expires->getTimestamp() ) : null,
+		'active_now'           => ( ! $from || $now >= $from ) && ( ! $expires || $now <= $expires->getTimestamp() ),
+		'categories'           => $names( $c->get_product_categories() ),
+		'exclude_categories'   => $names( $c->get_excluded_product_categories() ),
+		'products'             => array_map( 'intval', $c->get_product_ids() ),
+		'individual_use'       => $c->get_individual_use(),
+		'exclude_sale_items'   => $c->get_exclude_sale_items(),
+		'free_shipping'        => $c->get_free_shipping(),
+		'minimum_amount'       => (float) $c->get_minimum_amount(),
+		'usage_limit_per_user' => (int) $c->get_usage_limit_per_user(),
+		'usage_count'          => (int) $c->get_usage_count(),
+		'description'          => $c->get_description(),
+	);
+}
+
+function eg_pub_promo_coupons_list() {
+	if ( ! class_exists( 'WC_Coupon' ) ) {
+		return eg_pub_error( 'eg_promo_wc', 'WooCommerce no está activo.', 404 );
+	}
+	$ids = get_posts( array( 'post_type' => 'shop_coupon', 'post_status' => array( 'publish', 'draft', 'pending', 'private', 'future' ), 'numberposts' => 100, 'fields' => 'ids' ) );
+	return new WP_REST_Response( array( 'ok' => true, 'coupons' => array_map( function ( $id ) {
+		return eg_pub_promo_coupon_view( new WC_Coupon( $id ) );
+	}, $ids ) ), 200 );
+}
+
+function eg_pub_promo_coupon_handle( $set, $apply ) {
+	if ( ! class_exists( 'WC_Coupon' ) ) {
+		return eg_pub_error( 'eg_promo_wc', 'WooCommerce no está activo.', 404 );
+	}
+	$code = wc_format_coupon_code( (string) ( $set['code'] ?? '' ) );
+	if ( '' === $code ) {
+		return eg_pub_error( 'eg_promo_code', 'Falta el código del cupón (code).' );
+	}
+	$existing = wc_get_coupon_id_by_code( $code );
+	$coupon   = new WC_Coupon( $existing ? $existing : 0 );
+	$before   = $existing ? eg_pub_promo_coupon_view( $coupon ) : null;
+
+	if ( ! empty( $set['delete'] ) ) {
+		if ( ! $existing ) {
+			return eg_pub_error( 'eg_promo_coupon', 'No existe el cupón ' . $code . '.', 404 );
+		}
+		if ( $apply ) {
+			wp_trash_post( $existing );
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'applied' => $apply, 'deleted' => true, 'before' => $before ), 200 );
+	}
+
+	$coupon->set_code( $code );
+	if ( isset( $set['percent'] ) ) {
+		$coupon->set_discount_type( 'percent' );
+		$coupon->set_amount( (float) $set['percent'] );
+	} elseif ( isset( $set['amount'] ) ) {
+		$coupon->set_discount_type( 'fixed_cart' );
+		$coupon->set_amount( (float) $set['amount'] );
+	} elseif ( ! $existing ) {
+		return eg_pub_error( 'eg_promo_amount', 'Falta el descuento: percent (porcentaje) o amount (importe fijo del carrito).' );
+	}
+	$from = null;
+	if ( array_key_exists( 'date_from', $set ) ) {
+		$from = $set['date_from'] ? eg_pub_promo_time( $set['date_from'] ) : 0;
+		if ( null === $from ) {
+			return eg_pub_error( 'eg_promo_date', 'Fecha no válida en date_from.' );
+		}
+	}
+	if ( array_key_exists( 'date_to', $set ) ) {
+		$to = $set['date_to'] ? eg_pub_promo_time( $set['date_to'] ) : 0;
+		if ( null === $to ) {
+			return eg_pub_error( 'eg_promo_date', 'Fecha no válida en date_to.' );
+		}
+		$coupon->set_date_expires( $to ? $to + 59 : null ); // Vale hasta el final de ese minuto.
+	}
+	$missing = array();
+	if ( array_key_exists( 'categories', $set ) ) {
+		$coupon->set_product_categories( eg_pub_promo_cat_ids( $set['categories'], $missing ) );
+	}
+	if ( array_key_exists( 'exclude_categories', $set ) ) {
+		$coupon->set_excluded_product_categories( eg_pub_promo_cat_ids( $set['exclude_categories'], $missing ) );
+	}
+	if ( $missing ) {
+		return eg_pub_error( 'eg_promo_category', 'No existen estas categorías de producto: ' . implode( ', ', array_map( 'strval', $missing ) ) . '.' );
+	}
+	if ( array_key_exists( 'products', $set ) ) {
+		$coupon->set_product_ids( array_map( 'intval', (array) $set['products'] ) );
+	}
+	if ( array_key_exists( 'exclude_products', $set ) ) {
+		$coupon->set_excluded_product_ids( array_map( 'intval', (array) $set['exclude_products'] ) );
+	}
+	$coupon->set_individual_use( (bool) ( $set['individual_use'] ?? ( $existing ? $coupon->get_individual_use() : true ) ) );
+	$coupon->set_exclude_sale_items( (bool) ( $set['exclude_sale_items'] ?? ( $existing ? $coupon->get_exclude_sale_items() : true ) ) );
+	foreach ( array( 'free_shipping' => 'set_free_shipping', 'minimum_amount' => 'set_minimum_amount', 'usage_limit_per_user' => 'set_usage_limit_per_user', 'usage_limit' => 'set_usage_limit', 'description' => 'set_description' ) as $key => $setter ) {
+		if ( array_key_exists( $key, $set ) ) {
+			$coupon->$setter( 'description' === $key ? sanitize_text_field( $set[ $key ] ) : ( 'free_shipping' === $key ? (bool) $set[ $key ] : $set[ $key ] ) );
+		}
+	}
+
+	$after = eg_pub_promo_coupon_view( $coupon );
+	if ( null !== $from ) {
+		$after['date_from'] = eg_pub_promo_local( $from );
+	}
+	$out = array( 'ok' => true, 'applied' => $apply, 'before' => $before, 'after' => $after );
+	if ( ! $apply ) {
+		return new WP_REST_Response( $out, 200 );
+	}
+	if ( method_exists( $coupon, 'set_status' ) ) {
+		$coupon->set_status( 'publish' );
+	}
+	$id = $coupon->save();
+	if ( ! $id ) {
+		return eg_pub_error( 'eg_promo_save', 'No se ha podido guardar el cupón.', 500 );
+	}
+	if ( null !== $from ) {
+		if ( $from ) {
+			update_post_meta( $id, EG_PUB_PROMO_COUPON_FROM, $from );
+		} else {
+			delete_post_meta( $id, EG_PUB_PROMO_COUPON_FROM );
+		}
+	}
+	$out['after'] = eg_pub_promo_coupon_view( new WC_Coupon( $id ) );
+	return new WP_REST_Response( $out, 200 );
+}
+
+// Fecha de inicio de los cupones (WooCommerce solo tiene la de caducidad).
+add_filter( 'woocommerce_coupon_is_valid', function ( $valid, $coupon ) {
+	$from = $valid && $coupon instanceof WC_Coupon && $coupon->get_id() ? (int) get_post_meta( $coupon->get_id(), EG_PUB_PROMO_COUPON_FROM, true ) : 0;
+	if ( $from && time() < $from ) {
+		$text = 'ca' === apply_filters( 'wpml_current_language', null )
+			? 'Aquest cupó encara no està actiu. El podràs fer servir a partir del %s.'
+			: 'Este cupón todavía no está activo. Podrás usarlo a partir del %s.';
+		throw new Exception( esc_html( sprintf( $text, wp_date( 'd/m/Y H:i', $from ) ) ), 105 );
+	}
+	return $valid;
+}, 10, 2 );
 
 /* ----- Cierre de la tienda ----- */
 

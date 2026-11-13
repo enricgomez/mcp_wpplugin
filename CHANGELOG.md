@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.94.0 · 13/11/2026 · PR (Claude, a petición de Enric)
+
+- `/promo` (tipología WooCommerce, módulo campañas): cupones de WooCommerce con fecha de inicio y de fin. `coupons: true` los lista. `coupon` crea o cambia el cupón con ese código: porcentaje (`percent`) o importe fijo (`amount`), categorías por slug o id (con WPML se añaden sus traducciones), productos, uso individual, sin productos rebajados, envío gratis, mínimo y límites de uso. WooCommerce solo tiene fecha de caducidad: la de inicio se guarda en `_eg_pub_valid_from` y, antes de esa hora, el cupón responde «todavía no está activo» (en catalán en las páginas en catalán). `delete: true` lo manda a la papelera. Como el resto de `/promo`, sin `apply: true` solo previsualiza.
+- Webs: nilacakes.com (cupón de Black Friday en cookies). En las demás no cambia nada.
+
 ## 2.93.3 · 10/11/2026 · PR (Claude)
 
 - `/perf` `cdn_fonts` con `patch_min`: borra también las filas de `wpr_preload_fonts` (precarga automática de fuentes de WP Rocket) que apuntan a ficheros de fuentes que ya no existen; Rocket las vuelve a medir en las siguientes visitas. En miriamtirado.com las páginas precargaban las Poppins con nombres viejos (404). La respuesta indica `preloads_deleted`.

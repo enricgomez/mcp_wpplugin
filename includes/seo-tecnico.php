@@ -22,6 +22,8 @@
  *   rankmath_settings {"titles": {"local_business_type": "Restaurant", …}, "general": {…}, "sitemap": {…}}: cambia claves de
  *             los ajustes de Rank Math (rank-math-options-titles / -general / -sitemap), p. ej. el SEO local o el título de
  *             la portada. rankmath_get {"titles": ["local_address"]} (o "*") devuelve los valores actuales.
+ *   ga4       "G-XXXXXXX": imprime en el <head> de toda la web la etiqueta de Google Analytics 4 (gtag.js) con esa ID
+ *             de medición. "" o null la quita. El estado devuelve la ID guardada.
  * Como /seo y /rocket, los cambios solo se previsualizan; apply:true guarda y vacía la caché de WP Rocket.
  */
 
@@ -32,6 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 const EG_PUB_OPTION_BUSINESS = 'eg_pub_schema_business';
 const EG_PUB_OPTION_ROBOTS   = 'eg_pub_robots_extra';
 const EG_PUB_OPTION_AI_CAT   = 'eg_pub_ai_catalog';
+const EG_PUB_OPTION_GA4      = 'eg_pub_ga4_id';
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
 	$modules['seo-tecnico'] = array( 'type' => 'gestion', 'routes' => array( 'seo-tech' ) );
@@ -108,6 +111,17 @@ add_action( 'wp_head', function () {
 	$schema = array_merge( array( '@context' => 'https://schema.org', '@type' => $types ? $types : 'LocalBusiness' ), $data );
 	echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . "</script>\n";
 } );
+
+// Google Analytics 4: etiqueta gtag.js en el <head> de toda la web, con la ID guardada por /seo-tech ga4.
+add_action( 'wp_head', function () {
+	$id = (string) get_option( EG_PUB_OPTION_GA4, '' );
+	if ( '' === $id || is_admin() ) {
+		return;
+	}
+	$id = esc_attr( $id );
+	echo '<script async src="https://www.googletagmanager.com/gtag/js?id=' . $id . '"></script>' . "\n";
+	echo "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','" . $id . "');</script>\n";
+}, 1 );
 
 add_filter( 'robots_txt', function ( $output ) {
 	$extra = trim( (string) get_option( EG_PUB_OPTION_ROBOTS, '' ) );
@@ -345,6 +359,23 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 			}
 		}
 	}
+	if ( array_key_exists( 'ga4', $p ) ) {
+		$before = (string) get_option( EG_PUB_OPTION_GA4, '' );
+		$after  = strtoupper( trim( (string) $p['ga4'] ) );
+		if ( '' !== $after && ! preg_match( '/^G-[A-Z0-9]{4,20}$/', $after ) ) {
+			return eg_pub_error( 'eg_ga4', 'La ID de medición de Google Analytics 4 tiene que ser del tipo G-XXXXXXX.' );
+		}
+		if ( $before !== $after ) {
+			$out['changes']['ga4'] = array( 'before' => $before, 'after' => $after );
+			if ( $apply ) {
+				if ( '' === $after ) {
+					delete_option( EG_PUB_OPTION_GA4 );
+				} else {
+					update_option( EG_PUB_OPTION_GA4, $after, true );
+				}
+			}
+		}
+	}
 	if ( array_key_exists( 'rankmath_modules', $p ) ) {
 		if ( ! class_exists( '\\RankMath\\Helper' ) ) {
 			return eg_pub_error( 'eg_rankmath', 'Rank Math no está activo en esta web.' );
@@ -426,6 +457,7 @@ function eg_pub_seo_tech_handle( WP_REST_Request $r ) {
 		'robots_physical' => file_exists( ABSPATH . 'robots.txt' ),
 		'ai_catalog'      => get_option( EG_PUB_OPTION_AI_CAT, array() ) ? home_url( '/.well-known/ai-catalog.json' ) : null,
 		'wpml_hreflang'   => eg_pub_seo_tech_wpml_hreflang(),
+		'ga4'             => (string) get_option( EG_PUB_OPTION_GA4, '' ),
 		'yoast'           => defined( 'WPSEO_VERSION' ) ? WPSEO_VERSION : null,
 		'yoast_company'   => defined( 'WPSEO_VERSION' ) ? ( (array) get_option( 'wpseo_titles', array() ) )['company_or_person'] ?? null : null,
 	);

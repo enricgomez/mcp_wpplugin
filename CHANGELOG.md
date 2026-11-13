@@ -10,7 +10,7 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
-## 2.100.0 · 13/11/2026 · PR (Claude, a petición de Enric)
+## 2.100.0 · 13/11/2026 · PR #160 (Claude, a petición de Enric)
 
 - Nuevo POST `/plugins` (siempre activo): instala y activa plugins propios desde sus releases de GitHub (`{"install": "eg-cookies"}`), los lista con su versión y la última release, o los desactiva. Solo los de la lista `eg_pub_own_plugins`; de momento EG Cookies.
 - Módulo `cookies`: si el plugin EG Cookies está activo, el módulo provisional se aparta (no registra `/cookies` ni pinta su banner). EG Cookies copia su configuración al activarse. El módulo se quitará en una versión siguiente, cuando las webs que lo usan tengan EG Cookies.

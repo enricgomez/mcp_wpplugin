@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.98.0 · 13/11/2026 · PR (Claude, a petición de Enric)
+
+- `/item` (tipología Gestión de la web, módulo fichas): `set.date` cambia la fecha de publicación (`AAAA-MM-DD` o con hora), que es la que ordena listados como el de proyectos; guarda `_wp_old_date` como WordPress. `create` (`{"post_type", "title", "slug"?, "status"?}`) crea una entrada nueva de cualquier tipo (borrador si no se dice otro estado) y le aplica en la misma llamada `set`, `meta`, `acf` y `featured_image`. `items` hace hasta 100 peticiones de `/item` en una sola llamada (cada una por separado; la respuesta trae el resultado de cada una), p. ej. retocar un campo en todas las fichas de un CPT.
+- Webs: enricgomez.com (fechas y titulares de los proyectos, alta de proyectos nuevos). En las demás no cambia nada.
+
 ## 2.97.0 · 13/11/2026 · PR #157 (Claude)
 
 - `/seo-tech` `ga4`: `"G-XXXXXXX"` guarda la ID de medición de Google Analytics 4 e imprime la etiqueta gtag.js en el `<head>` de toda la web; `""` o `null` la quita. Solo previsualiza; guarda con `apply: true`. El estado devuelve `ga4`. Sirve para webs sin Google Tag Manager, sin tocar plantillas ni fragmentos de código de Elementor.

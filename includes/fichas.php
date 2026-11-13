@@ -168,7 +168,20 @@ function eg_pub_item_acf_new( $post_id, $new, $group_of, $dry_run ) {
 }
 
 function eg_pub_item_handle( WP_REST_Request $r ) {
-	$p       = $r->get_params();
+	$p = $r->get_params();
+	if ( isset( $p['items'] ) ) {
+		return eg_pub_item_batch( $p['items'] );
+	}
+	if ( ! empty( $p['create'] ) && empty( $p['id'] ) ) {
+		$created = eg_pub_item_create( (array) $p['create'], ! empty( $p['dry_run'] ) );
+		if ( $created instanceof WP_REST_Response ) {
+			return $created;
+		}
+		if ( is_array( $created ) ) {
+			return new WP_REST_Response( array( 'ok' => true, 'dry_run' => true, 'create' => $created ), 200 );
+		}
+		$p['id'] = $created;
+	}
 	$post_id = (int) ( $p['id'] ?? 0 );
 	$post    = $post_id ? get_post( $post_id ) : null;
 	if ( ! $post || in_array( $post->post_type, array( 'attachment', 'revision' ), true ) ) {
@@ -232,6 +245,23 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 			$content = str_replace( $from, wp_kses_post( (string) ( $pair['to'] ?? '' ) ), $content );
 		}
 		$row['post_content'] = $content;
+	}
+	if ( isset( $set['date'] ) ) {
+		// Fecha de publicación (ordena listados y archivos): «Y-m-d» o «Y-m-d H:i:s», en la hora de la web.
+		$date = trim( (string) $set['date'] );
+		if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+			$date .= ' 10:00:00';
+		}
+		$parsed = DateTime::createFromFormat( 'Y-m-d H:i:s', $date, wp_timezone() );
+		if ( ! $parsed || $parsed->format( 'Y-m-d H:i:s' ) !== $date ) {
+			return eg_pub_error( 'eg_date', 'date debe ser «AAAA-MM-DD» o «AAAA-MM-DD HH:MM:SS».' );
+		}
+		$row['post_date']     = $date;
+		$row['post_date_gmt'] = get_gmt_from_date( $date );
+		if ( $post->post_date && substr( $post->post_date, 0, 10 ) !== substr( $date, 0, 10 ) ) {
+			// Lo mismo que hace WordPress al cambiar la fecha: los enlaces con la fecha antigua siguen funcionando.
+			add_post_meta( $post_id, '_wp_old_date', substr( $post->post_date, 0, 10 ) );
+		}
 	}
 	if ( isset( $set['menu_order'] ) ) {
 		$row['menu_order'] = (int) $set['menu_order'];
@@ -357,4 +387,54 @@ function eg_pub_item_handle( WP_REST_Request $r ) {
 		'changes' => array_values( array_unique( $changes ) ),
 		'notes'   => $notes,
 	) + eg_pub_item_state( $post_id ), 200 );
+}
+
+/**
+ * `create` ({"post_type", "title", "slug"?, "status"?}) crea la entrada (en borrador si no se dice otro estado) y
+ * devuelve su ID; el resto de la petición (set, meta, acf, featured_image) se le aplica después. Con dry_run solo
+ * comprueba el tipo y devuelve lo que crearía. No crea adjuntos, revisiones ni tipos que no existan.
+ */
+function eg_pub_item_create( array $create, $dry_run ) {
+	$type  = sanitize_key( $create['post_type'] ?? '' );
+	$title = wp_strip_all_tags( (string) ( $create['title'] ?? '' ) );
+	if ( ! post_type_exists( $type ) || in_array( $type, array( 'attachment', 'revision', 'nav_menu_item', 'wp_template', 'wp_template_part', 'wp_global_styles' ), true ) ) {
+		return eg_pub_error( 'eg_create', 'create.post_type debe ser un tipo de contenido que exista (p. ej. post, page o un CPT).' );
+	}
+	if ( '' === $title ) {
+		return eg_pub_error( 'eg_create', 'create.title es obligatorio.' );
+	}
+	$status = sanitize_key( $create['status'] ?? 'draft' );
+	if ( ! in_array( $status, array( 'draft', 'publish', 'private', 'pending' ), true ) ) {
+		return eg_pub_error( 'eg_status', 'create.status debe ser draft, publish, private o pending.' );
+	}
+	$data = array( 'post_type' => $type, 'post_title' => $title, 'post_status' => $status, 'post_name' => sanitize_title( $create['slug'] ?? $title ) );
+	if ( $dry_run ) {
+		return $data;
+	}
+	$id = wp_insert_post( $data + array( 'post_author' => get_current_user_id() ), true );
+	return is_wp_error( $id ) ? eg_pub_error( 'eg_create', $id->get_error_message() ) : (int) $id;
+}
+
+/**
+ * `items` ([{id o create, set, meta, acf, featured_image, dry_run}, …], máx. 100) hace varias peticiones de /item en
+ * una sola llamada (p. ej. retocar un campo en todas las fichas de un CPT). Cada una va por separado: si una falla,
+ * las demás siguen, y la respuesta trae el resultado de cada una en el mismo orden.
+ */
+function eg_pub_item_batch( $items ) {
+	if ( ! is_array( $items ) || ! $items || count( $items ) > 100 ) {
+		return eg_pub_error( 'eg_items', 'items debe ser una lista de 1 a 100 peticiones.' );
+	}
+	$out = array();
+	$ok  = 0;
+	foreach ( array_values( $items ) as $item ) {
+		$item = (array) $item;
+		unset( $item['items'] );
+		$req = new WP_REST_Request( 'POST', '/eg/v1/item' );
+		$req->set_body_params( $item );
+		$res = eg_pub_item_handle( $req );
+		$data  = is_wp_error( $res ) ? array( 'ok' => false, 'message' => $res->get_error_message() ) : (array) $res->get_data();
+		$out[] = $data + array( 'id' => $item['id'] ?? null );
+		$ok   += empty( $data['ok'] ) ? 0 : 1;
+	}
+	return new WP_REST_Response( array( 'ok' => $ok === count( $out ), 'done' => $ok, 'total' => count( $out ), 'items' => $out ), 200 );
 }

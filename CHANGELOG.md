@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.99.0 · 13/11/2026 · PR (Claude)
+
+- Nuevo POST `/cookies` (Gestión de la web, módulo `cookies`): banner de cookies propio con Google Consent Mode v2. Consentimiento por defecto denegado en el `<head>` antes de cualquier etiqueta de Google; Aceptar/Rechazar con el mismo peso; enlace a la política por idioma (WPML); textos ca/es/en; enlaces a `#cookies` reabren el banner; al rechazar borra las cookies `_ga`. Con `events` manda a GA4 los clics en teléfono, WhatsApp (también Click to Chat), reservas (`booking_hosts`) y reglas propias. Previsualiza salvo `apply:true`.
+- Webs: sonovet.net.
+
 ## 2.98.0 · 13/11/2026 · PR (Claude, a petición de Enric)
 
 - `/item` (tipología Gestión de la web, módulo fichas): `set.date` cambia la fecha de publicación (`AAAA-MM-DD` o con hora), que es la que ordena listados como el de proyectos; guarda `_wp_old_date` como WordPress. `create` (`{"post_type", "title", "slug"?, "status"?}`) crea una entrada nueva de cualquier tipo (borrador si no se dice otro estado) y le aplica en la misma llamada `set`, `meta`, `acf` y `featured_image`. `items` hace hasta 100 peticiones de `/item` en una sola llamada (cada una por separado; la respuesta trae el resultado de cada una), p. ej. retocar un campo en todas las fichas de un CPT.

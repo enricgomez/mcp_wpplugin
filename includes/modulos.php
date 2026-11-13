@@ -11,7 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 const EG_PUB_OPTION_MODULES = 'eg_pub_modules'; // Hasta la 2.7.x: módulos sueltos. Se sigue escribiendo por si se vuelve atrás.
-const EG_PUB_OPTION_TYPES   = 'eg_pub_types';
+const EG_PUB_OPTION_TYPES   = 'eg_pub_types'; // Hasta la 2.91.x: tipologías marcadas. Se sigue escribiendo por si se vuelve atrás.
+const EG_PUB_OPTION_TYPES_OFF = 'eg_pub_types_off'; // Desde la 2.92.0: tipologías apagadas a mano en esta web.
 
 /** Tipologías: slug => array( label, description, requires ). requires = constante del plugin que hace falta. */
 function eg_pub_types() {
@@ -49,26 +50,22 @@ function eg_pub_modules() {
 	) );
 }
 
-/** Tipologías activas en esta web. */
+/**
+ * Tipologías activas en esta web. Desde la 2.92.0 están activas siempre todas las que la web puede usar (Blog y
+ * Gestión siempre, Elementor y WooCommerce si esos plugins están activos), salvo las que se apaguen a mano en
+ * Ajustes → EG Publicación. Las listas de tipologías marcadas que guardaban las versiones anteriores ya no
+ * cuentan: al actualizar, cada web pasa a tener todo lo que puede usar sin ir web a web.
+ */
 function eg_pub_active_types() {
-	$saved = get_option( EG_PUB_OPTION_TYPES, null );
-	if ( is_array( $saved ) ) {
-		return array_values( array_intersect( array_keys( eg_pub_types() ), $saved ) );
-	}
-	// Webs que vienen de la 2.7.x o antes: el blog estaba siempre activo y cada módulo suelto pasa a su tipología.
-	$old = get_option( EG_PUB_OPTION_MODULES, null );
-	if ( ! is_array( $old ) ) {
-		// 2.5.x: el interruptor único de landings encendía todo lo general.
-		$old = get_option( EG_PUB_OPTION_LANDINGS, false ) ? array( 'landings', 'plantillas', 'textos', 'menus', 'redirecciones', 'contenido' ) : array();
-	}
-	$map   = wp_list_pluck( eg_pub_modules(), 'type' );
-	$types = array( 'blog' );
-	foreach ( $old as $slug ) {
-		if ( isset( $map[ $slug ] ) ) {
-			$types[] = $map[ $slug ];
-		}
-	}
-	return array_values( array_intersect( array_keys( eg_pub_types() ), $types ) );
+	$off = get_option( EG_PUB_OPTION_TYPES_OFF, array() );
+	return array_values( array_diff( eg_pub_available_types(), is_array( $off ) ? $off : array() ) );
+}
+
+/** Tipologías cuyos requisitos cumple la web (p. ej. Elementor solo si Elementor está activo). */
+function eg_pub_available_types() {
+	return array_keys( array_filter( eg_pub_types(), function ( $t ) {
+		return empty( $t['requires'] ) || defined( $t['requires'] );
+	} ) );
 }
 
 function eg_pub_type_enabled( $type ) {
@@ -89,6 +86,9 @@ function eg_pub_module_enabled( $slug ) {
 
 function eg_pub_save_types( $types ) {
 	$types = array_values( array_intersect( array_keys( eg_pub_types() ), array_map( 'sanitize_key', (array) $types ) ) );
+	// Solo se guarda como apagado lo que la web podría usar y se ha desmarcado: si Elementor o WooCommerce se
+	// activan más tarde, su tipología se enciende sola.
+	update_option( EG_PUB_OPTION_TYPES_OFF, array_values( array_diff( eg_pub_available_types(), $types ) ), false );
 	update_option( EG_PUB_OPTION_TYPES, $types, false );
 	// Si se vuelve a una versión 2.7.x o anterior, que encuentre los mismos módulos encendidos.
 	$old = array_diff( eg_pub_active_modules(), array( 'blog' ) );

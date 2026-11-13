@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       EG Publicación
  * Description:       Endpoints /wp-json/eg/v1/ para los escenarios de Make de enricgomez Studio, por tipología de web: Blog (posts con idiomas de WPML, categoría, SEO de Yoast o Rank Math e imágenes), Elementor (landings y plantillas), WooCommerce (productos) y Gestión de la web (textos, menús, redirecciones, estado de páginas y enlaces por idioma). Con WordPress 6.9 también como Abilities para el MCP Adapter. La clave de acceso está en Ajustes → EG Publicación. Se actualiza solo desde GitHub.
- * Version:           2.55.0
+ * Version:           2.93.3
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            enricgomez Studio
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const EG_PUB_VERSION = '2.55.0';
+const EG_PUB_VERSION = '2.93.3';
 const EG_PUB_REPO    = 'enricgomez/mcp_wpplugin';
 define( 'EG_PUB_BASENAME', plugin_basename( __FILE__ ) );
 
@@ -41,7 +41,9 @@ require_once __DIR__ . '/includes/indexnow.php';
 require_once __DIR__ . '/includes/modulos.php';
 require_once __DIR__ . '/includes/seo.php';
 require_once __DIR__ . '/includes/seo-tecnico.php';
+require_once __DIR__ . '/includes/limpieza.php';
 require_once __DIR__ . '/includes/terminos.php';
+require_once __DIR__ . '/includes/comentarios.php';
 require_once __DIR__ . '/includes/rendimiento.php';
 require_once __DIR__ . '/includes/perfil.php';
 require_once __DIR__ . '/includes/perfil-ajustes.php';
@@ -57,6 +59,14 @@ require_once __DIR__ . '/includes/jetengine.php';
 require_once __DIR__ . '/includes/importar.php';
 require_once __DIR__ . '/includes/enlaces.php';
 require_once __DIR__ . '/includes/woocommerce.php';
+require_once __DIR__ . '/includes/campanas.php';
+require_once __DIR__ . '/includes/wcpa.php';
+require_once __DIR__ . '/includes/wc-emails.php';
+require_once __DIR__ . '/includes/hpos.php';
+require_once __DIR__ . '/includes/webapp.php';
+require_once __DIR__ . '/includes/css.php';
+require_once __DIR__ . '/includes/ficha-pdf.php';
 require_once __DIR__ . '/includes/updater.php';
 require_once __DIR__ . '/includes/actualizar.php';
+require_once __DIR__ . '/includes/copias.php';
 require_once __DIR__ . '/includes/abilities.php';

@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 add_filter( 'eg_pub_modules', function ( $modules ) {
-	$modules['enlaces'] = array( 'type' => 'gestion', 'routes' => array( 'lang-links', 'internal-links' ) );
+	$modules['enlaces'] = array( 'type' => 'gestion', 'routes' => array( 'lang-links', 'internal-links', 'wpml-strings' ) );
 	return $modules;
 } );
 
@@ -40,6 +40,11 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( 'eg/v1', '/internal-links', array(
 		'methods'             => 'POST',
 		'callback'            => 'eg_pub_internal_links_handle',
+		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
+	) );
+	register_rest_route( 'eg/v1', '/wpml-strings', array(
+		'methods'             => 'POST',
+		'callback'            => 'eg_pub_wpml_strings_handle',
 		'permission_callback' => eg_pub_module_permission( 'manage_options' ),
 	) );
 } );
@@ -461,4 +466,73 @@ function eg_pub_internal_links_resolve( $url, $hosts, &$why = '' ) {
 		$why = 'no corresponde a ninguna entrada';
 	}
 	return (int) $pid;
+}
+
+/**
+ * Cadenas de WPML String Translation, p. ej. las bases de URL de la tienda que traduce WooCommerce Multilingual
+ * («URL slug: product», «URL product_cat tax slug»):
+ *   POST /wp-json/eg/v1/wpml-strings
+ *   context  contexto de las cadenas (WordPress por defecto; "*" = todos), name  texto que contiene su nombre y
+ *            value  texto que contiene su valor original: las lista con su
+ *            valor original y sus traducciones.
+ *   set      [{"id": 12, "lang": "ca", "value": "producte"}] guarda esas traducciones como completas.
+ *   flush    true: regenera las reglas de URL después de guardar (hace falta al traducir bases de URL).
+ * Solo previsualiza; guarda con apply:true y vacía la caché de WP Rocket.
+ */
+function eg_pub_wpml_strings_handle( WP_REST_Request $r ) {
+	global $wpdb;
+	$p     = $r->get_params();
+	$apply = ! empty( $p['apply'] );
+	if ( ! function_exists( 'icl_add_string_translation' ) ) {
+		return eg_pub_error( 'eg_wpml_st', 'WPML String Translation no está activo en esta web.' );
+	}
+	$strings = $wpdb->prefix . 'icl_strings';
+	$trans   = $wpdb->prefix . 'icl_string_translations';
+	$context = (string) ( $p['context'] ?? 'WordPress' );
+	$name    = (string) ( $p['name'] ?? '' );
+	$changes = array();
+	$notes   = array();
+
+	foreach ( (array) ( $p['set'] ?? array() ) as $row ) {
+		$id    = (int) ( $row['id'] ?? 0 );
+		$lang  = sanitize_key( $row['lang'] ?? '' );
+		$value = sanitize_text_field( (string) ( $row['value'] ?? '' ) );
+		$orig  = $id ? $wpdb->get_var( $wpdb->prepare( "SELECT value FROM {$strings} WHERE id = %d", $id ) ) : null; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( null === $orig || '' === $lang || '' === $value ) {
+			$notes[] = 'cadena ' . $id . ': falta id válido, lang o value';
+			continue;
+		}
+		$before    = $wpdb->get_var( $wpdb->prepare( "SELECT value FROM {$trans} WHERE string_id = %d AND language = %s", $id, $lang ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$changes[] = array( 'id' => $id, 'original' => $orig, 'lang' => $lang, 'before' => $before, 'after' => $value );
+		if ( $apply && $before !== $value ) {
+			icl_add_string_translation( $id, $lang, $value, defined( 'ICL_TM_COMPLETE' ) ? ICL_TM_COMPLETE : 10 );
+		}
+	}
+	if ( $apply && $changes ) {
+		if ( ! empty( $p['flush'] ) ) {
+			flush_rewrite_rules( false );
+		}
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+	}
+
+	// context "*" busca en todos los contextos; value busca también por el texto original.
+	$value = (string) ( $p['value'] ?? '' );
+	$list  = $wpdb->get_results( $wpdb->prepare( "SELECT id, context, name, value FROM {$strings} WHERE ( %s = '*' OR context = %s ) AND name LIKE %s AND value LIKE %s ORDER BY id LIMIT 100", $context, $context, '%' . $wpdb->esc_like( $name ) . '%', '%' . $wpdb->esc_like( $value ) . '%' ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	foreach ( $list as &$item ) {
+		$item['id']           = (int) $item['id'];
+		$item['translations'] = array();
+		foreach ( $wpdb->get_results( $wpdb->prepare( "SELECT language, value, status FROM {$trans} WHERE string_id = %d", $item['id'] ), ARRAY_A ) as $t ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$item['translations'][ $t['language'] ] = array( 'value' => $t['value'], 'status' => (int) $t['status'] );
+		}
+	}
+	unset( $item );
+	return new WP_REST_Response( array(
+		'ok'      => true,
+		'applied' => $apply && $changes,
+		'changes' => $changes,
+		'notes'   => $notes,
+		'strings' => $list,
+	), 200 );
 }

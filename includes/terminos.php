@@ -11,6 +11,15 @@
  *   seo_title, seo_description, focus_keyword   SEO del archivo de la categoría (Rank Math y/o Yoast)
  * Como /seo, por defecto solo previsualiza; apply:true guarda. No cambia el slug (las URLs no se mueven).
  * Vacía la caché del archivo en WP Rocket.
+ *
+ * Organizar categorías (sin slug ni id):
+ *   list: true           lista los términos de la taxonomía en todos los idiomas (id, nombre, slug, entradas,
+ *                        idioma y trid de WPML). Con posts: true añade las entradas (publicadas, programadas,
+ *                        borradores) con fecha, idioma, trid y categorías.
+ *   create: [{lang, name, slug, description, translation_of}]   crea términos; translation_of = id del término
+ *                        original, para enlazarlo como traducción en WPML. Si ya existe ese slug, lo reutiliza.
+ *   assign: {"ID entrada": [ids de término]}   cambia los términos de cada entrada (sustituye los que tenga).
+ *   Sin apply:true solo previsualiza.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -84,6 +93,12 @@ function eg_pub_term_handle( WP_REST_Request $r ) {
 	}
 	if ( ! current_user_can( $tax->cap->edit_terms ) ) {
 		return eg_pub_error( 'eg_forbidden', 'El autor configurado no puede editar términos de ' . $taxonomy . '.', 403 );
+	}
+	if ( ! empty( $p['list'] ) ) {
+		return eg_pub_term_list( $taxonomy, ! empty( $p['posts'] ) );
+	}
+	if ( ! empty( $p['create'] ) || ! empty( $p['assign'] ) ) {
+		return eg_pub_term_organize( $taxonomy, (array) ( $p['create'] ?? array() ), (array) ( $p['assign'] ?? array() ), $apply );
 	}
 	$term = ! empty( $p['id'] ) ? get_term( (int) $p['id'], $taxonomy ) : get_term_by( 'slug', sanitize_title( (string) ( $p['slug'] ?? '' ) ), $taxonomy );
 	if ( ! $term || is_wp_error( $term ) ) {
@@ -179,6 +194,150 @@ function eg_pub_term_handle( WP_REST_Request $r ) {
 		'bottom_description' => (string) get_term_meta( $term->term_id, EG_PUB_META_TERM_BOTTOM, true ),
 		'seo'         => $seo,
 		'changes'     => $changes,
+	), 200 );
+}
+
+/** Idioma de WPML de un término o una entrada ('' sin WPML). */
+function eg_pub_term_wpml( $element_id, $element_type ) {
+	if ( ! has_filter( 'wpml_element_language_details' ) ) {
+		return array( 'lang' => '', 'trid' => 0 );
+	}
+	$d = apply_filters( 'wpml_element_language_details', null, array( 'element_id' => $element_id, 'element_type' => $element_type ) );
+	return array( 'lang' => $d->language_code ?? '', 'trid' => (int) ( $d->trid ?? 0 ) );
+}
+
+/** Ejecuta $fn con WPML en el idioma $lang (o en todos con 'all') y vuelve al idioma anterior. */
+function eg_pub_term_in_lang( $lang, $fn ) {
+	$prev = $lang && has_filter( 'wpml_current_language' ) ? apply_filters( 'wpml_current_language', null ) : null;
+	if ( $prev && $prev !== $lang ) {
+		do_action( 'wpml_switch_language', $lang );
+	}
+	$out = $fn();
+	if ( $prev && $prev !== $lang ) {
+		do_action( 'wpml_switch_language', $prev );
+	}
+	return $out;
+}
+
+function eg_pub_term_list( $taxonomy, $with_posts ) {
+	$terms = eg_pub_term_in_lang( 'all', function () use ( $taxonomy ) {
+		return get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false, 'number' => 500 ) );
+	} );
+	$rows = array();
+	foreach ( is_wp_error( $terms ) ? array() : $terms as $t ) {
+		$rows[] = array(
+			'id'    => $t->term_id,
+			'name'  => $t->name,
+			'slug'  => $t->slug,
+			'count' => $t->count,
+		) + eg_pub_term_wpml( $t->term_taxonomy_id, 'tax_' . $taxonomy );
+	}
+	$out = array( 'ok' => true, 'taxonomy' => $taxonomy, 'default' => 'category' === $taxonomy ? (int) get_option( 'default_category' ) : 0, 'terms' => $rows );
+	if ( $with_posts ) {
+		$types = get_taxonomy( $taxonomy )->object_type;
+		$posts = get_posts( array(
+			'post_type'        => $types,
+			'post_status'      => array( 'publish', 'future', 'draft', 'pending', 'private' ),
+			'numberposts'      => 300,
+			'orderby'          => 'date',
+			'order'            => 'DESC',
+			'suppress_filters' => true,
+		) );
+		$out['posts'] = array();
+		foreach ( $posts as $post ) {
+			$out['posts'][] = array(
+				'id'     => $post->ID,
+				'title'  => $post->post_title,
+				'status' => $post->post_status,
+				'date'   => $post->post_date,
+				'terms'  => wp_get_object_terms( $post->ID, $taxonomy, array( 'fields' => 'ids' ) ),
+			) + eg_pub_term_wpml( $post->ID, 'post_' . $post->post_type );
+		}
+	}
+	return new WP_REST_Response( $out, 200 );
+}
+
+function eg_pub_term_organize( $taxonomy, $create, $assign, $apply ) {
+	$created = array();
+	$errors  = array();
+	foreach ( $create as $i => $c ) {
+		$c    = (array) $c;
+		$name = sanitize_text_field( (string) ( $c['name'] ?? '' ) );
+		$slug = sanitize_title( (string) ( $c['slug'] ?? $name ) );
+		$lang = sanitize_key( (string) ( $c['lang'] ?? '' ) );
+		if ( '' === $name ) {
+			$errors[] = 'create[' . $i . ']: falta name.';
+			continue;
+		}
+		$row = array( 'name' => $name, 'slug' => $slug, 'lang' => $lang );
+		if ( ! $apply ) {
+			$created[] = $row;
+			continue;
+		}
+		$term = eg_pub_term_in_lang( $lang, function () use ( $slug, $taxonomy ) {
+			return get_term_by( 'slug', $slug, $taxonomy );
+		} );
+		if ( ! $term ) {
+			$res = eg_pub_term_in_lang( $lang, function () use ( $name, $slug, $taxonomy, $c ) {
+				return wp_insert_term( $name, $taxonomy, array( 'slug' => $slug, 'description' => wp_kses_post( (string) ( $c['description'] ?? '' ) ) ) );
+			} );
+			if ( is_wp_error( $res ) ) {
+				$errors[] = 'create[' . $i . '] ' . $slug . ': ' . $res->get_error_message();
+				continue;
+			}
+			$term = get_term( (int) $res['term_id'], $taxonomy );
+		}
+		if ( $lang && has_action( 'wpml_set_element_language_details' ) ) {
+			$trid     = false;
+			$src_lang = null;
+			$source   = ! empty( $c['translation_of'] ) ? get_term( (int) $c['translation_of'], $taxonomy ) : null;
+			if ( $source && ! is_wp_error( $source ) ) {
+				$src      = eg_pub_term_wpml( $source->term_taxonomy_id, 'tax_' . $taxonomy );
+				$trid     = $src['trid'] ? $src['trid'] : false;
+				$src_lang = $src['lang'] ? $src['lang'] : null;
+			}
+			do_action( 'wpml_set_element_language_details', array(
+				'element_id'           => (int) $term->term_taxonomy_id,
+				'element_type'         => 'tax_' . $taxonomy,
+				'trid'                 => $trid,
+				'language_code'        => $lang,
+				'source_language_code' => $src_lang,
+			) );
+		}
+		$created[] = array( 'id' => $term->term_id, 'link' => get_term_link( $term ) ) + $row;
+	}
+
+	$assigned = array();
+	foreach ( $assign as $post_id => $ids ) {
+		$post_id = (int) $post_id;
+		$ids     = array_values( array_filter( array_map( 'intval', (array) $ids ) ) );
+		$bad     = array_filter( $ids, function ( $id ) use ( $taxonomy ) {
+			$t = get_term( $id, $taxonomy );
+			return ! $t || is_wp_error( $t );
+		} );
+		if ( ! get_post( $post_id ) || ! current_user_can( 'edit_post', $post_id ) || ! $ids || $bad ) {
+			$errors[] = 'assign ' . $post_id . ': entrada o términos no válidos.';
+			continue;
+		}
+		$before = wp_get_object_terms( $post_id, $taxonomy, array( 'fields' => 'ids' ) );
+		if ( $apply ) {
+			$done = wp_set_object_terms( $post_id, $ids, $taxonomy, false );
+			if ( is_wp_error( $done ) ) {
+				$errors[] = 'assign ' . $post_id . ': ' . $done->get_error_message();
+				continue;
+			}
+			if ( function_exists( 'rocket_clean_post' ) ) {
+				rocket_clean_post( $post_id );
+			}
+		}
+		$assigned[] = array( 'id' => $post_id, 'before' => $before, 'after' => $ids );
+	}
+	return new WP_REST_Response( array(
+		'ok'       => ! $errors,
+		'applied'  => $apply,
+		'created'  => $created,
+		'assigned' => $assigned,
+		'errors'   => $errors,
 	), 200 );
 }
 

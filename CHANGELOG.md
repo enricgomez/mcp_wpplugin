@@ -10,6 +10,255 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.93.3 · 10/11/2026 · PR (Claude)
+
+- `/perf` `cdn_fonts` con `patch_min`: borra también las filas de `wpr_preload_fonts` (precarga automática de fuentes de WP Rocket) que apuntan a ficheros de fuentes que ya no existen; Rocket las vuelve a medir en las siguientes visitas. En miriamtirado.com las páginas precargaban las Poppins con nombres viejos (404). La respuesta indica `preloads_deleted`.
+- Webs: miriamtirado.com.
+
+## 2.93.2 · 10/11/2026 · PR (Claude)
+
+- `/perf` `cdn_fonts` con `patch_min`: las copias minificadas de Rocket del CSS de fuentes locales de Elementor se rehacen desde el CSS original de `uploads/elementor/google-fonts/css/`. En miriamtirado.com Elementor había regenerado las fuentes con nombres nuevos y la copia de Rocket seguía pidiendo las antiguas (404 en todas las Poppins). La copia `.gz` se deja siempre igual que el `.css`.
+- Webs: miriamtirado.com.
+
+## 2.93.1 · 10/11/2026 · PR (Claude)
+
+- `/perf` `cdn_fonts`: al corregir los CSS minificados existentes rehace también su copia `.gz`, que nginx sirve directamente a los navegadores y al CDN; en la 2.93.0 el `.css` quedaba bien pero el `.gz` seguía con las URL antiguas. Con `patch_min: true` se repara en webs donde ya estaba activo.
+- Webs: miriamtirado.com.
+
+## 2.93.0 · 10/11/2026 · PR (Claude, a petición de Enric)
+
+- `/perf` `fixes`: nuevo ajuste `cdn_fonts`. Las fuentes locales de Elementor (`uploads/elementor/google-fonts`) llevan la URL absoluta de la web dentro de su CSS y el CDN de WP Rocket no la cambia, así que el CSS salía del CDN pero las fuentes se pedían al servidor. Con el ajuste, las URL de fuentes de `wp-content` pasan al CNAME del CDN de Rocket en el CSS minificado (`rocket_css_content`) y en el HTML cacheado (`rocket_buffer`). Al activarlo corrige en su sitio los CSS minificados que ya existen (`patched` en la respuesta; `patch_min: true` lo repite), sin vaciar la caché. Solo actúa si el CDN de Rocket está activo.
+- Webs: miriamtirado.com (Bunny). En las demás no cambia nada mientras no se active.
+
+## 2.92.0 · 09/11/2026 · PR (Claude, a petición de Enric)
+
+- Ajustes → EG Publicación: todas las tipologías que la web puede usar están activas siempre, sin marcarlas a mano: Blog y Gestión de la web en todas, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Si uno de esos plugins se activa más tarde, su tipología se enciende sola.
+- Cambia también en las webs que ya habían guardado los ajustes: la lista de tipologías marcadas que guardaban las versiones anteriores deja de contar y, al actualizar, cada web pasa a tener todo lo que puede usar. Para apagar algo en una web concreta se desmarca y se guarda (se guarda como «apagado», opción `eg_pub_types_off`). Todos los endpoints siguen pidiendo la clave `X-EG-Key`.
+- Webs: todas al actualizar. Motivo: las webs nuevas de IGCAT (7) y no tener que ir web a web activando tipologías.
+
+## 2.91.0 · 06/11/2026 · PR #148 (Claude)
+
+- `/promo` (módulo nuevo «Campañas», tipología WooCommerce): `rules` lista las reglas de Woo Discount Rules; `clone` copia una regla (filtros y exclusiones incluidos) en otra con fechas, porcentaje, etiqueta del carrito e insignia nuevas, y `update` cambia una existente. `closure` programa el aviso de la tienda de WooCommerce en cada idioma y un cierre en el que no se puede comprar ni pagar. En cada inicio y fin se vacía la caché de WP Rocket con el cron, para que las páginas cambien a su hora. Solo previsualiza; guarda con `apply: true`.
+- Webs: miriamtirado.com (campaña de Navidad y cierre del 24/12 al 6/1). En las demás no cambia nada mientras no se use.
+
+## 2.90.0 · 05/11/2026 · PR (Claude)
+
+- `/template` (módulo Plantillas): nuevo `{"export": true}` de solo lectura que devuelve el JSON de Elementor completo, con los ajustes de página, de todo lo publicado hecho con Elementor (páginas, entradas, productos, plantillas y kit); con una lista de IDs, solo esos. Sirve para revisar el diseño de toda una web de una vez en vez de pedirlo elemento a elemento.
+- Primer uso: rediseño de oidfa-spain.org.
+- Webs: todas (sin cambios de comportamiento; solo lectura).
+
+## 2.89.0 · 05/11/2026 · PR (Claude)
+
+- Nuevo módulo «css» (tipología Gestión de la web, `POST /css`, `includes/css.php`): hojas de estilo propias por clave que se pintan en el `<head>`, con historial de 10 versiones, `rollback` y `delete`. Cada hoja se enciende o apaga (`enabled`) y puede ir solo en unas páginas (`pages`, con sus traducciones de WPML). Para probar antes de publicar, `?eg_css=<clave>` la pinta en esa visita aunque esté apagada y `?eg_css=off` quita todas. Las hojas siguen pintándose aunque se apague la tipología: se quitan apagándolas o borrándolas.
+- Primer uso: el motor de reservas de Roiback en hotelneptuno.com (clave `roiback`), con la copia de los estilos originales guardada aparte.
+- Webs: hotelneptuno.com.
+
+## 2.88.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: pantalla de carga más ágil. Se quita en cuanto el HTML está listo (antes esperaba a todas las imágenes), con un mínimo de 0,6 s y un máximo de 3 s, y el aro gira más rápido. El logo sale redondo: se genera `round-256.png` (círculo del color de fondo con el logo y esquinas transparentes) junto al resto de iconos.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.87.1 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: la pantalla de carga sale cada vez que se abre la app (primera página sin página anterior), no una vez por sesión, porque iOS conserva la sesión al volver a abrirla; se mantiene al menos 1,1 s para que se vea.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.87.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp», carga más rápida con la app instalada: el service worker usa «navigation preload» (la página se pide a la vez que arranca) y, al instalarse, deja ya guardados el CSS, el JS y las fuentes de la página de inicio.
+- Pantalla de carga solo dentro de la app instalada (`settings.splash`, activada por defecto): el icono sobre el color de fondo con un aro girando al abrirla (una vez por sesión, se quita al cargar o a los 5 s como máximo) y una barra fina arriba al pasar de una página a otra. En el navegador no cambia nada.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.86.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: en iPhone, al abrir «Ver cómo» el aviso baja junto a la barra de Safari y una línea discontinua animada lo une con la flecha, que lleva un pulso para que se vea bien dónde tocar. Añade la clase `eg-wa-guide` al body mientras la guía está abierta (para ocultar barras fijas propias de la web).
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.85.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: la guía de instalación en iPhone admite hasta 3 pasos (`install.ios_step3`) y el icono `{menu}` (el botón de la izquierda de la barra de Safari en iOS 26). Por defecto: menú de la barra → Compartir → «Añadir a pantalla de inicio». `install.ios_arrow` coloca la flecha (p. ej. `18%`, debajo del botón del menú).
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.84.1 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: `install.days` admite 0, para que el aviso de instalación vuelva a salir en cada visita aunque se cierre (útil para pruebas). Con 1 o más, los días que tarda en volver a salir tras cerrarlo.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.84.0 · 04/11/2026 · PR (Claude)
+
+- Módulo «webapp»: el aviso de instalación en iPhone ya no es solo texto. Muestra un botón «Ver cómo» que despliega dos pasos con el icono real de Compartir y el de «Añadir a pantalla de inicio», y una flecha animada que señala la barra de Safari (solo iPhone; sin animación si el móvil pide menos movimiento). Ajustes nuevos `install.ios_button`, `install.ios_step1` e `install.ios_step2` ({share} y {add} se cambian por los iconos); `install.ios_text` desaparece. Apple no deja instalar con un botón, así que el último paso sigue siendo del usuario.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud.
+
+## 2.83.0 · 04/11/2026 · PR (Claude)
+
+- Nuevo módulo «webapp» (tipología Gestión de la web, `POST /webapp`): la web como aplicación instalable (PWA). Manifiesto e iconos generados a partir de una imagen (192, 512, maskable y Apple), metas de iOS/Android, service worker (las páginas siempre de la red, caché solo de CSS/JS/fuentes/imágenes, página propia sin conexión con teléfono, nunca carrito, checkout ni mi cuenta) y aviso de instalación (botón en Android/Chrome, instrucciones en iPhone). Apagado por defecto (`settings.enabled`); al apagarlo, los móviles que lo tenían reciben un service worker que se desinstala solo.
+- Avisos push de pedido (Web Push con VAPID, cifrado aes128gcm propio, sin librerías): en la página de pedido recibido se ofrece «¿Te avisamos?»; al cambiar el estado del pedido se envía el aviso con el mismo texto del SMS de Twilio. Si el aviso llega, el SMS de WooCommerce Twilio SMS Notifications de ese cambio no se envía (`replace_sms`); sin push, el SMS sale como siempre. Ruta pública `POST /webapp-subscribe` (valida la clave del pedido) y `test_push` para probar.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud. En las demás no cambia nada mientras no se active.
+
+## 2.82.0 · 04/11/2026 · PR (Claude)
+
+- `/template` admite `id` + `build`: pasa a Elementor una página o entrada hecha con el editor clásico (guarda el JSON, la marca como Elementor y pone la plantilla de página). No sobrescribe contenidos que ya usan Elementor.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (Términos y condiciones de compra con el diseño nuevo). En las demás no cambia nada mientras no se use.
+
+## 2.81.0 · 04/11/2026 · PR (Claude)
+
+- `/seo-tech` admite `rankmath_settings` (cambia claves de los ajustes de Rank Math: títulos y SEO local, generales y sitemap) y `rankmath_get` (lee esos ajustes). Solo previsualiza; guarda con `apply: true`.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (SEO local del restaurante y títulos con Rank Math). En las demás no cambia nada mientras no se use.
+
+## 2.80.0 · 04/11/2026 · PR (Claude)
+
+- Nuevo `/hpos` (tipología Gestión de la web, módulo «hpos», requiere WooCommerce): estado de HPOS (almacenamiento principal, sincronización, pedidos pendientes y compatibilidad de los plugins activos), activar o desactivar la sincronización, sincronizar lotes al momento y cambiar el almacenamiento principal con la función de WooCommerce. Solo previsualiza; aplica con `apply: true`.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (prueba de HPOS antes de la web real). En las demás no cambia nada mientras no se use.
+
+## 2.79.0 · 04/11/2026 · PR (Claude)
+
+- Nuevo `/cleanup` (tipología Gestión de la web, módulo «limpieza»): busca y quita scripts inyectados identificados por una firma (`signature`) del contenido de las entradas y de los metadatos de texto plano. Las opciones solo se listan. Solo previsualiza; con `apply: true` quita los bloques `<script>` con la firma sin cambiar la fecha de modificación y vacía WP Rocket.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (script de redirección a spam en 54 entradas). En las demás no cambia nada mientras no se use.
+
+## 2.78.0 · 04/11/2026 · PR (Claude)
+
+- `/wc-emails` admite `style` (colores, logo de cabecera, alineación, fuente y pie de los emails de WooCommerce), `css` (CSS propio que WooCommerce pasa a estilos en línea al enviar) y `preview` (HTML del email con el pedido de ejemplo de WooCommerce, mostrando los cambios aún sin guardar). Solo previsualiza; guarda con `apply: true`. Al desactivar el plugin el CSS propio deja de aplicarse; los colores y el logo quedan en los ajustes de WooCommerce.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (emails con el diseño de la web). En las demás no cambia nada mientras no se use.
+
+## 2.77.0 · 04/11/2026 · PR (Claude)
+
+- `/template` admite `id` + `conditions` sin más datos: cambia solo las condiciones de visualización de una plantilla que ya existe (p. ej. una hecha a mano en Elementor), sin tocar su diseño. Rehace la caché de condiciones de Elementor Pro y vacía WP Rocket. La respuesta trae `conditions_before` y `conditions`. Antes las condiciones solo se guardaban al crear o reescribir una plantilla con `key`.
+- Webs: campingelfar.com (el listado del blog, plantilla 8982, también para categorías y etiquetas). En las demás no cambia nada mientras no se use.
+
+## 2.76.0 · 04/11/2026 · PR (Claude)
+
+- `/theme` admite `gtranslate`: cambia ajustes que ya existen en la opción de GTranslate (solo valores simples), p. ej. quitar el selector flotante o cambiar el aspecto del selector. La respuesta trae los ajustes actuales. Solo previsualiza; guarda con `apply: true`.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (selector de idioma en la cabecera). En las demás no cambia nada mientras no se use.
+
+## 2.75.0 · 04/11/2026 · PR (Claude)
+
+- `/product` (WooCommerce) admite `shop_settings`: revisa y cambia cómo se añade al carrito. `ajax_archive` (AJAX de WooCommerce en listados), `ajax_single` (AJAX en la ficha de JetWooBuilder, si está instalado) y `redirect_to_cart` (ir al carrito tras añadir). Solo previsualiza; guarda con `apply: true` y vacía la caché de WP Rocket.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud (compra rápida sin salir de la página). En las demás no cambia nada mientras no se use.
+
+## 2.74.0 · 04/11/2026 · PR (Claude)
+
+- `/product` (WooCommerce) admite `cart_texts`: cambia el texto del botón de añadir al carrito en la ficha (`single`) y en listados y tarjetas (`loop`), por categoría de producto (slug) o para todos (`*`). Solo previsualiza; guarda con `apply: true`. Vacía la caché de WP Rocket al guardar.
+- Webs: test-pizzeriadoncarlo.com.egserver.cloud («¡Al horno!» en pizzas, «¡Al pedido!» en bebidas, postres y vinos). En las demás no cambia nada mientras no se use.
+
+## 2.73.0 · 04/11/2026 · PR (Claude)
+
+- `/theme` revisa plugins sin tocar nada: `plugins: true` los lista con versión, estado y actualización disponible; `widget` dice qué plugin y fichero pintan un widget de Elementor; `read` lista los ficheros de un plugin o devuelve uno (.php, .css, .js, .json, .txt, .md; máx. 300 KB). Sirve para revisar plugins a medida en webs alojadas fuera del servidor.
+- Webs: campingelfar.com (widget de alojamientos de la home). En las demás no cambia nada mientras no se use.
+
+## 2.72.0 · 04/11/2026 · PR (Claude)
+
+- `/term` organiza categorías (y cualquier taxonomía pública): `list: true` lista los términos en todos los idiomas (id, nombre, slug, entradas, idioma y trid de WPML) y, con `posts: true`, las entradas publicadas, programadas y en borrador con su fecha, idioma y categorías. `create` crea términos en un idioma y los enlaza como traducción (`translation_of`); `assign` cambia las categorías de cada entrada. Sin `apply: true` solo previsualiza.
+- Webs: campingelfar.com (categorías del blog). En las demás no cambia nada mientras no se use.
+
+## 2.71.1 · 03/11/2026 · PR (Claude)
+
+- `/template` (Elementor): al crear una plantilla nueva con `conditions` y `lang`, las condiciones se guardan después de asignar el idioma de WPML. Antes la caché de condiciones de Elementor Pro se rehacía cuando la plantilla aún no tenía idioma, la dejaba fuera y no se aplicaba hasta volver a guardarla.
+- Webs: campingelfar.com (plantilla de resultados de búsqueda). Afecta a cualquier web con WPML que cree plantillas con condiciones.
+
+## 2.71.0 · 03/11/2026 · directo a main (Claude, a petición de Enric)
+
+- Ajustes → EG Publicación: en una web donde el plugin se instala por primera vez (sin ajustes guardados), vienen marcadas todas las tipologías que la web puede usar: Blog y Gestión de la web siempre, Elementor si Elementor está activo y WooCommerce si WooCommerce está activo. Antes solo venía el Blog y los demás endpoints respondían 404 hasta marcarlos a mano. Mientras no se guarden los ajustes, una tipología que pase a cumplir su requisito (p. ej. instalar Elementor después) se activa sola; al guardar, manda lo marcado.
+- IndexNow (Ajustes → EG IndexNow): si nunca se ha guardado el ajuste, viene activado, salvo en webs ocultas a los buscadores (staging) o si ya avisa otro plugin (Rank Math con Instant Indexing, All in One SEO, SEOPress o el plugin IndexNow), para no enviar dos veces. Un ajuste guardado se respeta.
+- Webs que ya guardaron los ajustes o que vienen de la 2.7.x o anterior: no cambia nada. Una web que nunca guardó los ajustes pasa también a tener todas las tipologías disponibles (todos los endpoints siguen pidiendo la clave `X-EG-Key`).
+- Webs: test-nuriagrima.cat.egserver.cloud (staging nuevo). Afecta a las instalaciones nuevas.
+
+## 2.70.0 · 03/11/2026 · PR (Claude)
+
+- `/template` (Elementor) admite `list: true`: devuelve, sin cambiar nada, las plantillas de Elementor de todos los idiomas (id, título, tipo, estado, idioma de WPML, condiciones del Theme Builder, clave de EG) y la portada y la página de entradas de Ajustes → Lectura.
+- Webs: campingelfar.com (plantillas del blog). En las demás no cambia nada mientras no se use.
+
+## 2.69.0 · 03/11/2026 · PR (Claude)
+
+- `/comments`: `trash` (lista de IDs) manda comentarios a la papelera y `pings: false` desactiva pingbacks y trackbacks (no avisa a los enlazados, no los acepta en entradas nuevas y los cierra en las existentes). Solo previsualiza; guarda con `apply: true`.
+- Webs: hotelmiamicalella.com (autopingback del post del Ironman). Sirve en todas.
+
+## 2.68.0 · 03/11/2026 · PR (Claude)
+
+- Aviso por email de post publicado: cada idioma lleva ya su enlace (/ca/, /en/, /fr/...). Antes, en el wp-cron WPML usaba el idioma por defecto y todas las traducciones salían con la URL del castellano. El original va primero.
+- Nuevo `POST /comments` (tipología Gestión de la web): lista comentarios, pingbacks y trackbacks de cualquier estado con autor, URL de origen, IP y entrada. Filtros `type`, `status`, `post_id`, `limit`. Solo lectura.
+- Webs: hotelmiamicalella.com (aviso del post del Ironman y revisión de un pingback). Sirve en todas.
+
+## 2.67.0 · 03/11/2026 · PR #121 (Claude)
+
+- Nuevo `POST /wc-emails` (tipología Gestión de la web, requiere WooCommerce): lista los emails de WooCommerce y, con `extra` (`{"customer_completed_order": {"es": "…", "ca": "…"}}`), añade un texto al final del email en el idioma del pedido (WPML), p. ej. la petición de reseña con el enlace directo a Google. Se aplica con un filtro: el email de WooCommerce no cambia. Solo previsualiza; guarda con `apply: true`.
+- Webs: nilacakes.com (reseñas de Google en el email de pedido completado). Sirve en todas las tiendas.
+
+## 2.66.1 · 03/11/2026 · PR (Claude)
+
+- Visibilidad `eg-si-meta-<clave>` (desde 2.65.0): los elementos con esa clase se marcan como dinámicos para la caché de elementos de Elementor. Antes la caché guardaba el elemento ya pintado y la condición solo se evaluaba una vez para todas las fichas (el bloque de la ficha técnica salía también en productos sin PDF).
+- Webs: comprabarbacoa.com (staging). Sirve en todas las que usan la clase.
+
+## 2.66.0 · 03/11/2026 · PR #119 (Claude)
+
+- `/theme`: `lang_labels` también cambia, solo en ese idioma de WPML, textos fijos de plugins (gettext) por su original o por su traducción, p. ej. `{"ca": {"Pickup date": "Data de recollida"}}` para plugins sin traducción al catalán.
+- `/wpml-strings`: `context: "*"` busca en todos los contextos y `value` busca por el texto original (p. ej. el título de una pasarela de pago).
+- Webs: nilacakes.com (checkout en catalán: fechas de recogida y pago con Redsys). Sirve en todas las que usan WPML.
+
+## 2.65.0 · 03/11/2026 · PR (Claude)
+
+- Ficha técnica en PDF de los productos en un campo propio, `ficha_tecnica_pdf` (URL), con un recuadro «Ficha técnica (PDF)» en la ficha del producto en wp-admin para elegirlo de la biblioteca o pegar la URL. Elementor Pro lo lee con la etiqueta dinámica «Campo personalizado».
+- Visibilidad condicional en Elementor: un elemento con la clase CSS `eg-si-meta-<clave>` solo se pinta si la entrada actual tiene ese metadato con valor (p. ej. el bloque de descarga solo sale en los productos con PDF).
+- Nuevo `POST /ficha-pdf` (cualquier tipología, requiere WooCommerce): estado, y con `migrate: true` pasa el primer enlace .pdf de cada descripción al campo y quita ese bloque del texto; `copy: true` sube antes el PDF a la biblioteca. Solo previsualiza; guarda con `apply: true`.
+- Webs: test-cbarbacoa.com (fichas técnicas de los productos OFYR y Kamado Joe).
+
+## 2.64.0 · 03/11/2026 · PR (Claude)
+
+- `/cpt`: `fields` añade, cambia o quita campos de un CPT de JetEngine que ya existe (antes solo se podían poner al crearlo) y `labels` cambia sus etiquetas. Mismo formato simplificado que al crear el CPT; los valores guardados no se tocan.
+- Webs: test-viajestauro.com (campo de vídeo de los eventos). Sirve en todas las que usan JetEngine.
+
+## 2.63.2 · 03/11/2026 · PR (Claude)
+
+- `/import-wp`: el extracto del post también se limpia de shortcodes de WPBakery (antes se guardaba con `[vc_row]…` y salía así en los listados del blog).
+- Webs: test-viajestauro.com. Sirve en todas.
+
+## 2.63.1 · 03/11/2026 · PR (Claude)
+
+- `/import-wp`: limpia los restos de maquetadores de la web de origen que aquí no existen. Quita los shortcodes de WPBakery (`[vc_row]`, `[vc_column_text]`…, conservando el texto y las imágenes de dentro; `[vc_btn]` desaparece), el envoltorio `wpb-content-wrapper`, los `<style>` que imprimen los shortcodes del tema (The7 y similares) y los párrafos vacíos que quedan. Los enlaces a páginas de la web de origen pasan al post importado con el mismo slug o, si no existe, se quedan solo en texto (avisa en `notes`).
+- Webs: test-viajestauro.com (14 posts antiguos con WPBakery que se veían como texto). Sirve en todas.
+
+## 2.63.0 · 03/11/2026 · PR #114 (Claude)
+
+- `/wcpa-forms`: también lista (`type: "options"`), copia y traduce las listas de opciones globales de WCPA (`wcpa_pt_options`, JSON en `_wcpa_options_data`). Los formularios las usan por su clave y, si la traducción está vacía, WCPA muestra las opciones del idioma principal.
+- Webs: nilacakes.com (8 listas de opciones en catalán: entrepans, begudes, cookies…).
+
+## 2.62.0 · 03/11/2026 · PR #113 (Claude)
+
+- Nuevo `POST /wcpa-forms` (módulo «WCPA», Gestión de la web): lista los formularios de Acowebs WooCommerce Custom Product Addons con su idioma de WPML, si tienen campos y sus textos. `copy` (`{"<origen>": <destino>}`) copia los ajustes y campos de WCPA de un formulario a otro y `translate` (`{"Bebida": "Beguda"}`) traduce los textos que se ven (no los valores internos de las opciones). Con `apply: true` vacía las cachés de WCPA, que no caducan, en todos los idiomas.
+- Motivo: la traducción automática de WPML crea los formularios traducidos sin campos, y la ficha en ese idioma no muestra opciones.
+- Webs: nilacakes.com (13 formularios en catalán). Sirve en todas las webs con WCPA y WPML.
+
+## 2.61.0 · 03/11/2026 · PR #112 (Claude)
+
+- `/theme` `lang_labels`: también se aplica al HTML entero de cada plantilla o página de Elementor (`elementor/frontend/the_content`), porque con la caché de elementos de Elementor el widget no se vuelve a pintar y el texto no cambiaba. Al guardar un cambio de `lang_labels` vacía esa caché (`_elementor_element_cache`) y los CSS de Elementor.
+- Webs: nilacakes.com («Ara personalitza'l...» en la ficha de producto en catalán).
+
+## 2.60.0 · 03/11/2026 · PR #111 (Claude)
+
+- `/redirect` con `regex`: `id` cambia una redirección de Rank Math que ya existe (patrón, destino y código) en lugar de crear otra, y `status: "inactive"` la deja desactivada. Devuelve `status`.
+- Webs: nilacakes.com (corregir la redirección de las URL catalanas /ca/producto/). Sirve en todas con Rank Math.
+
+## 2.59.0 · 03/11/2026 · PR (Claude)
+
+- `/media` admite vídeo: un `url` o `filename` acabado en `.mp4` o `.webm` se sube a la biblioteca como vídeo (antes se forzaba a imagen y fallaba). El `b64` acepta cualquier tipo en la cabecera `data:`. Sirve para poner vídeos de fondo en cabeceras de Elementor.
+- Webs: test-cbarbacoa.com (vídeo de la cabecera de la home). Sirve en todas las webs con la tipología Elementor.
+
+## 2.58.0 · 03/11/2026 · PR (Claude)
+
+- Nuevo `POST /backup` (siempre activo, cualquier tipología): copias de UpdraftPlus desde Make. Sin parámetros devuelve el estado: la última copia (fecha, si terminó bien y sus errores), las cinco últimas del historial, si hay una en curso y el destino remoto. Con `run: true` lanza una copia completa (base de datos y archivos) con los ajustes de UpdraftPlus de la web, en segundo plano con el cron de WordPress. Si ya hay una en curso, no lanza otra.
+- Webs: test-cbarbacoa.com (copia antes de cambiar la tipografía). Sirve en todas las webs con UpdraftPlus.
+
+## 2.57.0 · 03/11/2026 · PR #108 (Claude)
+
+- `/wpml-strings` (nuevo, módulo de enlaces): lista y traduce cadenas de WPML String Translation (`context`, `name`, `set` con `id`/`lang`/`value`) y con `flush: true` regenera los enlaces permanentes y vacía WP Rocket. Sirve para traducir las bases de URL de WooCommerce (`producto` → `producte`).
+- `/redirect`: nuevo `regex` para guardar en Rank Math una redirección por expresión regular (p. ej. `^ca/producto/(.*)$` → `/ca/producte/$1`).
+- `/theme`: nuevo `lang_labels` (`{"ca": {"de": "a"}}`) cambia textos de widgets de Elementor solo en ese idioma de WPML, al pintar el widget; el estado devuelve `lang_labels`.
+- Webs: nilacakes.com (base de producto en catalán, redirecciones y «Ara personalitza'l…»). Sirve en todas con WPML.
+
+## 2.56.0 · 03/11/2026 · PR (Claude)
+
+- `/status`: nuevo `gone` (`410`, o `{"code": 301, "to": "/ruta/"}`). Al despublicar, guarda en cada entrada que estaba publicada la redirección de la URL que tenía en su idioma, con el mismo sistema que `/redirect` (Rank Math, Redirection o la lista propia del plugin). Con `with_translations` da de baja una página en todos los idiomas en una sola llamada, sin tener que buscar la URL traducida (WPML traduce el slug). Cada entrada devuelve `redirect` con `from`, `code` y `ok`.
+- Webs: desire-vips.com (bajas de perfiles: borrador en ES y EN + 410). Sirve en todas.
+
 ## 2.55.0 · 02/11/2026 · PR (Claude)
 
 - `/template` con `id`: nuevo `insert_after` (`{"<id de elemento>": {elemento} o [elementos]}`) añade elementos nuevos justo detrás de ese elemento, en el mismo contenedor, sin reenviar el contenedor ni rehacer sus otros hijos (si el elemento nuevo no trae `id`, se le asigna uno). Devuelve `inserted_after`. Se combina con `patch`, `replace` y `remove` y guarda la copia en `_eg_pub_elementor_backup`.

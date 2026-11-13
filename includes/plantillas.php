@@ -2,6 +2,11 @@
 /**
  * Bloques reutilizables de Elementor (módulo opcional «Plantillas»):
  *   POST /wp-json/eg/v1/template  crea o actualiza una plantilla de Elementor (Plantillas guardadas) por clave e idioma.
+ *                                 Con {"list": true} solo lee: plantillas de Elementor (tipo, estado, idioma, condiciones
+ *                                 del Theme Builder) y la página de entradas y la portada de Ajustes → Lectura.
+ *                                 Con {"export": true} (o una lista de IDs) solo lee: el JSON de Elementor completo de todas
+ *                                 las páginas, entradas y plantillas publicadas hechas con Elementor (para revisar el diseño
+ *                                 de toda la web de una vez, sin pedirlo página a página).
  *   POST /wp-json/eg/v1/append    añade al final de varias páginas una sección con un título H2 y esa plantilla
  *                                 (widget «Plantilla» de Elementor Pro). Si la sección ya estaba, la sustituye.
  */
@@ -74,6 +79,29 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	if ( ! empty( $p['id'] ) && ! empty( $p['get'] ) ) {
 		return eg_pub_template_get( (int) $p['id'], $p['get'] );
 	}
+	if ( ! empty( $p['list'] ) ) {
+		return eg_pub_template_list();
+	}
+	if ( ! empty( $p['export'] ) ) {
+		return eg_pub_template_export( $p['export'] );
+	}
+	// Solo condiciones en una plantilla que ya existe (p. ej. hecha a mano en Elementor): sin tocar su diseño.
+	if ( ! empty( $p['id'] ) && isset( $p['conditions'] ) && is_array( $p['conditions'] ) && ! isset( $p['patch'] ) && ! isset( $p['replace'] ) && ! isset( $p['remove'] ) && ! isset( $p['images'] ) && ! isset( $p['insert_after'] ) && ! isset( $p['elements'] ) ) {
+		$tid = (int) $p['id'];
+		if ( 'elementor_library' !== get_post_type( $tid ) ) {
+			return eg_pub_error( 'eg_not_found', 'No existe una plantilla de Elementor con ese id.', 404 );
+		}
+		$before = get_post_meta( $tid, '_elementor_conditions', true );
+		$saved  = eg_pub_template_conditions( $tid, $p['conditions'] );
+		if ( function_exists( 'rocket_clean_domain' ) ) {
+			rocket_clean_domain();
+		}
+		return new WP_REST_Response( array( 'ok' => true, 'id' => $tid, 'conditions_before' => $before ? $before : array(), 'conditions' => $saved ), 200 );
+	}
+	// build: pasa a Elementor una página o entrada que aún no lo usa (p. ej. un texto legal hecho con el editor clásico).
+	if ( ! empty( $p['id'] ) && isset( $p['build'] ) ) {
+		return eg_pub_template_build( (int) $p['id'], $p['build'], $p['page_template'] ?? 'elementor_header_footer' );
+	}
 	if ( ! empty( $p['id'] ) && ( isset( $p['patch'] ) || isset( $p['replace'] ) || isset( $p['remove'] ) || isset( $p['images'] ) || isset( $p['insert_after'] ) ) ) {
 		return eg_pub_template_patch( (int) $p['id'], $p['patch'] ?? array(), $p['replace'] ?? array(), $p['remove'] ?? array(), array(), $p['images'] ?? array(), $p['insert_after'] ?? array() );
 	}
@@ -108,7 +136,6 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 	if ( isset( $p['settings'] ) && is_array( $p['settings'] ) ) {
 		update_post_meta( $id, '_elementor_page_settings', $p['settings'] );
 	}
-	$conditions = isset( $p['conditions'] ) && is_array( $p['conditions'] ) ? eg_pub_template_conditions( $id, $p['conditions'] ) : null;
 	delete_post_meta( $id, '_elementor_css' );
 	delete_post_meta( $id, '_elementor_element_cache' );
 
@@ -123,6 +150,9 @@ function eg_pub_template_handle( WP_REST_Request $r ) {
 			'source_language_code' => $source ? sanitize_key( $p['translation_of'] ) : null,
 		) );
 	}
+	// Las condiciones van después del idioma: la caché de condiciones de Elementor Pro solo cuenta las
+	// plantillas que WPML ya tiene en un idioma; una plantilla nueva sin idioma quedaba fuera y no se aplicaba.
+	$conditions = isset( $p['conditions'] ) && is_array( $p['conditions'] ) ? eg_pub_template_conditions( $id, $p['conditions'] ) : null;
 
 	// Avisos útiles para formularios: reCAPTCHA necesita claves en Elementor → Ajustes → Integraciones.
 	$recaptcha = array(
@@ -255,6 +285,43 @@ function eg_pub_template_patch( $id, $patch, $replace = array(), $remove = array
  * Lee elementos del JSON de Elementor de una plantilla o página sin cambiar nada: `get` = ["<id>", …] devuelve esos
  * elementos completos (ajustes e hijos); `get` = true devuelve el árbol entero resumido (id, tipo y widget).
  */
+/** Lista las plantillas de Elementor de todos los idiomas, sin cambiar nada. */
+function eg_pub_template_list() {
+	$ids  = get_posts( array(
+		'post_type'        => 'elementor_library',
+		'post_status'      => array( 'publish', 'draft', 'private' ),
+		'fields'           => 'ids',
+		'numberposts'      => 500,
+		'orderby'          => 'ID',
+		'order'            => 'ASC',
+		'suppress_filters' => true,
+	) );
+	$list = array();
+	foreach ( $ids as $id ) {
+		$details = apply_filters( 'wpml_element_language_details', null, array( 'element_id' => $id, 'element_type' => 'post_elementor_library' ) );
+		$list[]  = array_filter( array(
+			'id'         => (int) $id,
+			'title'      => get_the_title( $id ),
+			'type'       => get_post_meta( $id, '_elementor_template_type', true ),
+			'status'     => get_post_status( $id ),
+			'lang'       => $details->language_code ?? '',
+			'source'     => $details->source_language_code ?? '',
+			'conditions' => get_post_meta( $id, '_elementor_conditions', true ),
+			'key'        => get_post_meta( $id, EG_PUB_META_TEMPLATE_KEY, true ),
+		) );
+	}
+	$posts_page = (int) get_option( 'page_for_posts' );
+	return new WP_REST_Response( array(
+		'ok'             => true,
+		'count'          => count( $list ),
+		'templates'      => $list,
+		'show_on_front'  => get_option( 'show_on_front' ),
+		'page_on_front'  => (int) get_option( 'page_on_front' ),
+		'page_for_posts' => $posts_page,
+		'posts_url'      => $posts_page ? get_permalink( $posts_page ) : '',
+	), 200 );
+}
+
 function eg_pub_template_get( $id, $get ) {
 	$post = get_post( $id );
 	if ( ! $post || ! current_user_can( 'edit_post', $id ) ) {
@@ -290,6 +357,50 @@ function eg_pub_template_get( $id, $get ) {
 		$out['tree'] = $tree;
 	}
 	return new WP_REST_Response( $out, 200 );
+}
+
+/**
+ * Exporta el JSON de Elementor completo (solo lectura). `export` = true: todo lo publicado hecho con Elementor
+ * (cualquier tipo de contenido, plantillas y kit incluidos); `export` = [ids]: solo esos.
+ */
+function eg_pub_template_export( $export ) {
+	if ( is_array( $export ) ) {
+		$ids = array_values( array_filter( array_map( 'absint', $export ) ) );
+	} else {
+		$ids = get_posts( array(
+			'post_type'        => array_values( array_unique( array_merge( get_post_types( array( 'public' => true ) ), array( 'elementor_library' ) ) ) ),
+			'post_status'      => array( 'publish', 'private' ),
+			'posts_per_page'   => 500,
+			'fields'           => 'ids',
+			'meta_key'         => '_elementor_edit_mode',
+			'meta_value'       => 'builder',
+			'suppress_filters' => true,
+			'orderby'          => 'ID',
+			'order'            => 'ASC',
+		) );
+		$kit = (int) get_option( 'elementor_active_kit' );
+		if ( $kit && ! in_array( $kit, $ids, true ) ) {
+			$ids[] = $kit;
+		}
+	}
+	$docs = array();
+	foreach ( $ids as $id ) {
+		$post = get_post( $id );
+		if ( ! $post || ! current_user_can( 'edit_post', $id ) ) {
+			continue;
+		}
+		$data = json_decode( (string) get_post_meta( $id, '_elementor_data', true ), true );
+		$docs[] = array(
+			'id'       => $id,
+			'type'     => $post->post_type,
+			'template' => (string) get_post_meta( $id, '_elementor_template_type', true ),
+			'title'    => $post->post_title,
+			'url'      => 'elementor_library' === $post->post_type ? '' : get_permalink( $id ),
+			'settings' => get_post_meta( $id, '_elementor_page_settings', true ) ?: new stdClass(),
+			'data'     => is_array( $data ) ? $data : array(),
+		);
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'count' => count( $docs ), 'docs' => $docs ), 200 );
 }
 
 /**
@@ -550,4 +661,41 @@ function eg_pub_append_handle( WP_REST_Request $r ) {
 		'pages'       => $done,
 		'message'     => implode( ' | ', $notes ),
 	), 200 );
+}
+
+/**
+ * Pasa a Elementor un contenido que aún no lo usa: guarda "build" (JSON de Elementor) como su diseño, lo marca como
+ * hecho con Elementor y le pone la plantilla de página (por defecto elementor_header_footer). El contenido clásico
+ * (post_content) se queda como estaba. Si ya tiene JSON de Elementor no hace nada: para eso están patch y replace.
+ */
+function eg_pub_template_build( $id, $elements, $page_template ) {
+	$post = get_post( $id );
+	if ( ! $post || 'elementor_library' === $post->post_type ) {
+		return eg_pub_error( 'eg_not_found', 'No existe una página o entrada con ese id.', 404 );
+	}
+	if ( ! current_user_can( 'edit_post', $id ) ) {
+		return eg_pub_error( 'eg_forbidden', 'No se puede editar ese contenido.', 403 );
+	}
+	if ( ! is_array( $elements ) || ! $elements ) {
+		return eg_pub_error( 'eg_missing', 'Falta build (JSON de Elementor).' );
+	}
+	$current = json_decode( (string) get_post_meta( $id, '_elementor_data', true ), true );
+	if ( is_array( $current ) && $current ) {
+		return eg_pub_error( 'eg_already_elementor', 'Ese contenido ya está hecho con Elementor: usa patch o replace.', 400 );
+	}
+	update_post_meta( $id, '_elementor_data', wp_slash( wp_json_encode( eg_pub_template_ids( $elements ) ) ) );
+	update_post_meta( $id, '_elementor_edit_mode', 'builder' );
+	if ( defined( 'ELEMENTOR_VERSION' ) ) {
+		update_post_meta( $id, '_elementor_version', ELEMENTOR_VERSION );
+	}
+	$page_template = sanitize_text_field( (string) $page_template );
+	if ( in_array( $page_template, array( 'default', 'elementor_header_footer', 'elementor_canvas', 'elementor_theme' ), true ) ) {
+		update_post_meta( $id, '_wp_page_template', $page_template );
+	}
+	delete_post_meta( $id, '_elementor_css' );
+	delete_post_meta( $id, '_elementor_element_cache' );
+	if ( function_exists( 'rocket_clean_post' ) ) {
+		rocket_clean_post( $id );
+	}
+	return new WP_REST_Response( array( 'ok' => true, 'id' => $id, 'built' => true, 'page_template' => get_post_meta( $id, '_wp_page_template', true ) ), 200 );
 }

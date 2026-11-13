@@ -136,7 +136,7 @@ function eg_pub_settings_page() {
 								<?php echo $eg_pub_missing ? '<em>(' . esc_html( $type['label'] ) . ' no está activo en esta web)</em>' : ''; ?>
 							</label>
 						<?php endforeach; ?>
-						<p class="description">Todas usan la misma clave. Lo que está apagado no responde (404) ni aparece como ability.</p>
+						<p class="description">Todas usan la misma clave. Vienen activadas todas las que la web puede usar (Elementor y WooCommerce se encienden solos al activar esos plugins); desmarca solo lo que no quieras en esta web. Lo que está apagado no responde (404) ni aparece como ability.</p>
 					</td>
 				</tr>
 				<tr>
@@ -588,6 +588,21 @@ add_action( 'transition_post_status', function ( $new, $old, $post ) {
 	}
 }, 10, 3 );
 
+/**
+ * Enlace de un post en su idioma. En el wp-cron que envía el aviso, WPML usa el idioma por defecto y
+ * get_permalink() devuelve todas las traducciones sin /ca/, /en/... (y si comparten slug, la misma URL).
+ */
+function eg_pub_permalink_lang( $post_id, $lang ) {
+	if ( '' === $lang || ! defined( 'ICL_SITEPRESS_VERSION' ) ) {
+		return get_permalink( $post_id );
+	}
+	$current = apply_filters( 'wpml_current_language', null );
+	do_action( 'wpml_switch_language', $lang );
+	$url = get_permalink( $post_id );
+	do_action( 'wpml_switch_language', $current );
+	return apply_filters( 'wpml_permalink', $url, $lang, true );
+}
+
 add_action( 'eg_pub_notify_published', function ( $post_id ) {
 	$post = get_post( $post_id );
 	if ( ! $post || 'publish' !== $post->post_status || get_post_meta( $post_id, '_eg_notified', true ) ) {
@@ -605,14 +620,13 @@ add_action( 'eg_pub_notify_published', function ( $post_id ) {
 		foreach ( (array) $trans as $code => $t ) {
 			$items[ (int) $t->element_id ] = strtoupper( $code );
 		}
-		if ( ! isset( $items[ $post_id ] ) ) {
-			$items = array( $post_id => '' ) + $items;
-		}
+		// El original primero; luego las traducciones.
+		$items = array( $post_id => $items[ $post_id ] ?? '' ) + $items;
 	}
 	foreach ( $items as $id => $code ) {
 		$status  = get_post_status( $id );
 		$lines[] = ( $code ? $code . ' – ' : '' ) . get_the_title( $id ) . ( 'publish' === $status ? '' : ' [estado: ' . $status . ']' );
-		$lines[] = get_permalink( $id );
+		$lines[] = eg_pub_permalink_lang( $id, strtolower( $code ) );
 		$lines[] = '';
 	}
 	$lines[] = '—';

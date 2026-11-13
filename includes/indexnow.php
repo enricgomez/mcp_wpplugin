@@ -1,12 +1,36 @@
 <?php
 /**
  * Optional IndexNow notification for posts published through EG Publicación.
- * Disabled by default to avoid double submissions from existing SEO plugins.
+ * Since 2.71.0 enabled by default unless the site is hidden from search engines or another plugin already submits.
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 function eg_pub_indexnow_enabled() {
-    return (bool) get_option( 'eg_pub_indexnow_enabled', false );
+    $saved = get_option( 'eg_pub_indexnow_enabled', null );
+    if ( null !== $saved ) {
+        return (bool) $saved;
+    }
+    // Sin ajuste guardado (desde la 2.71.0): activo, salvo en webs ocultas a los buscadores o si ya avisa otro plugin.
+    return (bool) get_option( 'blog_public' ) && ! eg_pub_indexnow_other_sender();
+}
+/** Otro plugin que ya envía las URL a IndexNow, para no avisar dos veces. */
+function eg_pub_indexnow_other_sender() {
+    $rm = get_option( 'rank_math_modules', array() );
+    if ( is_array( $rm ) && in_array( 'instant-indexing', $rm, true ) ) {
+        return 'Rank Math (Instant Indexing)';
+    }
+    if ( defined( 'AIOSEO_VERSION' ) ) {
+        return 'All in One SEO';
+    }
+    if ( defined( 'SEOPRESS_VERSION' ) ) {
+        return 'SEOPress';
+    }
+    foreach ( (array) get_option( 'active_plugins', array() ) as $plugin ) {
+        if ( 0 === strpos( (string) $plugin, 'indexnow/' ) ) {
+            return 'IndexNow';
+        }
+    }
+    return '';
 }
 function eg_pub_indexnow_key() {
     $key = get_option( 'eg_pub_indexnow_key', '' );

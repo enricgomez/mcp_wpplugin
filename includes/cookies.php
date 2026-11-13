@@ -15,6 +15,9 @@
  *   booking_hosts  ["reservas.ejemplo.com"]: enlaces que cuentan como pedir_cita.
  *   rules          [{"event": "soy_clinica", "href": "/contacte/"}]: otros clics, por un trozo del enlace.
  * Cualquier enlace a «#cookies» vuelve a abrir el banner para cambiar la elección.
+ *
+ * Provisional: desde la 2.100.0, si el plugin EG Cookies está activo este módulo no hace nada (EG Cookies registra
+ * /cookies, copia esta configuración y pinta su propio banner). Se quitará cuando todas las webs lo tengan.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -28,8 +31,13 @@ add_filter( 'eg_pub_modules', function ( $modules ) {
 	return $modules;
 } );
 
+/** EG Cookies instalado y activo: el módulo provisional se aparta. */
+function eg_pub_cookies_external() {
+	return defined( 'EG_COOKIES_VERSION' );
+}
+
 add_action( 'rest_api_init', function () {
-	if ( ! eg_pub_module_enabled( 'cookies' ) ) {
+	if ( ! eg_pub_module_enabled( 'cookies' ) || eg_pub_cookies_external() ) {
 		return;
 	}
 	register_rest_route( 'eg/v1', '/cookies', array(
@@ -78,7 +86,7 @@ function eg_pub_cookies_lang() {
 /** Consentimiento por defecto: antes que cualquier etiqueta de Google (la de /seo-tech va en la prioridad 1). */
 add_action( 'wp_head', function () {
 	$c = eg_pub_cookies_config();
-	if ( empty( $c['enabled'] ) || is_admin() ) {
+	if ( empty( $c['enabled'] ) || is_admin() || eg_pub_cookies_external() ) {
 		return;
 	}
 	echo "<script data-cfasync=\"false\" nowprocket>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}"
@@ -89,7 +97,7 @@ add_action( 'wp_head', function () {
 
 add_action( 'wp_footer', function () {
 	$c = eg_pub_cookies_config();
-	if ( empty( $c['enabled'] ) || is_admin() ) {
+	if ( empty( $c['enabled'] ) || is_admin() || eg_pub_cookies_external() ) {
 		return;
 	}
 	$lang     = eg_pub_cookies_lang();

@@ -143,6 +143,16 @@ Con WordPress anterior a la 6.9 no se registra nada y el resto del plugin funcio
 3. Si la web tenía la versión antigua como mu-plugin, borra `wp-content/mu-plugins/eg-studio-rest-publisher.php`. La clave y los ajustes se conservan, así que Make sigue funcionando.
 4. La clave para Make está en Ajustes → EG Publicación.
 
+### Plugins propios (desde la v2.100.0)
+
+`POST /wp-json/eg/v1/plugins` instala los plugins propios de enricgomez Studio desde sus releases de GitHub (el guardián del servidor solo deja instalar por WP-CLI plugins del repositorio oficial). Está activo en todas las webs.
+
+- Sin parámetros: lista los plugins propios con `installed`, `version`, `active` y `latest`.
+- `{"install": "eg-cookies"}`: instala la última release (o la reinstala encima) y la activa; `"activate": false` la deja sin activar.
+- `{"deactivate": "eg-cookies"}`: la desactiva sin borrarla.
+
+Solo se pueden instalar los de la lista (`eg_pub_own_plugins`): de momento [EG Cookies](https://github.com/enricgomez/eg-cookies). Después se actualizan solos desde su propio repositorio.
+
 ### Publicar una versión nueva
 
 1. Cambia la versión en `eg-publicacion.php` (cabecera `Version:` y constante `EG_PUB_VERSION`) y añade la entrada en `CHANGELOG.md`.

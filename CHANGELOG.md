@@ -10,6 +10,12 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.100.0 · 13/11/2026 · PR (Claude, a petición de Enric)
+
+- Nuevo POST `/plugins` (siempre activo): instala y activa plugins propios desde sus releases de GitHub (`{"install": "eg-cookies"}`), los lista con su versión y la última release, o los desactiva. Solo los de la lista `eg_pub_own_plugins`; de momento EG Cookies.
+- Módulo `cookies`: si el plugin EG Cookies está activo, el módulo provisional se aparta (no registra `/cookies` ni pinta su banner). EG Cookies copia su configuración al activarse. El módulo se quitará en una versión siguiente, cuando las webs que lo usan tengan EG Cookies.
+- Webs: sonovet.net (paso del banner provisional a EG Cookies). En las demás no cambia nada.
+
 ## 2.99.0 · 13/11/2026 · PR (Claude)
 
 - Nuevo POST `/cookies` (Gestión de la web, módulo `cookies`): banner de cookies propio con Google Consent Mode v2. Consentimiento por defecto denegado en el `<head>` antes de cualquier etiqueta de Google; Aceptar/Rechazar con el mismo peso; enlace a la política por idioma (WPML); textos ca/es/en; enlaces a `#cookies` reabren el banner; al rechazar borra las cookies `_ga`. Con `events` manda a GA4 los clics en teléfono, WhatsApp (también Click to Chat), reservas (`booking_hosts`) y reglas propias. Previsualiza salvo `apply:true`.

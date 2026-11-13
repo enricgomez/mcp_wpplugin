@@ -12,13 +12,18 @@
  *                  Con este ajuste las URL de fuentes (woff2, woff, ttf, otf, eot) de wp-content pasan al primer CNAME del
  *                  CDN de Rocket en el CSS minificado y en el HTML cacheado (precargas). Al activarlo se corrigen también
  *                  los CSS minificados que ya existen, sin vaciar la caché. Solo actúa si el CDN de Rocket está activo.
+ *   img_sizes      {"642": "(max-width: 767px) 62vw, 768px", "595": "(max-width: 767px) 180px, 600px"}: atributo `sizes`
+ *                  de las imágenes de esos adjuntos (id de la biblioteca de medios). WordPress pone «100vw hasta el ancho
+ *                  del tamaño elegido», y si en el móvil la imagen ocupa menos que la pantalla el navegador descarga una
+ *                  versión mayor de la necesaria. Vale para cualquier imagen pintada con wp_get_attachment_image
+ *                  (widgets de imagen de Elementor, miniaturas…). `false` o `{}` lo quita.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const EG_PUB_PERF_FIXES = array( 'jet_validator', 'cdn_fonts' );
+const EG_PUB_PERF_FIXES = array( 'jet_validator', 'cdn_fonts', 'img_sizes' );
 
 final class EG_Pub_Jet_Validator_Cache {
 	private static $controls = array();
@@ -119,6 +124,7 @@ function eg_pub_perf_fixes_state() {
 	}
 	$state['jet_validator']['active'] = EG_Pub_Jet_Validator_Cache::$active;
 	$state['cdn_fonts']['cdn']        = eg_pub_rocket_cdn_base();
+	$state['img_sizes']['sizes']      = is_array( $fixes['img_sizes'] ?? null ) ? $fixes['img_sizes'] : array();
 	if ( defined( 'JET_ELEMENTS_VERSION' ) ) {
 		$state['jet_validator']['jet_elements'] = JET_ELEMENTS_VERSION;
 	}
@@ -235,8 +241,26 @@ function eg_pub_cdn_fonts_clean_preloads() {
 	return $deleted;
 }
 
+/** Lista de `sizes` por id de adjunto, limpia: solo ids numéricos y textos con caracteres de una media query. */
+function eg_pub_img_sizes_clean( $map ) {
+	$out = array();
+	foreach ( (array) $map as $id => $sizes ) {
+		$sizes = trim( (string) $sizes );
+		if ( (int) $id > 0 && '' !== $sizes && preg_match( '/^[a-z0-9 ().,:%-]+$/i', $sizes ) ) {
+			$out[ (string) (int) $id ] = $sizes;
+		}
+	}
+	return $out;
+}
+
 add_action( 'plugins_loaded', function () {
 	$fixes = eg_pub_perf_fixes();
+	if ( ! empty( $fixes['img_sizes'] ) && is_array( $fixes['img_sizes'] ) ) {
+		$map = $fixes['img_sizes'];
+		add_filter( 'wp_calculate_image_sizes', function ( $sizes, $size, $src, $meta, $attachment_id ) use ( $map ) {
+			return isset( $map[ (string) (int) $attachment_id ] ) ? $map[ (string) (int) $attachment_id ] : $sizes;
+		}, 99, 5 );
+	}
 	if ( ! empty( $fixes['cdn_fonts'] ) ) {
 		add_filter( 'rocket_css_content', 'eg_pub_cdn_fonts_rewrite', 99 );
 		add_filter( 'rocket_buffer', 'eg_pub_cdn_fonts_rewrite', 99 );

@@ -316,7 +316,16 @@ function eg_pub_media_handle( WP_REST_Request $r ) {
 			$type = wp_get_image_mime( $tmp );
 			$name = ( $key ?: 'imagen' ) . '.' . ( $type ? str_replace( array( 'image/', 'jpeg' ), array( '', 'jpg' ), $type ) : 'jpg' );
 		}
+		// Desde la 2.103.0: skip_imagify evita que Imagify vuelva a comprimir una imagen ya optimizada (banners con texto que se pixelan).
+		$skip_imagify = ! empty( $item['skip_imagify'] );
+		if ( $skip_imagify ) {
+			add_filter( 'imagify_auto_optimize_attachment', '__return_false', 99 );
+		}
 		$id = media_handle_sideload( array( 'name' => $name, 'tmp_name' => $tmp ), 0, sanitize_text_field( (string) ( $item['title'] ?? '' ) ) ?: null );
+		if ( $skip_imagify ) {
+			remove_filter( 'imagify_auto_optimize_attachment', '__return_false', 99 );
+			$row['imagify'] = 'skipped';
+		}
 		if ( is_wp_error( $id ) ) {
 			@unlink( $tmp );
 			$out[] = $row + array( 'error' => $id->get_error_message() );

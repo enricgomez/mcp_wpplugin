@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.102.0 · 14/11/2026 · PR (Claude, a petición de Enric)
+
+- `/media`: nueva opción por imagen `optimize` (`true` o `{"max_width": 1920, "quality": 82, "format": "jpg"|"webp"}`). Reduce y recomprime la imagen en el servidor antes de guardarla, así se puede subir directamente desde una URL pesada (p. ej. un PNG de Drive) sin pasarla en base64. La respuesta trae `optimized` con los bytes antes y después.
+- Webs: miriamtirado.com (banners de la campaña de Navidad 2026). En las demás no cambia nada hasta que se use.
+
 ## 2.101.0 · 14/11/2026 · PR (Claude, a petición de Enric)
 
 - `/comments`: nuevo `comments: false`, que cierra los comentarios en toda la web. Los cierra en las entradas y páginas que ya existen, deja cerradas las nuevas y, mientras siga activo, WordPress no acepta comentarios ni pingbacks (formulario, REST y XML-RPC) ni pinta el formulario o los comentarios. `comments: true` quita el bloqueo. Nuevo `trash_status` (`hold` o `spam`) para mandar a la papelera todos los de ese estado. La respuesta dice si el bloqueo está activo (`comments_blocked`).

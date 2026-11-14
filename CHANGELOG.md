@@ -10,6 +10,11 @@ Cambios ya fusionados en `main` que aún no tienen release (no han subido la ver
 
 - Nada por ahora.
 
+## 2.103.0 · 14/11/2026 · PR (Claude, a petición de Enric)
+
+- `/media`: nueva opción por imagen `skip_imagify: true`. Imagify no optimiza automáticamente esa subida, para imágenes que ya vienen optimizadas y que una segunda compresión pixela (banners con texto). La respuesta trae `imagify: "skipped"`.
+- Webs: miriamtirado.com (banners de Navidad 2026: Imagify nivel 2 los recomprimía un 25 % más). En las demás no cambia nada hasta que se use.
+
 ## 2.102.0 · 14/11/2026 · PR (Claude, a petición de Enric)
 
 - `/media`: nueva opción por imagen `optimize` (`true` o `{"max_width": 1920, "quality": 82, "format": "jpg"|"webp"}`). Reduce y recomprime la imagen en el servidor antes de guardarla, así se puede subir directamente desde una URL pesada (p. ej. un PNG de Drive) sin pasarla en base64. La respuesta trae `optimized` con los bytes antes y después.
